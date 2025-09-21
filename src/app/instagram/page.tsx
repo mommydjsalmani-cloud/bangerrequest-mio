@@ -13,7 +13,7 @@ export default function Instagram() {
           Apri Instagram
         </a>
         <div className="mt-6 text-sm text-gray-400">
-          Se stai usando un dispositivo mobile, il link aprirà l'app Instagram (se installata).
+          Se stai usando un dispositivo mobile, il link aprirà l'applicazione Instagram (se installata).
         </div>
         <div className="mt-6">
           <Link href="/" className="underline text-sm">Torna alla Home</Link>
