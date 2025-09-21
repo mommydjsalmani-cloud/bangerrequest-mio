@@ -27,7 +27,7 @@ export default function Home() {
       <div className="w-full max-w-md p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h1 className="text-4xl font-bold text-center mb-2">Banger Request</h1>
         <div className="flex justify-center">
-          <a href="/instagram" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded mb-2">Segui su Instagram</a>
+          <a href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" target="_blank" rel="noopener noreferrer" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded mb-2">Segui su Instagram</a>
         </div>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <input

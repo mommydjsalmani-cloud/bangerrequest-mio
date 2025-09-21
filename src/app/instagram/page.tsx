@@ -8,7 +8,9 @@ export default function Instagram() {
         <h1 className="text-2xl font-bold mb-4">Seguimi su Instagram</h1>
         <p className="mb-4">Grazie per voler seguire! Clicca il pulsante per aprire Instagram.</p>
         <a
-          href="#"
+          href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w"
+          target="_blank"
+          rel="noopener noreferrer"
           className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-6 rounded inline-block"
         >
           Apri Instagram
