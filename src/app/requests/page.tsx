@@ -2,6 +2,19 @@
 
 import { useEffect, useState } from "react";
 
+function openInstagram() {
+  const username = "mommymusicentertainment";
+  const webUrl = `https://www.instagram.com/${username}`;
+  const appUrl = `instagram://user?username=${username}`;
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const intentUrl = `intent://instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
+  try {
+    if (isAndroid) window.location.href = intentUrl;
+    else window.location.href = appUrl;
+  } catch (e) {}
+  setTimeout(() => window.open(webUrl, "_blank"), 800);
+}
+
 export default function Requests() {
   const [nome, setNome] = useState<string | null>(null);
   const [codice, setCodice] = useState<string | null>(null);
