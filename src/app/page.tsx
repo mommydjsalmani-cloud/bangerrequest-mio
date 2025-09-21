@@ -26,6 +26,9 @@ export default function Home() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white">
       <div className="w-full max-w-md p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h1 className="text-4xl font-bold text-center mb-2">Banger Request</h1>
+        <div className="flex justify-center">
+          <a href="/instagram" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded mb-2">Segui su Instagram</a>
+        </div>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           <input
             type="text"
