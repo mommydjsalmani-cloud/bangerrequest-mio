@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Splash styles */
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  z-index: 9999;
+  transition: opacity 400ms ease, visibility 400ms ease;
+}
+.splash-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.splash-logo {
+  width: 160px;
+  height: auto;
+}
+.splash-hidden {
+  opacity: 0;
+  visibility: hidden;
+}

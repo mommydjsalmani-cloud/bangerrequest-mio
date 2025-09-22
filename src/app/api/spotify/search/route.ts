@@ -1,11 +1,5 @@
 import { NextResponse } from 'next/server';
-
-async function getToken(): Promise<string> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/spotify/token`);
-  if (!res.ok) throw new Error('Token fetch failed');
-  const data = await res.json();
-  return data.access_token;
-}
+import { getSpotifyToken } from '@/lib/spotify';
 
 type SpotifyTrack = {
   id: string;
@@ -26,7 +20,13 @@ export async function GET(req: Request) {
   const limit = url.searchParams.get('limit') || '10';
   if (!q) return NextResponse.json({ tracks: [] });
 
-  const token = await getToken();
+  let token: string;
+  try {
+    token = await getSpotifyToken();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: message || 'token error' }, { status: 500 });
+  }
 
   const spotifyRes = await fetch(`https://api.spotify.com/v1/search?${new URLSearchParams({ q, type: 'track', market: 'IT', limit })}`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -39,9 +39,26 @@ export async function GET(req: Request) {
 
   const data = await spotifyRes.json();
 
-  // Map minimal track info
-  const tracks: SpotifyTrack[] = (data.tracks?.items || []).map((t: any) => {
-    const artists = Array.isArray(t.artists) ? t.artists.map((a: any) => a.name).join(', ') : '';
+  // Map minimal track info with explicit types (avoid `any` for ESLint)
+  type RawArtist = { name?: string };
+  type RawAlbumImage = { url?: string };
+  type RawAlbum = { name?: string; images?: RawAlbumImage[] };
+  type RawTrack = {
+    id: string;
+    uri?: string;
+    name?: string;
+    artists?: RawArtist[];
+    album?: RawAlbum;
+    duration_ms?: number;
+    explicit?: boolean;
+    preview_url?: string | null;
+    external_ids?: { isrc?: string } | null;
+  };
+
+  const items: RawTrack[] = data.tracks?.items || [];
+
+  const tracks: SpotifyTrack[] = items.map((t) => {
+    const artists = Array.isArray(t.artists) ? t.artists.map((a) => a.name || '').filter(Boolean).join(', ') : '';
     return {
       id: t.id,
       uri: t.uri,
@@ -50,10 +67,10 @@ export async function GET(req: Request) {
       album: t.album?.name,
       cover_url: t.album?.images?.[0]?.url || null,
       duration_ms: t.duration_ms,
-      explicit: t.explicit,
-      preview_url: t.preview_url,
-      isrc: t.external_ids?.isrc || null,
-    } as SpotifyTrack;
+      explicit: Boolean(t.explicit),
+      preview_url: t.preview_url ?? null,
+      isrc: t.external_ids?.isrc ?? null,
+    };
   });
 
   return NextResponse.json({ tracks });
