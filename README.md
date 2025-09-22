@@ -1,3 +1,54 @@
+# Banger Request
+
+App Next.js per richieste musicali: l'utente inserisce Nome + Codice Evento, cerca un brano su Spotify (metadata + preview 30s quando disponibile) e invia la richiesta al DJ.
+
+Quick start
+
+1. Installa dipendenze:
+
+```bash
+npm install
+```
+
+2. Ambiente di sviluppo:
+
+```bash
+npm run dev
+```
+
+3. Apri `http://localhost:3000` nel browser.
+
+Spotify (Client Credentials)
+
+1. Crea un'app in Spotify Developer Dashboard: https://developer.spotify.com/dashboard
+2. Copia `Client ID` e `Client Secret` dall'app creata.
+3. Aggiungi le variabili d'ambiente nel tuo progetto Vercel (Project → Settings → Environment Variables):
+   - `SPOTIFY_CLIENT_ID` = <your client id>
+   - `SPOTIFY_CLIENT_SECRET` = <your client secret>
+   (imposta per Production, Preview e Development)
+
+Environment variables richieste
+
+- `SPOTIFY_CLIENT_ID` — Client ID dall'app Spotify
+- `SPOTIFY_CLIENT_SECRET` — Client Secret dall'app Spotify (segreto)
+- `NEXT_PUBLIC_BASE_URL` — opzionale, base URL pubblico per chiamate client-side (es. https://yourdomain.com)
+
+Esempio locale
+
+```bash
+cp .env.example .env.local
+# modifica .env.local e riempi i valori
+```
+
+Test endpoint
+
+- `GET /api/spotify/search?q=shape+of+you` — cerca brani (metadata + `preview_url` quando disponibile)
+- `POST /api/requests` — salva una richiesta (in-memory nella versione attuale)
+
+Security
+
+- Non committare `SPOTIFY_CLIENT_SECRET` o altri segreti nel repository.
+- In produzione usa le Environment Variables del provider (Vercel).
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
