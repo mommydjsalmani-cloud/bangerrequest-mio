@@ -25,9 +25,21 @@ export default function Requests() {
   }, []);
 
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  type Track = {
+    id: string;
+    uri?: string;
+    title?: string;
+    artists?: string;
+    album?: string;
+    cover_url?: string | null;
+    duration_ms?: number;
+    explicit?: boolean;
+    preview_url?: string | null;
+    isrc?: string | null;
+  };
+  const [results, setResults] = useState<Track[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Track | null>(null);
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 

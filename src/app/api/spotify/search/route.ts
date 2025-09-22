@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
 
-async function getToken() {
+async function getToken(): Promise<string> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/spotify/token`);
   if (!res.ok) throw new Error('Token fetch failed');
   const data = await res.json();
   return data.access_token;
 }
+
+type SpotifyTrack = {
+  id: string;
+  uri?: string;
+  title?: string;
+  artists?: string;
+  album?: string;
+  cover_url?: string | null;
+  duration_ms?: number;
+  explicit?: boolean;
+  preview_url?: string | null;
+  isrc?: string | null;
+};
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -27,18 +40,21 @@ export async function GET(req: Request) {
   const data = await spotifyRes.json();
 
   // Map minimal track info
-  const tracks = (data.tracks?.items || []).map((t: any) => ({
-    id: t.id,
-    uri: t.uri,
-    title: t.name,
-    artists: t.artists.map((a: any) => a.name).join(', '),
-    album: t.album.name,
-    cover_url: t.album.images?.[0]?.url || null,
-    duration_ms: t.duration_ms,
-    explicit: t.explicit,
-    preview_url: t.preview_url,
-    isrc: t.external_ids?.isrc || null,
-  }));
+  const tracks: SpotifyTrack[] = (data.tracks?.items || []).map((t: any) => {
+    const artists = Array.isArray(t.artists) ? t.artists.map((a: any) => a.name).join(', ') : '';
+    return {
+      id: t.id,
+      uri: t.uri,
+      title: t.name,
+      artists,
+      album: t.album?.name,
+      cover_url: t.album?.images?.[0]?.url || null,
+      duration_ms: t.duration_ms,
+      explicit: t.explicit,
+      preview_url: t.preview_url,
+      isrc: t.external_ids?.isrc || null,
+    } as SpotifyTrack;
+  });
 
   return NextResponse.json({ tracks });
 }
