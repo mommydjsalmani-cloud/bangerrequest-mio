@@ -25,3 +25,9 @@ Apri http://localhost:3000
 - Setup Spotify: `docs/SETUP_SPOTIFY.md`
 - Setup Supabase: `docs/SETUP_SUPABASE.md`
 
+Quick verify for Supabase (after creating `.env.local`):
+
+```bash
+./scripts/verify_supabase.sh http://localhost:3000
+```
+

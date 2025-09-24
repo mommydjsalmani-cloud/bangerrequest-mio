@@ -25,29 +25,13 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-img, video, audio {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Migliore smooth scrolling su iOS */
-html, body {
-  -webkit-text-size-adjust: 100%;
-  -webkit-tap-highlight-color: rgba(255,255,255,0.05);
-}
-
-/* Evita scroll bounce interno su container full height */
-main {
-  overscroll-behavior: contain;
-}
-
 /* Splash styles */
 .splash-overlay {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  background: #000; /* Force dark to mostrare logo bianco */
+  background: var(--background);
   z-index: 9999;
   transition: opacity 400ms ease, visibility 400ms ease;
 }
@@ -58,7 +42,7 @@ main {
   padding: 1rem;
 }
 .splash-logo {
-  width: 200px;
+  width: 160px;
   height: auto;
 }
 .splash-hidden {

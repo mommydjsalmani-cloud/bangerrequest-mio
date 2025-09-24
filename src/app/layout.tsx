@@ -25,22 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta
-          name="viewport"
-          content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
-        />
-      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh`}
-        style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)'
-        }}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Splash duration={1500} />
+        <Splash duration={2500} />
         {children}
       </body>
     </html>

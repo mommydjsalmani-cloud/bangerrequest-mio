@@ -8,6 +8,10 @@ Questa guida configura un database Postgres su Supabase per salvare richieste ed
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `SUPABASE_SERVICE_ROLE_KEY` (solo server, conserva in segreto)
 
+### Quick steps to get keys
+
+- Dopo aver creato il progetto, vai in Project → Settings → API. Copia il valore `API URL` (usalo come `NEXT_PUBLIC_SUPABASE_URL`) e `anon` / `service_role` keys. Usa la `service_role` solo per server-side.
+
 ## 2) Crea tabelle
 - Apri SQL editor su Supabase
 - Incolla ed esegui `docs/supabase_schema.sql`
@@ -26,6 +30,24 @@ In Project → Settings → Environment Variables (Production/Preview/Developmen
   - `GET /api/requests` risponde 200
   - `POST /api/requests` crea una richiesta (da UI `/requests`)
   - `/dj` mostra le richieste dell'evento, le azioni funzionano
+
+  ## Quick local testing
+
+  - Copia `.env.local.example` in `.env.local` e riempi i valori `NEXT_PUBLIC_SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` dal progetto Supabase.
+  - Avvia localmente:
+
+  ```bash
+  npm install
+  npm run dev
+  ```
+
+  - Verifica le chiamate API (esempio):
+
+  ```bash
+  curl -sS http://localhost:3000/api/health/supabase | jq
+  ```
+
+  Se la risposta indica che Supabase è configurato, l'app userà il database remoto per persistenza. In assenza di quelle variabili, l'app rimane in "modalità in-memory" (i dati vengono persi al riavvio del server).
 
 ## 5) Sicurezza
 - Le azioni DJ (PATCH `/api/requests`) e gestione eventi (`/api/events`) richiedono header `x-dj-secret` = `DJ_PANEL_SECRET` se impostata.
