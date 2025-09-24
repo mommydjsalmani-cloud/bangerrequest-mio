@@ -16,7 +16,7 @@ function requireDJSecret(req: Request) {
 
 export async function GET(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: 401 });
+  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
   const url = new URL(req.url);
   const active = url.searchParams.get('active');
   const supabase = getSupabase();
@@ -34,7 +34,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: 401 });
+  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
   const body = (await req.json()) as Partial<EventItem> & { name?: string; code?: string; status?: EventStatus };
   const name = (body.name || '').trim();
   let code = (body.code || '').trim().toUpperCase();
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: 401 });
+  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
   const body = (await req.json()) as { id?: string; code?: string; active?: boolean; name?: string; status?: EventStatus };
   const supabase = getSupabase();
   if (supabase) {

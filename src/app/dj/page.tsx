@@ -63,6 +63,7 @@ export default function DJPanel() {
         const res = await fetch('/api/events', { headers });
         if (!res.ok) {
           if (res.status === 401) setError('Non autorizzato: verifica password DJ.');
+          else if (res.status === 500) setError('Configurazione server mancante (DJ_PANEL_USER/SECRET).');
           return;
         }
         const j = await res.json();
@@ -152,9 +153,8 @@ export default function DJPanel() {
       body: JSON.stringify({ id, action, mergeWithId }),
     });
     if (!res.ok) {
-      if (res.status === 401) {
-        setError('Non autorizzato: password DJ errata.');
-      }
+      if (res.status === 401) setError('Non autorizzato: password DJ errata.');
+      else if (res.status === 500) setError('Configurazione server mancante (DJ_PANEL_USER/SECRET).');
       return;
     }
     // optimistic refresh
@@ -191,6 +191,7 @@ export default function DJPanel() {
   const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
       if (!res.ok) {
         if (res.status === 401) setError('Password DJ errata. Accesso negato.');
+        else if (res.status === 500) setError('Server non configurato: contatta admin (mancano credenziali).');
         else setError('Errore di validazione password.');
         return;
       }
