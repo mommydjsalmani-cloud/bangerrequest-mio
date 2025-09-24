@@ -79,17 +79,19 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const djSecret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
-    const djUser = (process.env.DJ_PANEL_USER?.trim()) || 'mommy';
-    const header = req.headers.get('x-dj-secret')?.trim();
-    const headerUser = req.headers.get('x-dj-user')?.trim();
-    if (djSecret && header !== djSecret) {
-      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-    }
-    if (djUser && headerUser !== djUser) {
-      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-    }
   const body = (await req.json()) as { id: string; action: 'accept' | 'reject' | 'mute' | 'merge' | 'cancel'; mergeWithId?: string };
+    if (body.action !== 'cancel') {
+      const djSecret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
+      const djUser = (process.env.DJ_PANEL_USER?.trim()) || 'mommy';
+      const header = req.headers.get('x-dj-secret')?.trim();
+      const headerUser = req.headers.get('x-dj-user')?.trim();
+      if (djSecret && header !== djSecret) {
+        return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+      }
+      if (djUser && headerUser !== djUser) {
+        return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+      }
+    }
     const supabase = getSupabase();
     if (supabase) {
       if (body.action === 'merge') {
