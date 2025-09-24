@@ -20,6 +20,38 @@ export async function GET(req: Request) {
   const limit = url.searchParams.get('limit') || '10';
   if (!q) return NextResponse.json({ tracks: [] });
 
+  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
+  if ((!clientId || !clientSecret) && process.env.NODE_ENV !== 'production') {
+    const mock = [
+      {
+        id: 'mock1',
+        uri: 'spotify:track:mock1',
+        title: `Brano di test: ${q}`,
+        artists: 'Artista Demo',
+        album: 'Album Demo',
+        cover_url: null,
+        duration_ms: 210000,
+        explicit: false,
+        preview_url: null,
+        isrc: null,
+      },
+      {
+        id: 'mock2',
+        uri: 'spotify:track:mock2',
+        title: `Secondo brano: ${q}`,
+        artists: 'Band Fittizia',
+        album: 'Raccolta Test',
+        cover_url: null,
+        duration_ms: 185000,
+        explicit: false,
+        preview_url: null,
+        isrc: null,
+      },
+    ];
+    return NextResponse.json({ tracks: mock, mock: true });
+  }
+
   let token: string;
   try {
     token = await getSpotifyToken();

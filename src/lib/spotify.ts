@@ -4,8 +4,8 @@ export async function getSpotifyToken(): Promise<string> {
   const now = Date.now();
   if (_cached && _cached.expires_at > now + 10000) return _cached.access_token;
 
-  const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
 
   if (!clientId || !clientSecret) throw new Error('Spotify credentials not configured');
 
