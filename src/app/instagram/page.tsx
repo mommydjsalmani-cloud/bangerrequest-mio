@@ -12,7 +12,7 @@ function openInstagram() {
   try {
     if (isAndroid) window.location.href = intentUrl;
     else window.location.href = appUrl;
-  } catch (e) {}
+  } catch {}
   setTimeout(() => window.open(webUrl, "_blank"), 800);
 }
 

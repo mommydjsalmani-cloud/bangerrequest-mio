@@ -17,7 +17,7 @@ type RequestItem = {
   note?: string;
   event_code?: string | null;
   requester?: string | null;
-  status: 'new' | 'accepted' | 'rejected' | 'muted';
+  status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
   duplicates?: number;
 };
 
@@ -113,7 +113,7 @@ export default function DJPanel() {
         });
         setError(null);
         backoff = 4000; // reset backoff su successo
-      } catch (e) {
+  } catch {
         if (!mounted) return;
         // Non svuotare la lista su errore di rete
         setError('Problema rete, ritento...');
@@ -168,11 +168,39 @@ export default function DJPanel() {
     return { total, lastHour, dupPct };
   }, [list]);
 
-  function login(e: React.FormEvent) {
+  const [loginLoading, setLoginLoading] = useState(false);
+  async function login(e: React.FormEvent) {
     e.preventDefault();
-    if (eventCode.trim()) {
+    setError(null);
+    if (!eventCode.trim()) {
+      setError('Inserisci codice evento');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Inserisci password DJ');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      // Effettuiamo una chiamata protetta per validare la password (es: lista eventi)
+      const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim() } });
+      if (!res.ok) {
+        if (res.status === 401) setError('Password DJ errata. Accesso negato.');
+        else setError('Errore di validazione password.');
+        return;
+      }
+      const j = await res.json();
+      if (!j.events) {
+        setError('Risposta inattesa dal server.');
+        return;
+      }
       localStorage.setItem('banger_codice', eventCode.trim());
+      sessionStorage.setItem('dj_secret', password.trim());
       setAuthed(true);
+    } catch {
+      setError('Errore di rete durante il login.');
+    } finally {
+      setLoginLoading(false);
     }
   }
 
@@ -187,7 +215,8 @@ export default function DJPanel() {
         )}
 
         {!authed ? (
-          <form className="flex gap-2 mb-4" onSubmit={login}>
+          <div className="flex flex-col gap-2 mb-4 w-full max-w-xl">
+          <form className="flex gap-2" onSubmit={login}>
             <input
               value={eventCode}
               onChange={(e) => setEventCode(e.target.value)}
@@ -201,8 +230,10 @@ export default function DJPanel() {
               placeholder="Password DJ (se impostata)"
               className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
             />
-            <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">Entra</button>
+            <button disabled={loginLoading} className="bg-green-600 disabled:opacity-50 hover:bg-green-700 text-white font-bold py-2 px-4 rounded min-w-[90px]">{loginLoading ? 'Verifico…' : 'Entra'}</button>
           </form>
+          {error && <div className="text-xs text-red-400">{error}</div>}
+          </div>
         ) : null}
 
         {authed && (
@@ -306,7 +337,9 @@ export default function DJPanel() {
                       <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
                       <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
                       <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
-                      <td className="p-2">{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</td>
+                      <td className="p-2">
+                        <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</span>
+                      </td>
                       <td className="p-2 flex flex-wrap gap-1">
                         <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
                         <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
@@ -335,7 +368,7 @@ export default function DJPanel() {
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
-                    <span className="px-1 rounded bg-zinc-700">{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</span>
+                    <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</span>
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>

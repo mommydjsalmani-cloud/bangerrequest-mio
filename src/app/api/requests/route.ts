@@ -16,7 +16,7 @@ type RequestItem = {
   note?: string;
   event_code?: string | null;
   requester?: string | null;
-  status: 'new' | 'accepted' | 'rejected' | 'muted';
+  status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
   duplicates?: number; // how many times merged/duplicated
 };
 
@@ -84,7 +84,7 @@ export async function PATCH(req: Request) {
     if (djSecret && header !== djSecret) {
       return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
     }
-    const body = (await req.json()) as { id: string; action: 'accept' | 'reject' | 'mute' | 'merge'; mergeWithId?: string };
+  const body = (await req.json()) as { id: string; action: 'accept' | 'reject' | 'mute' | 'merge' | 'cancel'; mergeWithId?: string };
     const supabase = getSupabase();
     if (supabase) {
       if (body.action === 'merge') {
@@ -103,6 +103,11 @@ export async function PATCH(req: Request) {
           if (e2) return NextResponse.json({ ok: false, error: e2.message }, { status: 500 });
           return NextResponse.json({ ok: true, item: upd });
         }
+      }
+      if (body.action === 'cancel') {
+        const { data, error } = await supabase.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
+        if (error || !data) return NextResponse.json({ ok: false, error: error?.message || 'not_found' }, { status: 404 });
+        return NextResponse.json({ ok: true, item: data });
       }
       const map: Record<'accept'|'reject'|'mute', Partial<RequestItem>> = {
         accept: { status: 'accepted' },
@@ -129,6 +134,9 @@ export async function PATCH(req: Request) {
         break;
       case 'mute':
         item.status = 'muted';
+        break;
+      case 'cancel':
+        item.status = 'cancelled';
         break;
       case 'merge': {
         const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;

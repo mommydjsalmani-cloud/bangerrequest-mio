@@ -3,19 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-function openInstagram() {
-  const username = "mommymusicentertainment";
-  const webUrl = `https://www.instagram.com/${username}`;
-  const appUrl = `instagram://user?username=${username}`;
-  const isAndroid = /Android/i.test(navigator.userAgent);
-  const intentUrl = `intent://instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
-  try {
-    if (isAndroid) window.location.href = intentUrl;
-    else window.location.href = appUrl;
-  } catch (e) {}
-  setTimeout(() => window.open(webUrl, "_blank"), 800);
-}
-
 export default function Requests() {
   const router = useRouter();
   const [nome, setNome] = useState<string | null>(null);
@@ -74,7 +61,9 @@ export default function Requests() {
   const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
-  const [lastRequestStatus, setLastRequestStatus] = useState<"new"|"accepted"|"rejected"|"muted"|null>(null);
+  const [lastRequestStatus, setLastRequestStatus] = useState<"new"|"accepted"|"rejected"|"muted"|"cancelled"|null>(null);
+  const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
+  const submitted = !!lastRequestId;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -94,12 +83,15 @@ export default function Requests() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Load last request id from session on mount
+  // Load last request id + track info from session on mount
   useEffect(() => {
     const id = sessionStorage.getItem('banger_last_request_id');
     if (id) setLastRequestId(id);
     const st = sessionStorage.getItem('banger_last_request_status');
-    if (st === 'new' || st === 'accepted' || st === 'rejected' || st === 'muted') setLastRequestStatus(st);
+  if (st === 'new' || st === 'accepted' || st === 'rejected' || st === 'muted' || st === 'cancelled') setLastRequestStatus(st);
+    const tTitle = sessionStorage.getItem('banger_last_request_title');
+    const tArtists = sessionStorage.getItem('banger_last_request_artists');
+    if (tTitle || tArtists) setSubmittedTrack({ title: tTitle || undefined, artists: tArtists || undefined });
   }, []);
 
   // Poll status of last request if present
@@ -120,8 +112,9 @@ export default function Requests() {
           if (st === 'accepted') setMessage('Il DJ ha accettato la tua richiesta! ✅');
           else if (st === 'rejected') setMessage('La tua richiesta è stata rifiutata.');
           else if (st === 'muted') setMessage('La tua richiesta è stata silenziata.');
+          else if (st === 'cancelled') setMessage('Hai annullato la richiesta.');
           else setMessage(null);
-          if (st === 'accepted' || st === 'rejected' || st === 'muted') {
+          if (st === 'accepted' || st === 'rejected' || st === 'muted' || st === 'cancelled') {
             setTimeout(() => {
               if (!mounted) return;
               setMessage(null);
@@ -168,19 +161,23 @@ export default function Requests() {
     });
     const j = await res.json();
     if (j.ok) {
-      setMessage('Richiesta inviata. Grazie!');
       if (j.item?.id) {
         sessionStorage.setItem('banger_last_request_id', j.item.id);
         setLastRequestId(j.item.id);
-        setLastRequestStatus(j.item.status || 'new');
-        sessionStorage.setItem('banger_last_request_status', j.item.status || 'new');
+  setLastRequestStatus(j.item.status || 'new');
+  sessionStorage.setItem('banger_last_request_status', j.item.status || 'new');
+        if (selected) {
+          sessionStorage.setItem('banger_last_request_title', selected.title || '');
+          sessionStorage.setItem('banger_last_request_artists', selected.artists || '');
+          setSubmittedTrack({ title: selected.title, artists: selected.artists });
+        }
       }
       setSelected(null);
       setNote('');
     } else {
-      setMessage('Errore nell\'invio della richiesta');
+  setMessage('Errore nell\u2019invio della richiesta');
+      setTimeout(() => setMessage(null), 4000);
     }
-    setTimeout(() => setMessage(null), 4000);
   }
 
   if (validatingCode) {
@@ -196,44 +193,46 @@ export default function Requests() {
       <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
         <h2 className="text-2xl font-bold mb-2">Ciao {nome ?? 'ospite'}, codice evento: {codice ?? '-'}</h2>
 
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            type="text"
-            placeholder="Cerca titolo o artista su Spotify"
-            className="flex-1 p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
-          />
-          <a href="/instagram" className="text-center bg-pink-600 hover:bg-pink-700 active:scale-[0.97] transition text-white font-bold py-3 px-4 rounded text-sm">Segui su Instagram</a>
-        </div>
-
-        {loading && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
-
-        <div className="grid grid-cols-1 gap-2">
-          {results.map((t) => (
-            <div key={t.id} className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}>            
-              <img src={t.cover_url || '/file.svg'} alt={t.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm sm:text-base truncate">{t.title} {t.explicit ? <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span> : null}</div>
-                <div className="text-[11px] sm:text-xs text-gray-400 truncate">{t.artists} — {t.album}</div>
-                <div className="text-[10px] text-gray-500">{Math.floor((t.duration_ms||0)/1000)}s</div>
-              </div>
-              <div className="flex flex-col gap-1 items-end">
-                {t.preview_url ? (
-                  <audio controls src={t.preview_url} className="w-28 sm:w-36 h-8" preload="none" />
-                ) : (
-                  <div className="text-[10px] text-gray-500">No preview</div>
-                )}
-                <div className="flex gap-1">
-                  <button onClick={() => setSelected(t)} className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Sel.</button>
-                  <a href={`https://open.spotify.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
-                </div>
-              </div>
+        {!submitted && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                type="text"
+                placeholder="Cerca titolo o artista su Spotify"
+                className="flex-1 p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+              />
+              <a href="/instagram" className="text-center bg-pink-600 hover:bg-pink-700 active:scale-[0.97] transition text-white font-bold py-3 px-4 rounded text-sm">Segui su Instagram</a>
             </div>
-          ))}
-        </div>
+            {loading && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
+            <div className="grid grid-cols-1 gap-2">
+              {results.map((t) => (
+                <div key={t.id} className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}>
+                  <img src={t.cover_url || '/file.svg'} alt={t.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm sm:text-base truncate">{t.title} {t.explicit ? <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span> : null}</div>
+                    <div className="text-[11px] sm:text-xs text-gray-400 truncate">{t.artists} — {t.album}</div>
+                    <div className="text-[10px] text-gray-500">{Math.floor((t.duration_ms||0)/1000)}s</div>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    {t.preview_url ? (
+                      <audio controls src={t.preview_url} className="w-28 sm:w-36 h-8" preload="none" />
+                    ) : (
+                      <div className="text-[10px] text-gray-500">No preview</div>
+                    )}
+                    <div className="flex gap-1">
+                      <button onClick={() => setSelected(t)} className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Sel.</button>
+                      <a href={`https://open.spotify.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
-        {selected && (
+        {selected && !submitted && (
           <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
             <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
             <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Nota o dedica (opzionale)" className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" rows={3} />
@@ -244,12 +243,40 @@ export default function Requests() {
           </div>
         )}
 
-        {message && <div className="text-center mt-2 text-sm p-2 rounded bg-zinc-800 text-white">{message}</div>}
-
-        {lastRequestId && (
-          <div className="text-xs text-gray-300 mt-2">
-            Ultima richiesta ID {lastRequestId} — stato: <span className="font-semibold">{lastRequestStatus ?? 'in attesa'}</span>
+        {submitted && (
+          <div className="p-5 bg-zinc-800 rounded text-sm sm:text-base flex flex-col gap-3">
+            <div className="font-semibold text-lg">Richiesta inviata</div>
+            <div className="text-gray-300 text-sm">Brano: <span className="text-white font-medium">{submittedTrack?.title || '—'}</span>{submittedTrack?.artists ? <span className="text-gray-400"> — {submittedTrack.artists}</span> : null}</div>
+            <div className="text-xs text-gray-400">
+              Stato attuale: <span className="font-semibold text-white">{lastRequestStatus || 'in attesa'}</span><br/>
+              La pagina si aggiorna automaticamente quando il DJ decide.
+            </div>
+            {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'muted' || lastRequestStatus === 'cancelled') && (
+              <button onClick={()=>{ sessionStorage.removeItem('banger_last_request_id'); sessionStorage.removeItem('banger_last_request_status'); sessionStorage.removeItem('banger_last_request_title'); sessionStorage.removeItem('banger_last_request_artists'); setLastRequestId(null); setLastRequestStatus(null); setSubmittedTrack(null); }} className="mt-2 bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm">Invia un&#39;altra richiesta</button>
+            )}
+            {lastRequestStatus === 'new' && (
+              <button
+                onClick={async ()=>{
+                  if (!lastRequestId) return;
+                  try {
+                    const r = await fetch('/api/requests', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ id: lastRequestId, action: 'cancel' }) });
+                    const j = await r.json();
+                    if (j.ok) {
+                      setLastRequestStatus('cancelled');
+                      sessionStorage.setItem('banger_last_request_status','cancelled');
+                    }
+                  } catch {}
+                }}
+                className="mt-2 bg-red-700 hover:bg-red-600 active:scale-[0.97] transition rounded px-3 py-2 text-sm"
+              >Annulla richiesta</button>
+            )}
           </div>
+        )}
+
+  {message && !submitted && <div className="text-center mt-2 text-sm p-2 rounded bg-zinc-800 text-white">{message}</div>}
+
+        {!submitted && lastRequestId && (
+          <div className="text-xs text-gray-300 mt-2">Ultima richiesta ID {lastRequestId} — stato: <span className="font-semibold">{lastRequestStatus ?? 'in attesa'}</span></div>
         )}
 
         <div className="text-[11px] sm:text-xs text-gray-400 mt-4 leading-snug">Nota: preview disponibili solo quando presenti in Spotify. Nessun account Spotify richiesto.</div>

@@ -3,34 +3,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useRef, useState } from "react"; // Import statement remains unchanged
 
 export default function Home() {
-  function openInstagram() {
-    const username = "mommymusicentertainment";
-    const webUrl = `https://www.instagram.com/${username}`;
-    const appUrl = `instagram://user?username=${username}`;
-
-    // Android intent URL (more reliable on some Android browsers)
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    const intentUrl = `intent://instagram.com/_u/${username}/#Intent;package=com.instagram.android;scheme=https;end`;
-
-    // Try opening the app, fallback to web after timeout
-    try {
-      if (isAndroid) {
-        window.location.href = intentUrl;
-      } else {
-        window.location.href = appUrl;
-      }
-    } catch (e) {
-      // ignore
-    }
-
-    setTimeout(() => {
-      // if app didn't open, open the web URL
-      window.open(webUrl, "_blank");
-    }, 800);
-  }
+  // Removed unused function: openInstagram
 
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
