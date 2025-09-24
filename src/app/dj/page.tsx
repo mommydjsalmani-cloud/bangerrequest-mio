@@ -31,7 +31,7 @@ type EventItem = {
 };
 
 export default function DJPanel() {
-  const [eventCode, setEventCode] = useState('');
+  // Codice evento rimosso: la selezione avviene creando/selezionando eventi dopo login
   const [authed, setAuthed] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -42,8 +42,7 @@ export default function DJPanel() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('banger_codice');
-    if (saved) setEventCode(saved);
+  // Rimosso caricamento codice evento: non più richiesto al login
     try {
       const savedPwd = sessionStorage.getItem('dj_secret');
       if (savedPwd) setPassword(savedPwd);
@@ -93,9 +92,9 @@ export default function DJPanel() {
     const controllerRef: { current?: AbortController } = { current: undefined };
 
     async function load() {
-  const code = selectedEvent || eventCode;
+  const code = selectedEvent || '';
       const qs = code ? `?event_code=${encodeURIComponent(code)}` : '';
-      const headersInit: HeadersInit | undefined = password ? { 'x-dj-secret': password } : undefined;
+      const headersInit: HeadersInit | undefined = password || username ? { ...(password?{'x-dj-secret':password}:{}) , ...(username?{'x-dj-user':username}:{}) } : undefined;
       const controller = new AbortController();
       controllerRef.current?.abort();
       controllerRef.current = controller;
@@ -111,7 +110,7 @@ export default function DJPanel() {
         const j = await res.json();
         if (!mounted) return;
         // Evita di sostituire lista se l'utente ha cambiato evento nel frattempo
-        if (code !== (selectedEvent || eventCode)) return;
+  if (code !== (selectedEvent || '')) return;
         setList((prev) => {
           // Se la risposta è vuota ma prima avevamo dati, manteniamoli (probabile race o evento cambiato momentaneamente)
             if ((!j.requests || j.requests.length === 0) && prev.length > 0) return prev;
@@ -144,7 +143,7 @@ export default function DJPanel() {
       if (interval) clearTimeout(interval);
       controllerRef.current?.abort();
     };
-  }, [authed, eventCode, selectedEvent, password]);
+  }, [authed, selectedEvent, password, username]);
 
   async function act(id: string, action: 'accept' | 'reject' | 'mute' | 'merge', mergeWithId?: string) {
     const res = await fetch('/api/requests', {
@@ -159,7 +158,7 @@ export default function DJPanel() {
       return;
     }
     // optimistic refresh
-    const code = selectedEvent || eventCode;
+  const code = selectedEvent || '';
     const qs = code ? `?event_code=${encodeURIComponent(code)}` : '';
   const r2 = await fetch(`/api/requests${qs}`, { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
     const j2 = await r2.json();
@@ -178,10 +177,6 @@ export default function DJPanel() {
   async function login(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!eventCode.trim()) {
-      setError('Inserisci codice evento');
-      return;
-    }
     if (!username.trim()) {
       setError('Inserisci username DJ');
       return;
@@ -204,7 +199,7 @@ export default function DJPanel() {
         setError('Risposta inattesa dal server.');
         return;
       }
-      localStorage.setItem('banger_codice', eventCode.trim());
+  // Non salviamo più codice evento al login
   sessionStorage.setItem('dj_secret', password.trim());
   sessionStorage.setItem('dj_user', username.trim());
       setAuthed(true);
@@ -235,12 +230,6 @@ export default function DJPanel() {
               className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
             />
             <input
-              value={eventCode}
-              onChange={(e) => setEventCode(e.target.value)}
-              placeholder="Codice evento"
-              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-            />
-            <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -257,7 +246,7 @@ export default function DJPanel() {
           <>
             <div className="text-sm text-gray-300 flex justify-between items-center">
               <div>
-                Evento: <span className="font-mono">{selectedEvent || eventCode || '-'}</span>
+                Evento: <span className="font-mono">{selectedEvent || '-'}</span>
               </div>
               <div className="text-xs">
                 {password ? 'Protezione DJ: attiva' : 'Protezione DJ: non attiva'}
