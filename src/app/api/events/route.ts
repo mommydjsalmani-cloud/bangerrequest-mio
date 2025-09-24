@@ -5,11 +5,11 @@ import { eventsStore, genCode, EventItem, EventStatus } from '@/lib/eventsStore'
 // store & genCode ora centralizzati
 
 function requireDJSecret(req: Request) {
-  const dj = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
-  // Se la variabile non è impostata useremo fallback '77'
-  if (!dj) return null;
-  const header = req.headers.get('x-dj-secret')?.trim();
-  if (header !== dj) return 'unauthorized';
+  const secret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
+  const user = (process.env.DJ_PANEL_USER?.trim()) || 'mommy';
+  const hSecret = req.headers.get('x-dj-secret')?.trim();
+  const hUser = req.headers.get('x-dj-user')?.trim();
+  if (hSecret !== secret || hUser !== user) return 'unauthorized';
   return null;
 }
 

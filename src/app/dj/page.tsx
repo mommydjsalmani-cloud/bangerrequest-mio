@@ -33,6 +33,7 @@ type EventItem = {
 export default function DJPanel() {
   const [eventCode, setEventCode] = useState('');
   const [authed, setAuthed] = useState(false);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [list, setList] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -46,6 +47,8 @@ export default function DJPanel() {
     try {
       const savedPwd = sessionStorage.getItem('dj_secret');
       if (savedPwd) setPassword(savedPwd);
+      const savedUser = sessionStorage.getItem('dj_user');
+      if (savedUser) setUsername(savedUser);
     } catch {}
   }, []);
 
@@ -55,7 +58,10 @@ export default function DJPanel() {
     let active = true;
     async function loadEvents() {
       try {
-        const res = await fetch('/api/events', { headers: password ? { 'x-dj-secret': password } : undefined });
+        const headers: Record<string,string> = {};
+        if (password) headers['x-dj-secret'] = password;
+        if (username) headers['x-dj-user'] = username;
+        const res = await fetch('/api/events', { headers });
         if (!res.ok) {
           if (res.status === 401) setError('Non autorizzato: verifica password DJ.');
           return;
@@ -69,7 +75,7 @@ export default function DJPanel() {
     return () => {
       active = false;
     };
-  }, [authed, password]);
+  }, [authed, password, username]);
 
   useEffect(() => {
     try {
@@ -143,7 +149,7 @@ export default function DJPanel() {
   async function act(id: string, action: 'accept' | 'reject' | 'mute' | 'merge', mergeWithId?: string) {
     const res = await fetch('/api/requests', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}) },
+      headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) },
       body: JSON.stringify({ id, action, mergeWithId }),
     });
     if (!res.ok) {
@@ -155,7 +161,7 @@ export default function DJPanel() {
     // optimistic refresh
     const code = selectedEvent || eventCode;
     const qs = code ? `?event_code=${encodeURIComponent(code)}` : '';
-    const r2 = await fetch(`/api/requests${qs}`, { headers: password ? { 'x-dj-secret': password } : undefined });
+  const r2 = await fetch(`/api/requests${qs}`, { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
     const j2 = await r2.json();
     setList(j2.requests || []);
   }
@@ -176,6 +182,10 @@ export default function DJPanel() {
       setError('Inserisci codice evento');
       return;
     }
+    if (!username.trim()) {
+      setError('Inserisci username DJ');
+      return;
+    }
     if (!password.trim()) {
       setError('Inserisci password DJ');
       return;
@@ -183,7 +193,7 @@ export default function DJPanel() {
     setLoginLoading(true);
     try {
       // Effettuiamo una chiamata protetta per validare la password (es: lista eventi)
-      const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim() } });
+  const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
       if (!res.ok) {
         if (res.status === 401) setError('Password DJ errata. Accesso negato.');
         else setError('Errore di validazione password.');
@@ -195,7 +205,8 @@ export default function DJPanel() {
         return;
       }
       localStorage.setItem('banger_codice', eventCode.trim());
-      sessionStorage.setItem('dj_secret', password.trim());
+  sessionStorage.setItem('dj_secret', password.trim());
+  sessionStorage.setItem('dj_user', username.trim());
       setAuthed(true);
     } catch {
       setError('Errore di rete durante il login.');
@@ -216,7 +227,13 @@ export default function DJPanel() {
 
         {!authed ? (
           <div className="flex flex-col gap-2 mb-4 w-full max-w-xl">
-          <form className="flex gap-2" onSubmit={login}>
+          <form className="flex gap-2 flex-col sm:flex-row" onSubmit={login}>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username DJ"
+              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+            />
             <input
               value={eventCode}
               onChange={(e) => setEventCode(e.target.value)}
@@ -258,7 +275,7 @@ export default function DJPanel() {
                 if (!name) return;
                 const res = await fetch('/api/events', {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}) },
+                  headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) },
                   body: JSON.stringify({ name, code }),
                 });
                 if (res.ok) {
@@ -284,25 +301,25 @@ export default function DJPanel() {
                     <div className="flex gap-1">
                       {ev.status !== 'active' && ev.status !== 'closed' && (
                         <button className="text-[10px] bg-green-700 px-1 rounded" onClick={async ()=>{
-                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{})}, body: JSON.stringify({ id: ev.id, status: 'active' }) });
+                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{})}, body: JSON.stringify({ id: ev.id, status: 'active' }) });
                           if (res.ok){ const j=await res.json(); setEvents(p=>p.map(x=>x.id===ev.id?j.event:x)); }
                         }}>Avvia</button>
                       )}
                       {ev.status === 'active' && (
                         <button className="text-[10px] bg-yellow-700 px-1 rounded" onClick={async ()=>{
-                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{})}, body: JSON.stringify({ id: ev.id, status: 'paused' }) });
+                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{})}, body: JSON.stringify({ id: ev.id, status: 'paused' }) });
                           if (res.ok){ const j=await res.json(); setEvents(p=>p.map(x=>x.id===ev.id?j.event:x)); }
                         }}>Pausa</button>
                       )}
                       {ev.status !== 'closed' && (
                         <button className="text-[10px] bg-red-700 px-1 rounded" onClick={async ()=>{
-                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{})}, body: JSON.stringify({ id: ev.id, status: 'closed' }) });
+                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{})}, body: JSON.stringify({ id: ev.id, status: 'closed' }) });
                           if (res.ok){ const j=await res.json(); setEvents(p=>p.map(x=>x.id===ev.id?j.event:x)); }
                         }}>Chiudi</button>
                       )}
                       {ev.status === 'closed' && (
                         <button className="text-[10px] bg-green-800 px-1 rounded" onClick={async ()=>{
-                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{})}, body: JSON.stringify({ id: ev.id, status: 'active' }) });
+                          const res = await fetch('/api/events', { method:'PATCH', headers:{'Content-Type':'application/json', ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{})}, body: JSON.stringify({ id: ev.id, status: 'active' }) });
                           if (res.ok){ const j=await res.json(); setEvents(p=>p.map(x=>x.id===ev.id?j.event:x)); }
                         }}>Riapri</button>
                       )}
