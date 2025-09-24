@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from 'next/image';
 import { useRouter } from "next/navigation";
 
 export default function Requests() {
@@ -209,7 +210,7 @@ export default function Requests() {
             <div className="grid grid-cols-1 gap-2">
               {results.map((t) => (
                 <div key={t.id} className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}>
-                  <img src={t.cover_url || '/file.svg'} alt={t.title} className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" />
+              <Image src={t.cover_url || '/file.svg'} alt={t.title || 'cover'} width={56} height={56} className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm sm:text-base truncate">{t.title} {t.explicit ? <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span> : null}</div>
                     <div className="text-[11px] sm:text-xs text-gray-400 truncate">{t.artists} — {t.album}</div>
