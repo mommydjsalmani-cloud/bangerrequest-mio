@@ -81,14 +81,14 @@ export async function PATCH(req: Request) {
   try {
   const body = (await req.json()) as { id: string; action: 'accept' | 'reject' | 'mute' | 'merge' | 'cancel'; mergeWithId?: string };
     if (body.action !== 'cancel') {
-      const djSecret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
-      const djUser = (process.env.DJ_PANEL_USER?.trim()) || 'mommy';
+      const djSecret = process.env.DJ_PANEL_SECRET?.trim();
+      const djUser = process.env.DJ_PANEL_USER?.trim();
+      if (!djSecret || !djUser) {
+        return NextResponse.json({ ok: false, error: 'misconfigured' }, { status: 500 });
+      }
       const header = req.headers.get('x-dj-secret')?.trim();
       const headerUser = req.headers.get('x-dj-user')?.trim();
-      if (djSecret && header !== djSecret) {
-        return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-      }
-      if (djUser && headerUser !== djUser) {
+      if (header !== djSecret || headerUser !== djUser) {
         return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
       }
     }

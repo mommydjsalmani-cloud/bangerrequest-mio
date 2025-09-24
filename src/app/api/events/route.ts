@@ -5,8 +5,9 @@ import { eventsStore, genCode, EventItem, EventStatus } from '@/lib/eventsStore'
 // store & genCode ora centralizzati
 
 function requireDJSecret(req: Request) {
-  const secret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
-  const user = (process.env.DJ_PANEL_USER?.trim()) || 'mommy';
+  const secret = process.env.DJ_PANEL_SECRET?.trim();
+  const user = process.env.DJ_PANEL_USER?.trim();
+  if (!secret || !user) return 'misconfigured';
   const hSecret = req.headers.get('x-dj-secret')?.trim();
   const hUser = req.headers.get('x-dj-user')?.trim();
   if (hSecret !== secret || hUser !== user) return 'unauthorized';

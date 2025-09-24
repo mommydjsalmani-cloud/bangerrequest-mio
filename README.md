@@ -16,9 +16,11 @@ Apri http://localhost:3000
 ### Deploy su Vercel
 1. Collega il repo su Vercel
 2. Imposta ENV (Production/Preview/Development):
-	- `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
-	- `DJ_PANEL_SECRET`
-	- Facoltative (persistenza): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+	- Obbligatorie autenticazione DJ: `DJ_PANEL_USER`, `DJ_PANEL_SECRET`
+	- Spotify API: `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`
+	- Persistenza (facoltative, se assenti usa storage in-memory volatile): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (o `NEXT_PUBLIC_SUPABASE_ANON_KEY` per sola lettura anon)
+   
+Se `DJ_PANEL_USER` o `DJ_PANEL_SECRET` non sono impostate, le route protette restituiscono `{ ok:false, error:"misconfigured" }`.
 3. Redeploy
 
 ### Guide
