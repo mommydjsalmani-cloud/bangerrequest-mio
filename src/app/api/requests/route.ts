@@ -79,7 +79,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const djSecret = process.env.DJ_PANEL_SECRET?.trim();
+  const djSecret = (process.env.DJ_PANEL_SECRET?.trim()) || '77';
     const header = req.headers.get('x-dj-secret')?.trim();
     if (djSecret && header !== djSecret) {
       return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
