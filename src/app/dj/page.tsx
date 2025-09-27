@@ -407,39 +407,52 @@ export default function DJPanel() {
                 ))}
               </div>
               <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!debugVisible) {
-                      setDebugVisible(true);
-                      setDebugLoading(true);
-                      try {
-                        const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
-                        const j = await res.json();
-                        setDebugData(j);
-                      } catch {
-                        setDebugData({ error: 'fetch_failed' });
-                      } finally {
-                        setDebugLoading(false);
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!debugVisible) {
+                        setDebugVisible(true);
+                        setDebugLoading(true);
+                        try {
+                          const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
+                          const j = await res.json();
+                          setDebugData(j);
+                        } catch {
+                          setDebugData({ error: 'fetch_failed' });
+                        } finally {
+                          setDebugLoading(false);
+                        }
+                      } else {
+                        // Hide panel
+                        setDebugVisible(false);
                       }
-                    } else {
-                      // se già visibile ricarica
-                      setDebugLoading(true);
-                      try {
-                        const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
-                        const j = await res.json();
-                        setDebugData(j);
-                      } catch {
-                        setDebugData({ error: 'fetch_failed' });
-                      } finally {
-                        setDebugLoading(false);
-                      }
-                    }
-                  }}
-                  className="text-xs bg-zinc-700 px-2 py-1 rounded"
-                >
-                  {debugVisible ? (debugLoading ? 'Ricarico debug…' : 'Ricarica debug eventi') : 'Mostra debug eventi'}
-                </button>
+                    }}
+                    className="text-xs bg-zinc-700 px-2 py-1 rounded"
+                  >
+                    {debugVisible ? 'Nascondi debug' : 'Mostra debug eventi'}
+                  </button>
+                  {debugVisible && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setDebugLoading(true);
+                        try {
+                          const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
+                          const j = await res.json();
+                          setDebugData(j);
+                        } catch {
+                          setDebugData({ error: 'fetch_failed' });
+                        } finally {
+                          setDebugLoading(false);
+                        }
+                      }}
+                      className="text-xs bg-zinc-700 px-2 py-1 rounded"
+                    >
+                      {debugLoading ? 'Ricarico…' : 'Ricarica'}
+                    </button>
+                  )}
+                </div>
                 {debugVisible && (
                   <div className="mt-2 text-[11px] bg-zinc-900 rounded p-2 max-h-64 overflow-auto font-mono whitespace-pre-wrap break-all">
                     <div className="mb-1 opacity-70">/api/events/debug</div>
@@ -451,7 +464,7 @@ export default function DJPanel() {
                         onClick={async () => {
                           if (!confirm('Confermi la cancellazione di tutti gli eventi e richieste?')) return;
                           try {
-                            const res = await fetch('/api/events/debug', { method:'DELETE', headers:{ ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{}) } });
+                            const res = await fetch('/api/events/debug', { method: 'DELETE', headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
                             const j = await res.json();
                             setDebugData(j);
                             if (j.ok) {
@@ -470,7 +483,7 @@ export default function DJPanel() {
                         onClick={async () => {
                           setDebugLoading(true);
                           try {
-                            const res = await fetch('/api/events/debug', { headers:{ ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{}) } });
+                            const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
                             const j = await res.json();
                             setDebugData(j);
                           } catch {
