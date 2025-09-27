@@ -47,8 +47,9 @@ export default function DJPanel() {
   // Debug states
   const [debugVisible, setDebugVisible] = useState(false);
   const [debugLoading, setDebugLoading] = useState(false);
-  const [debugData, setDebugData] = useState<any | null>(null);
-  const [lastPostDebug, setLastPostDebug] = useState<any | null>(null);
+  type GenericJSON = Record<string, unknown>;
+  const [debugData, setDebugData] = useState<GenericJSON | null>(null);
+  const [lastPostDebug, setLastPostDebug] = useState<GenericJSON | null>(null);
 
   useEffect(() => {
     // Recupera stato persistenza (non blocca il resto)
@@ -321,7 +322,7 @@ export default function DJPanel() {
                     form.reset();
                   } else {
                     let msg = 'Errore creazione evento';
-                    let data: any = null;
+                    let data: GenericJSON | null = null;
                     try { data = await res.json(); } catch {}
                     setLastPostDebug({ status: res.status, body: data });
                     if (res.status === 401) msg = 'Non autorizzato (credenziali DJ errate)';
@@ -342,11 +343,11 @@ export default function DJPanel() {
                             form.reset();
                             msg = `Conflitto sul codice '${code}'. Generato nuovo codice: ${jr.event.code}`;
                           } else {
-                            let rdata: any = null; try { rdata = await retry.json(); } catch {}
+                            let rdata: GenericJSON | null = null; try { rdata = await retry.json(); } catch {}
                             setLastPostDebug({ status: retry.status, body: rdata });
                             msg = 'Conflitto codice e retry automatico fallito' + (rdata?.error ? ` (${rdata.error})` : '');
                           }
-                        } catch (e) {
+                        } catch {
                           msg = 'Conflitto codice e rete assente per retry automatico';
                         }
                       } else {
@@ -416,7 +417,7 @@ export default function DJPanel() {
                         const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
                         const j = await res.json();
                         setDebugData(j);
-                      } catch (e) {
+                      } catch {
                         setDebugData({ error: 'fetch_failed' });
                       } finally {
                         setDebugLoading(false);
@@ -428,7 +429,7 @@ export default function DJPanel() {
                         const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
                         const j = await res.json();
                         setDebugData(j);
-                      } catch (e) {
+                      } catch {
                         setDebugData({ error: 'fetch_failed' });
                       } finally {
                         setDebugLoading(false);
@@ -458,7 +459,7 @@ export default function DJPanel() {
                               setSelectedEvent(null);
                               setList([]);
                             }
-                          } catch (e) {
+                          } catch {
                             setDebugData({ error: 'reset_failed' });
                           }
                         }}

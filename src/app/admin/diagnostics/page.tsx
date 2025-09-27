@@ -63,7 +63,7 @@ export default function DiagnosticsPage() {
           <li>Settings → API: copia Project URL e service_role key.</li>
           <li>Vercel → Settings → Environment Variables: aggiungi le due variabili.</li>
           <li>Supabase → SQL: esegui `docs/supabase_schema.sql`.</li>
-          <li>Redeploy dell'app.</li>
+          <li>Redeploy dell&apos;app.</li>
           <li>Riapri questa pagina: deve mostrare mode: <code>supabase</code>.</li>
         </ol>
       </details>
