@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
 
 type RequestItem = {
@@ -53,8 +54,11 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = (await req.json()) as Partial<RequestItem>;
   const now = new Date().toISOString();
+  const supabase = getSupabase();
+  // Se il DB in produzione ha id UUID, usiamo randomUUID quando supabase è attivo
+  const generatedId = supabase ? randomUUID() : `${Date.now()}`;
   const item: RequestItem = {
-    id: `${Date.now()}`,
+    id: generatedId,
     created_at: now,
     track_id: body.track_id || 'unknown',
     uri: body.uri,
@@ -71,7 +75,6 @@ export async function POST(req: Request) {
     status: 'new',
     duplicates: 0,
   };
-  const supabase = getSupabase();
   if (supabase) {
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
