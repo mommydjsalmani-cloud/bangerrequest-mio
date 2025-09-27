@@ -160,13 +160,18 @@ export default function Requests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const j = await res.json();
-    if (j.ok) {
+  type PostResp = { ok?: boolean; item?: { id?: string; status?: string }; error?: string; details?: { code?: string } } | null;
+  let j: PostResp = null;
+  try { j = await res.json(); } catch { j = null; }
+    if (j && j.ok) {
       if (j.item?.id) {
         sessionStorage.setItem('banger_last_request_id', j.item.id);
         setLastRequestId(j.item.id);
-  setLastRequestStatus(j.item.status || 'new');
-  sessionStorage.setItem('banger_last_request_status', j.item.status || 'new');
+    const stRaw = j.item.status || 'new';
+  const allowed: ReadonlyArray<'new'|'accepted'|'rejected'|'muted'|'cancelled'> = ['new','accepted','rejected','muted','cancelled'] as const;
+  const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
+    setLastRequestStatus(st);
+    sessionStorage.setItem('banger_last_request_status', st);
         if (selected) {
           sessionStorage.setItem('banger_last_request_title', selected.title || '');
           sessionStorage.setItem('banger_last_request_artists', selected.artists || '');
@@ -176,7 +181,10 @@ export default function Requests() {
       setSelected(null);
       setNote('');
     } else {
-  setMessage('Errore nell\u2019invio della richiesta');
+      const errMsg = j?.error ? `Errore: ${j.error}` : 'Errore generico richiesta';
+      const detail = j?.details?.code ? ` (code: ${j.details.code})` : '';
+      setMessage(errMsg + detail);
+      console.warn('[requests][POST] failure', { status: res.status, body: j });
       setTimeout(() => setMessage(null), 4000);
     }
   }
