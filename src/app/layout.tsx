@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Splash from "@/components/Splash";
+import Logo from "@/components/Logo";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col`}
         style={{
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -41,7 +42,12 @@ export default function RootLayout({
         }}
       >
         <Splash duration={1500} />
-        {children}
+        <header className="w-full flex items-center justify-center py-4">
+          <Logo size={140} className="opacity-90" priority />
+        </header>
+        <div className="flex-1 w-full">
+          {children}
+        </div>
       </body>
     </html>
   );
