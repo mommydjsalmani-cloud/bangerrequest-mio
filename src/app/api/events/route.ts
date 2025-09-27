@@ -178,3 +178,37 @@ export async function PATCH(req: Request) {
   if (typeof body.name === 'string' && body.name.trim()) ev.name = body.name.trim();
   return withVersion({ ok: true, event: ev });
 }
+
+export async function DELETE(req: Request) {
+  const authErr = requireDJSecret(req);
+  if (authErr) return withVersion({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
+  const url = new URL(req.url);
+  const id = url.searchParams.get('id')?.trim();
+  const code = url.searchParams.get('code')?.trim().toUpperCase();
+  if (!id && !code) return withVersion({ ok: false, error: 'missing_identifier' }, { status: 400 });
+  const supabase = getSupabase();
+  if (supabase) {
+    // Recupera evento per avere code se manca
+    let evCode = code;
+    if (!evCode) {
+      const { data: ev, error: e1 } = await supabase.from('events').select('code').eq('id', id).single();
+      if (e1 || !ev) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
+      evCode = ev.code;
+    }
+    // Elimina richieste collegate prima (se esistono)
+    if (evCode) {
+      await supabase.from('requests').delete().eq('event_code', evCode); // ignoriamo errore qui, non bloccante
+    }
+    let q = supabase.from('events').delete();
+    if (id) q = q.eq('id', id);
+    else if (evCode) q = q.eq('code', evCode);
+    const { error: delErr } = await q;
+    if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
+    return withVersion({ ok: true, deleted: { id: id || null, code: evCode } });
+  }
+  // In-memory
+  const idx = eventsStore.findIndex(e => (id && e.id === id) || (code && e.code === code));
+  if (idx === -1) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
+  const removed = eventsStore.splice(idx, 1)[0];
+  return withVersion({ ok: true, deleted: { id: removed.id, code: removed.code } });
+}

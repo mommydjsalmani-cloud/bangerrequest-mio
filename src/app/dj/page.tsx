@@ -406,6 +406,35 @@ export default function DJPanel() {
                   </div>
                 ))}
               </div>
+              {selectedEvent && (
+                <div className="mt-3 flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    className="text-[11px] bg-red-800 hover:bg-red-700 px-2 py-1 rounded"
+                    onClick={async () => {
+                      if (!selectedEvent) return;
+                      if (!confirm(`Eliminare evento ${selectedEvent}? Questa operazione rimuove anche le richieste collegate.`)) return;
+                      try {
+                        const res = await fetch(`/api/events?code=${encodeURIComponent(selectedEvent)}`, {
+                          method: 'DELETE',
+                          headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) }
+                        });
+                        const j = await res.json();
+                        if (j.ok) {
+                          setEvents(prev => prev.filter(ev => ev.code !== selectedEvent));
+                          setSelectedEvent(null);
+                          setList([]);
+                        } else {
+                          setError(j.error || 'Errore eliminazione evento');
+                        }
+                      } catch {
+                        setError('Errore rete durante eliminazione evento');
+                      }
+                    }}
+                  >Elimina evento</button>
+                  <span className="text-[10px] opacity-60">(Solo evento selezionato)</span>
+                </div>
+              )}
               <div className="mt-4">
                 <div className="flex items-center gap-2">
                   <button
