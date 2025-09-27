@@ -26,8 +26,6 @@ export default function Splash({ duration = 10000 }: Props) {
     };
   }, [duration]);
 
-  const [failed, setFailed] = useState(false);
-
   return (
     <div
       className={`splash-overlay ${!visible ? "splash-hidden" : ""}`}
@@ -35,13 +33,9 @@ export default function Splash({ duration = 10000 }: Props) {
       onClick={() => setVisible(false)}
     >
       <div className="splash-card">
-        {!failed ? (
-          <div className="w-[60vw] max-w-[420px]">
-            <Logo size={420} className="w-full h-auto" priority />
-          </div>
-        ) : (
-          <div className="text-white font-bold text-2xl tracking-wide">MOMMY MUSIC</div>
-        )}
+        <div className="w-[60vw] max-w-[420px]">
+          <Logo size={420} className="w-full h-auto" priority />
+        </div>
       </div>
     </div>
   );
