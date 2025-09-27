@@ -40,6 +40,34 @@ export default function DJPanel() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+  const [persistenceMode, setPersistenceMode] = useState<'supabase' | 'in-memory' | 'unknown'>('unknown');
+  const [authConfigOk, setAuthConfigOk] = useState<boolean | null>(null);
+  const [authEndpointMissing, setAuthEndpointMissing] = useState(false);
+  const [eventCreateLoading, setEventCreateLoading] = useState(false);
+  // Debug states
+  const [debugVisible, setDebugVisible] = useState(false);
+  const [debugLoading, setDebugLoading] = useState(false);
+  const [debugData, setDebugData] = useState<any | null>(null);
+  const [lastPostDebug, setLastPostDebug] = useState<any | null>(null);
+
+  useEffect(() => {
+    // Recupera stato persistenza (non blocca il resto)
+    fetch('/api/health/supabase').then(r => r.json()).then(j => {
+      if (j.mode === 'supabase') setPersistenceMode('supabase');
+      else if (j.mode === 'in-memory' || j.error === 'missing_env') setPersistenceMode('in-memory');
+      else setPersistenceMode('unknown');
+    }).catch(()=> setPersistenceMode('unknown'));
+    fetch('/api/health/auth').then(r => {
+      if (r.status === 404) {
+        setAuthEndpointMissing(true);
+        setAuthConfigOk(null);
+        return { ok:false };
+      }
+      return r.json();
+    }).then(j => {
+      if (j) setAuthConfigOk(!!j.ok);
+    }).catch(()=> setAuthConfigOk(null));
+  }, []);
 
   useEffect(() => {
   // Rimosso caricamento codice evento: non più richiesto al login
@@ -215,9 +243,23 @@ export default function DJPanel() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white p-6">
       <div className="w-full max-w-5xl p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h2 className="text-2xl font-bold mb-2">Pannello DJ</h2>
-        {process.env.NEXT_PUBLIC_SUPABASE_URL ? null : (
+        {persistenceMode !== 'supabase' && (
           <div className="text-xs bg-yellow-800/40 border border-yellow-700 rounded p-2 leading-snug">
-            Avviso: modalità in-memory (Supabase non configurato). Le richieste si azzerano se il server si riavvia o scala.
+            {persistenceMode === 'in-memory' ? (
+              <>Avviso: stai usando storage <strong>in-memory</strong> (Supabase non attivo). Le richieste si perdono a riavvio/scaling. Configura le variabili e redeploy per attivare persistenza.</>
+            ) : (
+              <>Verifica stato persistenza…</>
+            )}
+          </div>
+        )}
+        {authEndpointMissing && (
+          <div className="text-xs bg-blue-800/40 border border-blue-700 rounded p-2 leading-snug">
+            Endpoint auth mancante (deployment vecchio). Esegui un redeploy per includere <code>/api/health/auth</code>.
+          </div>
+        )}
+        {authConfigOk === false && !authEndpointMissing && (
+          <div className="text-xs bg-red-800/40 border border-red-700 rounded p-2 leading-snug">
+            Credenziali DJ non configurate: imposta <code>DJ_PANEL_USER</code> e <code>DJ_PANEL_SECRET</code> nelle variabili (Production) e redeploy per creare/moderare eventi.
           </div>
         )}
 
@@ -263,24 +305,70 @@ export default function DJPanel() {
                 const name = (formData.get('name') as string)?.trim();
                 const code = (formData.get('code') as string)?.trim();
                 if (!name) return;
-                const res = await fetch('/api/events', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) },
-                  body: JSON.stringify({ name, code }),
-                });
-                if (res.ok) {
-                  const j = await res.json();
-                  setEvents((prev) => [j.event, ...prev]);
-                  setSelectedEvent(j.event.code);
-                  form.reset();
-                } else if (res.status === 401) {
-                  setError('Non autorizzato per creare eventi');
+                setEventCreateLoading(true);
+                setError(null);
+                try {
+                  const res = await fetch('/api/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) },
+                    body: JSON.stringify({ name, code }),
+                  });
+                  if (res.ok) {
+                    const j = await res.json();
+                    setEvents((prev) => [j.event, ...prev]);
+                    setSelectedEvent(j.event.code);
+                    setLastPostDebug(j);
+                    form.reset();
+                  } else {
+                    let msg = 'Errore creazione evento';
+                    let data: any = null;
+                    try { data = await res.json(); } catch {}
+                    setLastPostDebug({ status: res.status, body: data });
+                    if (res.status === 401) msg = 'Non autorizzato (credenziali DJ errate)';
+                    else if (res.status === 409) {
+                      // Gestiamo SEMPRE il 409 come conflitto codice (anche se il server non ha restituito duplicate_code)
+                      if (code) {
+                        try {
+                          const retry = await fetch('/api/events', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) },
+                            body: JSON.stringify({ name }) // niente codice -> generazione automatica
+                          });
+                          if (retry.ok) {
+                            const jr = await retry.json();
+                            setEvents((prev) => [jr.event, ...prev]);
+                            setSelectedEvent(jr.event.code);
+                            setLastPostDebug(jr);
+                            form.reset();
+                            msg = `Conflitto sul codice '${code}'. Generato nuovo codice: ${jr.event.code}`;
+                          } else {
+                            let rdata: any = null; try { rdata = await retry.json(); } catch {}
+                            setLastPostDebug({ status: retry.status, body: rdata });
+                            msg = 'Conflitto codice e retry automatico fallito' + (rdata?.error ? ` (${rdata.error})` : '');
+                          }
+                        } catch (e) {
+                          msg = 'Conflitto codice e rete assente per retry automatico';
+                        }
+                      } else {
+                        msg = 'Conflitto codice: lascia vuoto il campo per generare automaticamente';
+                      }
+                    }
+                    else if (res.status === 400 && data?.error === 'invalid_name') msg = 'Nome evento mancante o non valido';
+                    else if (res.status === 500) msg = 'Errore server (verifica configurazione Supabase o credenziali)';
+                    else if (data?.error) msg = `Errore: ${data.error}`;
+                    setError(msg);
+                  }
+                } catch {
+                  setError('Errore di rete durante la creazione evento');
+                } finally {
+                  setEventCreateLoading(false);
                 }
               }}>
-                <input name="name" placeholder="Nome evento" className="p-2 rounded bg-zinc-900" />
-                <input name="code" placeholder="Codice (opzionale)" className="p-2 rounded bg-zinc-900" />
-                <button type="submit" className="bg-green-700 px-3 py-2 rounded">Crea evento</button>
+                <input name="name" placeholder="Nome evento" className="p-2 rounded bg-zinc-900 disabled:opacity-50" disabled={eventCreateLoading} />
+                <input name="code" placeholder="Codice (opzionale)" className="p-2 rounded bg-zinc-900 disabled:opacity-50" disabled={eventCreateLoading} />
+                <button type="submit" disabled={eventCreateLoading} className="bg-green-700 px-3 py-2 rounded disabled:opacity-50">{eventCreateLoading ? 'Creo…' : 'Crea evento'}</button>
               </form>
+              {error && <div className="text-xs text-red-400 -mt-2">{error}</div>}
               <div className="flex gap-2 overflow-x-auto">
                 {events.map((ev) => (
                   <div key={ev.id} className="flex items-center gap-2 bg-zinc-700 rounded px-2 py-1">
@@ -316,6 +404,91 @@ export default function DJPanel() {
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!debugVisible) {
+                      setDebugVisible(true);
+                      setDebugLoading(true);
+                      try {
+                        const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
+                        const j = await res.json();
+                        setDebugData(j);
+                      } catch (e) {
+                        setDebugData({ error: 'fetch_failed' });
+                      } finally {
+                        setDebugLoading(false);
+                      }
+                    } else {
+                      // se già visibile ricarica
+                      setDebugLoading(true);
+                      try {
+                        const res = await fetch('/api/events/debug', { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
+                        const j = await res.json();
+                        setDebugData(j);
+                      } catch (e) {
+                        setDebugData({ error: 'fetch_failed' });
+                      } finally {
+                        setDebugLoading(false);
+                      }
+                    }
+                  }}
+                  className="text-xs bg-zinc-700 px-2 py-1 rounded"
+                >
+                  {debugVisible ? (debugLoading ? 'Ricarico debug…' : 'Ricarica debug eventi') : 'Mostra debug eventi'}
+                </button>
+                {debugVisible && (
+                  <div className="mt-2 text-[11px] bg-zinc-900 rounded p-2 max-h-64 overflow-auto font-mono whitespace-pre-wrap break-all">
+                    <div className="mb-1 opacity-70">/api/events/debug</div>
+                    {debugLoading ? 'Caricamento…' : <>{JSON.stringify(debugData, null, 2)}</>}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        className="bg-red-700 px-2 py-1 rounded text-[10px]"
+                        onClick={async () => {
+                          if (!confirm('Confermi la cancellazione di tutti gli eventi e richieste?')) return;
+                          try {
+                            const res = await fetch('/api/events/debug', { method:'DELETE', headers:{ ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{}) } });
+                            const j = await res.json();
+                            setDebugData(j);
+                            if (j.ok) {
+                              setEvents([]);
+                              setSelectedEvent(null);
+                              setList([]);
+                            }
+                          } catch (e) {
+                            setDebugData({ error: 'reset_failed' });
+                          }
+                        }}
+                      >Reset eventi+richieste</button>
+                      <button
+                        type="button"
+                        className="bg-zinc-700 px-2 py-1 rounded text-[10px]"
+                        onClick={async () => {
+                          setDebugLoading(true);
+                          try {
+                            const res = await fetch('/api/events/debug', { headers:{ ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{}) } });
+                            const j = await res.json();
+                            setDebugData(j);
+                          } catch {
+                            setDebugData({ error: 'fetch_failed' });
+                          } finally {
+                            setDebugLoading(false);
+                          }
+                        }}
+                      >Aggiorna</button>
+                    </div>
+                    {lastPostDebug && (
+                      <>
+                        <div className="mt-3 mb-1 opacity-70">Ultima risposta POST /api/events</div>
+                        <div>{JSON.stringify(lastPostDebug, null, 2)}</div>
+                      </>
+                    )}
+                    <div className="mt-3 opacity-60">Suggerimento: copia e incolla questi JSON quando chiedi supporto.</div>
+                  </div>
+                )}
               </div>
             </div>
 
