@@ -299,7 +299,9 @@ export default function DJPanel() {
             </div>
 
             <div className="bg-zinc-800 p-3 rounded flex flex-col gap-3">
-              <form className="flex gap-2" onSubmit={async (e) => {
+              <form
+                className="flex flex-col sm:flex-row gap-2 sm:items-end"
+                onSubmit={async (e) => {
                 e.preventDefault();
                 const form = e.currentTarget as HTMLFormElement;
                 const formData = new FormData(form);
@@ -365,9 +367,27 @@ export default function DJPanel() {
                   setEventCreateLoading(false);
                 }
               }}>
-                <input name="name" placeholder="Nome evento" className="p-2 rounded bg-zinc-900 disabled:opacity-50" disabled={eventCreateLoading} />
-                <input name="code" placeholder="Codice (opzionale)" className="p-2 rounded bg-zinc-900 disabled:opacity-50" disabled={eventCreateLoading} />
-                <button type="submit" disabled={eventCreateLoading} className="bg-green-700 px-3 py-2 rounded disabled:opacity-50">{eventCreateLoading ? 'Creo…' : 'Crea evento'}</button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:flex-1">
+                  <input
+                    name="name"
+                    placeholder="Nome evento"
+                    className="p-2 rounded bg-zinc-900 disabled:opacity-50 w-full flex-1 min-w-0"
+                    disabled={eventCreateLoading}
+                  />
+                  <input
+                    name="code"
+                    placeholder="Codice (opzionale)"
+                    className="p-2 rounded bg-zinc-900 disabled:opacity-50 w-full sm:w-40 min-w-0"
+                    disabled={eventCreateLoading}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={eventCreateLoading}
+                  className="bg-green-700 px-3 py-2 rounded disabled:opacity-50 w-full sm:w-auto"
+                >
+                  {eventCreateLoading ? 'Creo…' : 'Crea evento'}
+                </button>
               </form>
               {error && <div className="text-xs text-red-400 -mt-2">{error}</div>}
               <div className="flex gap-2 overflow-x-auto">
