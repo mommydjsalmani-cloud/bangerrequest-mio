@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Image from 'next/image';
+import Logo from '@/components/Logo';
 
 type Props = {
   duration?: number; // milliseconds
@@ -36,16 +36,9 @@ export default function Splash({ duration = 10000 }: Props) {
     >
       <div className="splash-card">
         {!failed ? (
-          <Image
-            src="/mommy-logo.svg"
-            alt="Mommy Music Entertainment"
-            width={600}
-            height={390}
-            priority
-            sizes="(max-width: 640px) 70vw, 400px"
-            className="splash-logo w-[60vw] max-w-[420px] h-auto"
-            onError={() => setFailed(true)}
-          />
+          <div className="w-[60vw] max-w-[420px]">
+            <Logo size={420} className="w-full h-auto" priority />
+          </div>
         ) : (
           <div className="text-white font-bold text-2xl tracking-wide">MOMMY MUSIC</div>
         )}
