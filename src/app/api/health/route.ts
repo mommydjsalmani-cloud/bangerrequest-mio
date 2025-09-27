@@ -1,15 +1,5 @@
 import { NextResponse } from 'next/server';
 
-async function fetchJSON(path: string) {
-  try {
-    const res = await fetch(new URL(path, process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000')); // fallback locale
-    const text = await res.text();
-    try { return { status: res.status, body: JSON.parse(text) }; } catch { return { status: res.status, body: text }; }
-  } catch (e: any) {
-    return { status: 0, body: { error: e.message } };
-  }
-}
-
 export async function GET() {
   // Invece di richiamare via fetch interna (che richiederebbe sapere base URL corretto) calcoliamo direttamente i due blocchi
   // Ricostruendo la stessa logica dei singoli endpoint per evitare problemi di fetch interna in edge/runtime.
