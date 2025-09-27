@@ -41,3 +41,4 @@ Se non imposti le variabili Supabase l'app funziona lo stesso ma i dati non sono
 - Setup Spotify: `docs/SETUP_SPOTIFY.md`
 - Setup Supabase: `docs/SETUP_SUPABASE.md`
 
+
