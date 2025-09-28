@@ -164,14 +164,38 @@ export default function Requests() {
   let j: PostResp = null;
   try { j = await res.json(); } catch { j = null; }
     if (j && j.ok) {
+      // Caso duplicate
+      // @ts-expect-error proprietà duplicate possibile dalla API
+      if (j.duplicate && j.existing) {
+        const ex = (j as any).existing as { id?: string; status?: string; title?: string; artists?: string };
+        setMessage('Questo brano è già in coda ✅');
+        if (ex.id) {
+          sessionStorage.setItem('banger_last_request_id', ex.id);
+          setLastRequestId(ex.id);
+          const stRaw = ex.status || 'new';
+          const allowed: ReadonlyArray<'new'|'accepted'|'rejected'|'muted'|'cancelled'> = ['new','accepted','rejected','muted','cancelled'] as const;
+          const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
+          setLastRequestStatus(st);
+          sessionStorage.setItem('banger_last_request_status', st);
+        }
+        if (ex.title || ex.artists) {
+          sessionStorage.setItem('banger_last_request_title', ex.title || '');
+          sessionStorage.setItem('banger_last_request_artists', ex.artists || '');
+          setSubmittedTrack({ title: ex.title, artists: ex.artists });
+        }
+        setSelected(null);
+        setNote('');
+        setTimeout(()=> setMessage(null), 3500);
+        return; // fine
+      }
       if (j.item?.id) {
         sessionStorage.setItem('banger_last_request_id', j.item.id);
         setLastRequestId(j.item.id);
-    const stRaw = j.item.status || 'new';
-  const allowed: ReadonlyArray<'new'|'accepted'|'rejected'|'muted'|'cancelled'> = ['new','accepted','rejected','muted','cancelled'] as const;
-  const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
-    setLastRequestStatus(st);
-    sessionStorage.setItem('banger_last_request_status', st);
+        const stRaw = j.item.status || 'new';
+        const allowed: ReadonlyArray<'new'|'accepted'|'rejected'|'muted'|'cancelled'> = ['new','accepted','rejected','muted','cancelled'] as const;
+        const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
+        setLastRequestStatus(st);
+        sessionStorage.setItem('banger_last_request_status', st);
         if (selected) {
           sessionStorage.setItem('banger_last_request_title', selected.title || '');
           sessionStorage.setItem('banger_last_request_artists', selected.artists || '');

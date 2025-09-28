@@ -76,6 +76,20 @@ export async function POST(req: Request) {
     duplicates: 0,
   };
   if (supabase) {
+    // Duplicate detection: stessa canzone già in coda per stesso event_code (stati ancora rilevanti)
+    if (body.track_id && body.event_code) {
+      const { data: dupList, error: dupErr } = await supabase
+        .from('requests')
+        .select('*')
+        .eq('event_code', body.event_code)
+        .eq('track_id', body.track_id)
+        .in('status', ['new', 'accepted', 'muted']);
+      if (!dupErr && dupList && dupList.length > 0) {
+        // Restituiamo flag duplicate senza inserire nuova riga
+        const existing = dupList[0];
+        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
+      }
+    }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
       interface PgErr { code?: string; hint?: string | null; details?: string | null }
@@ -84,6 +98,13 @@ export async function POST(req: Request) {
     }
     return withVersion({ ok: true, item: data });
   } else {
+    // In-memory duplicate detection
+    if (body.track_id && body.event_code) {
+      const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
+      if (existing) {
+        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
+      }
+    }
     store.unshift(item);
     return withVersion({ ok: true, item });
   }
