@@ -641,6 +641,22 @@ export default function DJPanel() {
             <div className="flex gap-4 mt-4 text-sm">
               <span>Totali: {stats.total}</span>
               <span>Ultima ora: {stats.lastHour}</span>
+              <button
+                type="button"
+                className="text-[11px] bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
+                onClick={async ()=> {
+                  if (!authed) return;
+                  try {
+                    const code = selectedEvent || '';
+                    const qs = code ? `?event_code=${encodeURIComponent(code)}` : '';
+                    const res = await fetch(`/api/requests${qs}`, { headers: { ...(password?{'x-dj-secret':password}:{}), ...(username?{'x-dj-user':username}:{}) } });
+                    if (res.ok) {
+                      const j = await res.json();
+                      setList(j.requests || []);
+                    }
+                  } catch {}
+                }}
+              >Ricarica adesso</button>
             </div>
           </>
         )}
