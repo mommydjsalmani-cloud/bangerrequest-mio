@@ -753,15 +753,15 @@ export default function DJPanel() {
                       <div className="space-y-1">
                         {r.groupedItems?.map((sub, idx) => (
                           <div key={sub.id} className="border border-zinc-800/60 rounded p-1">
-                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px]">
                               {idx===0 ? (
                                 <span className="px-1 rounded bg-zinc-700/70">originale</span>
                               ) : (
-                                <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'} text-[10px] font-mono`}>{sub.status==='accepted'?'dup acc':'dup new'}</span>
+                                <span className={`px-1 rounded font-mono ${sub.status==='accepted'?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'}`}>{sub.status==='accepted'?'dup acc':'dup new'}</span>
                               )}
-                              <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
-                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span>
+                              <span className="px-1 rounded bg-zinc-700 max-w-[100px] truncate" title={sub.requester||'-'}>{sub.requester||'-'}</span>
                               <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span>
                               {idx>0 && (
                                 <button
                                   type="button"
@@ -773,7 +773,11 @@ export default function DJPanel() {
                                 >Merge</button>
                               )}
                             </div>
-                            <div className="whitespace-pre-wrap break-words">{sub.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
+                            {sub.note && (
+                              <div className="mt-1 whitespace-pre-wrap break-words leading-snug text-[10px] bg-zinc-900/60 px-1 py-0.5 rounded">
+                                {sub.note}
+                              </div>
+                            )}
                           </div>
                         ))}
                         {r.duplicates_log && r.duplicates_log.map((d,i)=>(
