@@ -59,6 +59,10 @@ export default function DJPanel() {
   type GenericJSON = Record<string, unknown>;
   const [debugData, setDebugData] = useState<GenericJSON | null>(null);
   const [lastPostDebug, setLastPostDebug] = useState<GenericJSON | null>(null);
+  // Debug raw requests
+  const [rawVisible, setRawVisible] = useState(false);
+  const [rawLoading, setRawLoading] = useState(false);
+  const [rawData, setRawData] = useState<GenericJSON | null>(null);
 
   useEffect(() => {
     // Recupera stato persistenza (non blocca il resto)
@@ -601,6 +605,29 @@ export default function DJPanel() {
                   >
                     {debugVisible ? 'Nascondi debug' : 'Mostra debug eventi'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!selectedEvent) { setError('Seleziona un evento prima'); return; }
+                      if (!rawVisible) {
+                        setRawVisible(true);
+                        setRawLoading(true);
+                        try {
+                          const qs = `?event_code=${encodeURIComponent(selectedEvent)}`;
+                          const res = await fetch(`/api/requests/raw${qs}`);
+                          const j = await res.json();
+                          setRawData(j);
+                        } catch {
+                          setRawData({ error: 'fetch_failed' });
+                        } finally {
+                          setRawLoading(false);
+                        }
+                      } else {
+                        setRawVisible(false);
+                      }
+                    }}
+                    className="text-xs bg-zinc-700 px-2 py-1 rounded"
+                  >{rawVisible ? 'Nascondi raw' : 'Debug raw'}</button>
                   {debugVisible && (
                     <button
                       type="button"
@@ -670,6 +697,40 @@ export default function DJPanel() {
                       </>
                     )}
                     <div className="mt-3 opacity-60">Suggerimento: copia e incolla questi JSON quando chiedi supporto.</div>
+                  </div>
+                )}
+                {rawVisible && (
+                  <div className="mt-2 text-[11px] bg-zinc-900 rounded p-2 max-h-64 overflow-auto font-mono whitespace-pre-wrap break-all">
+                    <div className="mb-1 opacity-70">/api/requests/raw {selectedEvent ? `(evento=${selectedEvent})` : ''}</div>
+                    {rawLoading ? 'Caricamento…' : <>{JSON.stringify(rawData, null, 2)}</>}
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        type="button"
+                        className="bg-zinc-700 px-2 py-1 rounded text-[10px]"
+                        onClick={async () => {
+                          if (!selectedEvent) return;
+                          setRawLoading(true);
+                          try {
+                            const qs = `?event_code=${encodeURIComponent(selectedEvent)}`;
+                            const res = await fetch(`/api/requests/raw${qs}`);
+                            const j = await res.json();
+                            setRawData(j);
+                          } catch {
+                            setRawData({ error: 'fetch_failed' });
+                          } finally {
+                            setRawLoading(false);
+                          }
+                        }}
+                      >Aggiorna</button>
+                      <button
+                        type="button"
+                        className="bg-zinc-700 px-2 py-1 rounded text-[10px]"
+                        onClick={() => setRawData(null)}
+                      >Pulisci</button>
+                    </div>
+                    <div className="mt-2 opacity-50 leading-snug">
+                      Suggerimento: se <code>replicated</code> è false o manca una riga attesa, controlla eventuale <code>replicated_error</code> nel POST duplicato.
+                    </div>
                   </div>
                 )}
               </div>
