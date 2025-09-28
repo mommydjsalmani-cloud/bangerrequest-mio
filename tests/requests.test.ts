@@ -41,7 +41,7 @@ describe('Requests flow', () => {
     expect(jj.item.status).toBe('accepted');
   });
 
-  it('rileva duplicato e non crea nuova entry', async () => {
+  it('rileva duplicato incrementando counter', async () => {
     const first = await createRequest(buildRequest('POST', 'http://localhost/api/requests', { track_id:'dup1', title:'DupSong', artists:'Band', event_code:'EVDUP' }) as any);
     expect(first.status).toBe(200);
     const firstJ = await parseJSON(first as any);
@@ -51,5 +51,6 @@ describe('Requests flow', () => {
     const secondJ = await parseJSON(second as any);
     expect(secondJ.duplicate).toBe(true);
     expect(secondJ.existing.id).toBe(firstId);
+    expect(secondJ.existing.duplicates).toBe(1);
   });
 });

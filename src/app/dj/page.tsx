@@ -198,8 +198,7 @@ export default function DJPanel() {
     const total = list.length;
     const lastHour = list.filter((r) => Date.now() - new Date(r.created_at).getTime() <= 3600_000).length;
     const duplicates = list.reduce((acc, r) => acc + (r.duplicates || 0), 0);
-    const dupPct = total ? Math.round((duplicates / total) * 100) : 0;
-    return { total, lastHour, dupPct };
+    return { total, lastHour, duplicates };
   }, [list]);
 
   const [loginLoading, setLoginLoading] = useState(false);
@@ -627,7 +626,7 @@ export default function DJPanel() {
             <div className="flex gap-4 mt-4 text-sm">
               <span>Totali: {stats.total}</span>
               <span>Ultima ora: {stats.lastHour}</span>
-              <span>% Duplicati: {stats.dupPct}%</span>
+              <span>Duplicati: {stats.duplicates}</span>
             </div>
           </>
         )}

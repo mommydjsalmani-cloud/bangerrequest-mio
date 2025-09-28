@@ -85,9 +85,13 @@ export async function POST(req: Request) {
         .eq('track_id', body.track_id)
         .in('status', ['new', 'accepted', 'muted']);
       if (!dupErr && dupList && dupList.length > 0) {
-        // Restituiamo flag duplicate senza inserire nuova riga
+        // Incrementiamo duplicates sull'esistente per contare arrivo di una nuova richiesta uguale
         const existing = dupList[0];
-        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
+        const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
+        if (updErr || !updated) {
+          return withVersion({ ok: false, error: updErr?.message || 'duplicate_update_failed' }, { status: 500 });
+        }
+        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists } });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
@@ -102,6 +106,7 @@ export async function POST(req: Request) {
     if (body.track_id && body.event_code) {
       const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
       if (existing) {
+        existing.duplicates = (existing.duplicates || 0) + 1;
         return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
       }
     }
