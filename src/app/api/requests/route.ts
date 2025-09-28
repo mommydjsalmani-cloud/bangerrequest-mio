@@ -56,7 +56,21 @@ export async function GET(req: Request) {
     if (status) q = q.eq('status', status);
     if (trackId) q = q.eq('track_id', trackId);
     const { data, error } = await q;
-    if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
+    if (error) {
+      // Se errore contiene riferimento a duration_ms, proviamo senza quella colonna
+      if (error.message.includes('duration_ms')) {
+        console.warn('[requests][GET] duration_ms column missing, falling back to basic select');
+        let qFallback = supabase.from('requests').select('id,created_at,track_id,uri,title,artists,album,cover_url,isrc,explicit,preview_url,note,event_code,requester,status,duplicates,duplicates_log').order('created_at', { ascending: false });
+        if (eventCode) qFallback = qFallback.eq('event_code', eventCode);
+        if (status) qFallback = qFallback.eq('status', status);
+        if (trackId) qFallback = qFallback.eq('track_id', trackId);
+        const { data: fallbackData, error: fallbackError } = await qFallback;
+        if (fallbackError) return withVersion({ ok: false, error: fallbackError.message }, { status: 500 });
+        const normalizedFallback = (fallbackData || []).map(r => ({ ...normalizeRow(r), duration_ms: null }));
+        return withVersion({ ok: true, requests: normalizedFallback });
+      }
+      return withVersion({ ok: false, error: error.message }, { status: 500 });
+    }
     const normalized = (data || []).map(r => normalizeRow(r));
     return withVersion({ ok: true, requests: normalized });
   } else {
@@ -167,7 +181,7 @@ export async function POST(req: Request) {
           isrc: updatedOriginal.isrc,
           explicit: updatedOriginal.explicit,
           preview_url: updatedOriginal.preview_url,
-          duration_ms: updatedOriginal.duration_ms ?? null,
+          duration_ms: (updatedOriginal as Record<string, unknown>).duration_ms as number | null ?? null, // safe access
           note: body.note,
           event_code: updatedOriginal.event_code,
           requester: body.requester ?? null,
@@ -178,8 +192,20 @@ export async function POST(req: Request) {
         let insertedDuplicate: RequestItem | null = null;
         let replicatedError: string | null = null;
         try {
-          const { data: insData, error: insErr } = await supabase.from('requests').insert(duplicateRow).select('*').single();
-          if (insErr) {
+          // Prima prova con duration_ms, poi senza se fallisce
+          const insertPayload = duplicateRow;
+          const { data: insData, error: insErr } = await supabase.from('requests').insert(insertPayload).select('*').single();
+          if (insErr && insErr.message.includes('duration_ms')) {
+            console.warn('[requests][duplicate][insert] duration_ms missing, retrying without it');
+            const payloadWithoutDuration = { ...insertPayload };
+            delete (payloadWithoutDuration as Record<string, unknown>).duration_ms;
+            const { data: fallbackInsData, error: fallbackInsErr } = await supabase.from('requests').insert(payloadWithoutDuration).select('*').single();
+            if (fallbackInsErr) {
+              replicatedError = fallbackInsErr.message;
+            } else if (fallbackInsData) {
+              insertedDuplicate = { ...normalizeRow(fallbackInsData), duration_ms: null };
+            }
+          } else if (insErr) {
             replicatedError = insErr.message;
           } else if (insData) {
             insertedDuplicate = normalizeRow(insData);
@@ -203,6 +229,20 @@ export async function POST(req: Request) {
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
+      // Se errore per duration_ms, riproviamo senza quel campo
+      if (error.message.includes('duration_ms')) {
+        console.warn('[requests][POST] duration_ms column missing, retrying without it');
+        const itemWithoutDuration = { ...item };
+        delete (itemWithoutDuration as Record<string, unknown>).duration_ms;
+        const { data: fallbackData, error: fallbackError } = await supabase.from('requests').insert(itemWithoutDuration).select('*').single();
+        if (fallbackError) {
+          interface PgErr { code?: string; hint?: string | null; details?: string | null }
+          const raw = fallbackError as unknown as PgErr;
+          return withVersion({ ok: false, error: fallbackError.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
+        }
+        const normInsertFallback = fallbackData ? { ...normalizeRow(fallbackData), duration_ms: null } : fallbackData;
+        return withVersion({ ok: true, item: normInsertFallback });
+      }
       interface PgErr { code?: string; hint?: string | null; details?: string | null }
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
