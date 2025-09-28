@@ -14,6 +14,7 @@ create table if not exists public.requests (
   isrc text,
   explicit boolean,
   preview_url text,
+  duration_ms integer, -- durata traccia in millisecondi
   note text,
   event_code text,
   requester text,
@@ -45,4 +46,6 @@ create index if not exists idx_events_status on public.events(status);
 -- create index concurrently if not exists idx_events_status on public.events(status);
 -- Per aggiungere il log duplicati se mancante:
 -- alter table public.requests add column if not exists duplicates_log jsonb;
+-- Per aggiungere duration_ms se mancante:
+-- alter table public.requests add column if not exists duration_ms integer;
 -- (opzionale) aggiornare i record esistenti senza log: update public.requests set duplicates_log = '[]'::jsonb where duplicates_log is null;
