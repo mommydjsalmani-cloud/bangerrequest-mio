@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
 
-type RequestItem = {
+export type RequestItem = {
   id: string;
   created_at: string;
   track_id: string;
@@ -32,7 +32,7 @@ function normalizeRow(row: unknown): RequestItem {
   return { ...base, duplicates_log: Array.isArray(base?.duplicates_log) ? base.duplicates_log : [] } as RequestItem;
 }
 
-const store: RequestItem[] = [];
+export const store: RequestItem[] = [];
 const BUILD_TAG = 'requests-diagnostics-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
@@ -90,20 +90,50 @@ export async function POST(req: Request) {
     duplicates: 0,
   };
   if (supabase) {
-    // Duplicate detection: stessa canzone già in coda per stesso event_code (stati ancora rilevanti)
-    if (body.track_id && body.event_code) {
-      const { data: dupList, error: dupErr } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('event_code', body.event_code)
-        .eq('track_id', body.track_id)
-        .in('status', ['new', 'accepted', 'muted'])
-        .order('created_at', { ascending: true });
-      if (!dupErr && dupList && dupList.length > 0) {
-        // Primo record esistente considerato "originale".
-        const original = dupList[0];
+    // Duplicate detection avanzata:
+    // 1. Se disponibile track_id tenta match diretto.
+    // 2. Se non trova (o track_id assente) e sono presenti title+artists effettua fallback su normalizzazione (case insensitive, trim) di title+artists.
+    if (body.event_code) {
+      type DetectionResult = { original: any; mode: 'track_id' | 'title_artists' } | null;
+      let detection: DetectionResult = null;
+      const norm = (s?: string | null) => (s || '').toLowerCase().trim();
+
+      // 1. Tentativo via track_id
+      if (body.track_id) {
+        const { data: dupList, error: dupErr } = await supabase
+          .from('requests')
+          .select('*')
+            .eq('event_code', body.event_code)
+          .eq('track_id', body.track_id)
+          .in('status', ['new', 'accepted', 'muted'])
+          .order('created_at', { ascending: true });
+        if (!dupErr && dupList && dupList.length > 0) {
+          detection = { original: dupList[0], mode: 'track_id' };
+        }
+      }
+
+      // 2. Fallback via title+artists se non già trovato
+      if (!detection && body.title && body.artists) {
+        const { data: candidates, error: candErr } = await supabase
+          .from('requests')
+          .select('*')
+          .eq('event_code', body.event_code)
+          .in('status', ['new', 'accepted', 'muted'])
+          .order('created_at', { ascending: true })
+          .limit(200);
+        if (!candErr && candidates && candidates.length > 0) {
+          const t = norm(body.title);
+          const a = norm(body.artists);
+          const found = candidates.find(r => norm(r.title) === t && norm(r.artists) === a);
+          if (found) {
+            detection = { original: found, mode: 'title_artists' };
+          }
+        }
+      }
+
+      if (detection) {
+        const original = detection.original;
         const newDuplicatesCount = (original.duplicates || 0) + 1;
-        // Aggiorna solo il contatore sul record originale.
         const { data: updatedOriginal, error: updErr } = await supabase
           .from('requests')
           .update({ duplicates: newDuplicatesCount })
@@ -111,29 +141,27 @@ export async function POST(req: Request) {
           .select('*')
           .single();
         if (updErr || !updatedOriginal) {
-          return withVersion({ ok: true, duplicate: true, existing: { id: original.id, status: original.status, duplicates: newDuplicatesCount, title: original.title, artists: original.artists }, log_saved: false, fallback_reason: updErr?.message || 'update_failed' });
+          return withVersion({ ok: true, duplicate: true, detection_mode: detection.mode, existing: { id: original.id, status: original.status, duplicates: newDuplicatesCount, title: original.title, artists: original.artists }, log_saved: false, fallback_reason: updErr?.message || 'update_failed' });
         }
-        // Inserisce una nuova riga per il duplicato (replica metadati, ma nota e requester nuovi se forniti)
         const duplicateRow = {
           id: randomUUID(),
           created_at: now,
-          track_id: original.track_id,
-          uri: original.uri,
-          title: original.title,
-          artists: original.artists,
-            album: original.album,
-          cover_url: original.cover_url,
-          isrc: original.isrc,
-          explicit: original.explicit,
-          preview_url: original.preview_url,
+          track_id: updatedOriginal.track_id,
+          uri: updatedOriginal.uri,
+          title: updatedOriginal.title,
+          artists: updatedOriginal.artists,
+          album: updatedOriginal.album,
+          cover_url: updatedOriginal.cover_url,
+          isrc: updatedOriginal.isrc,
+          explicit: updatedOriginal.explicit,
+          preview_url: updatedOriginal.preview_url,
           note: body.note,
-          event_code: original.event_code,
+          event_code: updatedOriginal.event_code,
           requester: body.requester ?? null,
           status: 'new' as const,
           duplicates: 0,
           duplicates_log: [],
         } satisfies RequestItem;
-        // Anche se l'inserimento fallisce, non blocchiamo il flusso utente.
         let insertedDuplicate: RequestItem | null = null;
         let replicatedError: string | null = null;
         try {
@@ -146,10 +174,14 @@ export async function POST(req: Request) {
         } catch (e: unknown) {
           replicatedError = e instanceof Error ? e.message : String(e);
         }
+        if (replicatedError) {
+          console.error('[requests][duplicate][insert_failed]', { original_id: updatedOriginal.id, error: replicatedError });
+        }
         return withVersion({
           ok: true,
           duplicate: true,
-            existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists },
+          detection_mode: detection.mode,
+          existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists },
           replicated: !!insertedDuplicate,
           duplicate_row: insertedDuplicate,
           replicated_error: replicatedError || undefined
@@ -165,12 +197,28 @@ export async function POST(req: Request) {
     const normInsert = data ? normalizeRow(data) : data;
     return withVersion({ ok: true, item: normInsert });
   } else {
-    // In-memory duplicate detection (allineata alla semantica Supabase: nuova riga duplicata)
-    if (body.track_id && body.event_code) {
-      const dupList = store.filter(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
-      if (dupList.length > 0) {
-        // primo come originale (più vecchio => fine array, ma store è unshift quindi invertito; identifichiamo per created_at)
-        const original = [...dupList].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+    // In-memory duplicate detection avanzata (parità con Supabase)
+    if (body.event_code) {
+      const norm = (s?: string | null) => (s || '').toLowerCase().trim();
+      let original: RequestItem | null = null;
+      let detectionMode: 'track_id' | 'title_artists' | null = null;
+      const candidates = store.filter(r => r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
+      if (body.track_id) {
+        const byTrack = candidates.filter(r => r.track_id === body.track_id);
+        if (byTrack.length > 0) {
+          original = [...byTrack].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+          detectionMode = 'track_id';
+        }
+      }
+      if (!original && body.title && body.artists) {
+        const t = norm(body.title); const a = norm(body.artists);
+        const byMeta = candidates.filter(r => norm(r.title) === t && norm(r.artists) === a);
+        if (byMeta.length > 0) {
+          original = [...byMeta].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+          detectionMode = 'title_artists';
+        }
+      }
+      if (original && detectionMode) {
         original.duplicates = (original.duplicates || 0) + 1;
         const duplicateRow: RequestItem = {
           ...original,
@@ -182,7 +230,7 @@ export async function POST(req: Request) {
           duplicates_log: []
         };
         store.unshift(duplicateRow);
-        return withVersion({ ok: true, duplicate: true, existing: { id: original.id, status: original.status, duplicates: original.duplicates, title: original.title, artists: original.artists }, replicated: true, duplicate_row: duplicateRow });
+        return withVersion({ ok: true, duplicate: true, detection_mode: detectionMode, existing: { id: original.id, status: original.status, duplicates: original.duplicates, title: original.title, artists: original.artists }, replicated: true, duplicate_row: duplicateRow });
       }
     }
     store.unshift(item);
