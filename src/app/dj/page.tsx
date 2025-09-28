@@ -638,65 +638,103 @@ export default function DJPanel() {
                           title={r.__group ? 'Clicca per vedere richieste individuali' : (r.duplicates ? 'Clicca per vedere duplicati' : '')}
                         >{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</button>
                         {r.__group && expanded[r.groupKey || r.id] && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[420px] space-y-2">
-                            <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length})</div>
-                            <div className="space-y-1">
-                              {r.groupedItems?.map((sub) => (
-                                <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                                  <div className="flex flex-wrap gap-2 items-center">
-                                    <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
-                                    <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
-                                    <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
-                                  </div>
-                                  {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
-                                </div>
-                              ))}
-                            </div>
-                            {r.duplicates_log && r.duplicates_log.length > 0 && (
-                              <div className="mt-1 pt-1 border-t border-zinc-800">
-                                <div className="opacity-70 mb-1">Dediche duplicate ({r.duplicates_log.length})</div>
-                                <div className="max-h-40 overflow-auto pr-1 space-y-1">
-                                  {r.duplicates_log.map((d,i)=>(
-                                    <div key={i} className="border border-zinc-800/70 rounded p-1">
-                                      <div className="flex justify-between gap-2 mb-0.5">
-                                        <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                                        <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                                      </div>
-                                      {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                            )}
-                        {(!r.__group && r.duplicates && expanded[r.id]) && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[420px] space-y-2">
-                            <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
-                            {r.note && (
-                              <div className="text-[10px] border border-zinc-800/70 rounded p-1">
-                                <div className="opacity-60 mb-0.5">Nota originale</div>
-                                <div className="whitespace-pre-wrap break-words">{r.note}</div>
-                              </div>
-                            )}
-                            {r.duplicates_log && r.duplicates_log.length > 0 && (
-                              <div className="space-y-1">
-                                {r.duplicates_log.map((d,i)=>(
-                                  <div key={i} className="border border-zinc-800/70 rounded p-1">
-                                    <div className="flex justify-between gap-2 mb-0.5">
-                                      <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                                      <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                                    </div>
-                                    {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
-                                  </div>
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[620px] space-y-2">
+                            <div className="opacity-70 mb-1">Richieste unite e duplicati</div>
+                            <table className="w-full text-[10px] border-collapse">
+                              <thead>
+                                <tr className="text-left opacity-60">
+                                  <th className="py-1 pr-2">Tipo</th>
+                                  <th className="py-1 pr-2">Utente</th>
+                                  <th className="py-1 pr-2">Ora</th>
+                                  <th className="py-1 pr-2">Stato</th>
+                                  <th className="py-1 pr-2">Nota</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {r.groupedItems?.map(sub => (
+                                  <tr key={sub.id} className="border-t border-zinc-800/60">
+                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/70">originale</span></td>
+                                    <td className="py-1 pr-2 align-top">{sub.requester||'-'}</td>
+                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(sub.created_at).toLocaleTimeString()}</td>
+                                    <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span></td>
+                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{sub.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
+                                  </tr>
                                 ))}
-                              </div>
-                            )}
-                            {((r.duplicates||0) - (r.duplicates_log?.length||0)) > 0 && (
-                              <div className="text-[10px] opacity-50 italic">
-                                {(r.duplicates||0) - (r.duplicates_log?.length||0)} duplicati storici senza dettagli.
-                              </div>
-                            )}
+                                {r.duplicates_log && r.duplicates_log.map((d,i)=> (
+                                  <tr key={`dup-${i}`} className="border-t border-zinc-800/60">
+                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-700/60">duplicate</span></td>
+                                    <td className="py-1 pr-2 align-top">{d.requester||'-'}</td>
+                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(d.at).toLocaleTimeString()}</td>
+                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-800/50">new</span></td>
+                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
+                                  </tr>
+                                ))}
+                                {(() => {
+                                  const missing = (r.duplicates || 0) - (r.duplicates_log?.length || 0) - ((r.groupedItems?.length||1)-1); // stima duplicati storici
+                                  if (missing > 0) {
+                                    return Array.from({length: missing}).map((_,i)=>(
+                                      <tr key={`missing-${i}`} className="border-t border-zinc-800/60 opacity-50 italic">
+                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">storico</span></td>
+                                        <td className="py-1 pr-2 align-top">?</td>
+                                        <td className="py-1 pr-2 align-top font-mono">—</td>
+                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">duplicate</span></td>
+                                        <td className="py-1 pr-2 align-top">(nessun dettaglio registrato)</td>
+                                      </tr>
+                                    ));
+                                  }
+                                  return null;
+                                })()}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                        {(!r.__group && r.duplicates && expanded[r.id]) && (
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[620px] space-y-2">
+                            <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
+                            <table className="w-full text-[10px] border-collapse">
+                              <thead>
+                                <tr className="text-left opacity-60">
+                                  <th className="py-1 pr-2">Tipo</th>
+                                  <th className="py-1 pr-2">Utente</th>
+                                  <th className="py-1 pr-2">Ora</th>
+                                  <th className="py-1 pr-2">Stato</th>
+                                  <th className="py-1 pr-2">Nota</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr className="border-t border-zinc-800/60">
+                                  <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/70">originale</span></td>
+                                  <td className="py-1 pr-2 align-top">{r.requester||'-'}</td>
+                                  <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
+                                  <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span></td>
+                                  <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{r.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
+                                </tr>
+                                {r.duplicates_log && r.duplicates_log.map((d,i)=>(
+                                  <tr key={`dup-${i}`} className="border-t border-zinc-800/60">
+                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-700/60">duplicate</span></td>
+                                    <td className="py-1 pr-2 align-top">{d.requester||'-'}</td>
+                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(d.at).toLocaleTimeString()}</td>
+                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-800/50">new</span></td>
+                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
+                                  </tr>
+                                ))}
+                                {(() => {
+                                  const missing = (r.duplicates||0) - (r.duplicates_log?.length||0);
+                                  if (missing > 0) {
+                                    return Array.from({length: missing}).map((_,i)=>(
+                                      <tr key={`missing-${i}`} className="border-t border-zinc-800/60 opacity-50 italic">
+                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">storico</span></td>
+                                        <td className="py-1 pr-2 align-top">?</td>
+                                        <td className="py-1 pr-2 align-top font-mono">—</td>
+                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">duplicate</span></td>
+                                        <td className="py-1 pr-2 align-top">(nessun dettaglio registrato)</td>
+                                      </tr>
+                                    ));
+                                  }
+                                  return null;
+                                })()}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </td>
@@ -742,64 +780,92 @@ export default function DJPanel() {
                   </div>
                   {r.__group && expanded[r.groupKey || r.id] && (
                     <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
-                      <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length})</div>
+                      <div className="opacity-70 mb-1">Richieste unite e duplicati</div>
                       <div className="space-y-1">
                         {r.groupedItems?.map(sub => (
-                          <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                            <div className="flex flex-wrap gap-2 items-center">
+                          <div key={sub.id} className="border border-zinc-800/60 rounded p-1">
+                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                              <span className="px-1 rounded bg-zinc-700/70">originale</span>
                               <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
-                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
+                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span>
                               <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
                             </div>
-                            {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
+                            <div className="whitespace-pre-wrap break-words">{sub.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
                           </div>
                         ))}
-                      </div>
-                      {r.duplicates_log && r.duplicates_log.length > 0 && (
-                        <div className="mt-1 pt-1 border-t border-zinc-800">
-                          <div className="opacity-70 mb-1">Dediche duplicate ({r.duplicates_log.length})</div>
-                          <div className="max-h-40 overflow-auto pr-1 space-y-1">
-                            {r.duplicates_log.map((d,i)=>(
-                              <div key={i} className="border border-zinc-800/70 rounded p-1">
-                                <div className="flex justify-between gap-2 mb-0.5">
-                                  <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                                  <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                                </div>
-                                {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
-                              </div>
-                            ))}
+                        {r.duplicates_log && r.duplicates_log.map((d,i)=>(
+                          <div key={`dup-${i}`} className="border border-zinc-800/60 rounded p-1">
+                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                              <span className="px-1 rounded bg-yellow-700/60">duplicate</span>
+                              <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                              <span className="px-1 rounded bg-yellow-800/50">new</span>
+                              <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
+                            </div>
+                            <div className="whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
                           </div>
-                        </div>
-                      )}
+                        ))}
+                        {(() => {
+                          const missing = (r.duplicates || 0) - (r.duplicates_log?.length || 0) - ((r.groupedItems?.length||1)-1);
+                          if (missing > 0) {
+                            return Array.from({length: missing}).map((_,i)=>(
+                              <div key={`missing-${i}`} className="border border-zinc-800/60 rounded p-1 opacity-50 italic">
+                                <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                                  <span className="px-1 rounded bg-zinc-700/40">storico</span>
+                                  <span className="px-1 rounded bg-zinc-700/40">?</span>
+                                  <span className="px-1 rounded bg-zinc-700/40">duplicate</span>
+                                  <span className="font-mono opacity-60">—</span>
+                                </div>
+                                <div>(nessun dettaglio registrato)</div>
+                              </div>
+                            ));
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                  )}
                   {(!r.__group && r.duplicates && expanded[r.id]) && (
                     <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
                       <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
-                      {r.note && (
-                        <div className="text-[10px] border border-zinc-800/70 rounded p-1">
-                          <div className="opacity-60 mb-0.5">Nota originale</div>
-                          <div className="whitespace-pre-wrap break-words">{r.note}</div>
+                      <div className="space-y-1">
+                        <div className="border border-zinc-800/60 rounded p-1">
+                          <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                            <span className="px-1 rounded bg-zinc-700/70">originale</span>
+                            <span className="px-1 rounded bg-zinc-700">{r.requester||'-'}</span>
+                            <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
+                            <span className="font-mono opacity-60">{new Date(r.created_at).toLocaleTimeString()}</span>
+                          </div>
+                          <div className="whitespace-pre-wrap break-words">{r.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
                         </div>
-                      )}
-                      {r.duplicates_log && r.duplicates_log.length > 0 && (
-                        <div className="space-y-1">
-                          {r.duplicates_log.map((d,i)=>(
-                            <div key={i} className="border border-zinc-800/70 rounded p-1">
-                              <div className="flex justify-between gap-2 mb-0.5">
-                                <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                                <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                              </div>
-                              {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
+                        {r.duplicates_log && r.duplicates_log.map((d,i)=>(
+                          <div key={`dup-${i}`} className="border border-zinc-800/60 rounded p-1">
+                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                              <span className="px-1 rounded bg-yellow-700/60">duplicate</span>
+                              <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                              <span className="px-1 rounded bg-yellow-800/50">new</span>
+                              <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                      {((r.duplicates||0) - (r.duplicates_log?.length||0)) > 0 && (
-                        <div className="text-[10px] opacity-50 italic">
-                          {(r.duplicates||0) - (r.duplicates_log?.length||0)} duplicati storici senza dettagli.
-                        </div>
-                      )}
-                    </div>
-                  )}
+                            <div className="whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
+                          </div>
+                        ))}
+                        {(() => {
+                          const missing = (r.duplicates||0) - (r.duplicates_log?.length||0);
+                          if (missing > 0) {
+                            return Array.from({length: missing}).map((_,i)=>(
+                              <div key={`missing-${i}`} className="border border-zinc-800/60 rounded p-1 opacity-50 italic">
+                                <div className="flex flex-wrap gap-2 items-center mb-0.5">
+                                  <span className="px-1 rounded bg-zinc-700/40">storico</span>
+                                  <span className="px-1 rounded bg-zinc-700/40">?</span>
+                                  <span className="px-1 rounded bg-zinc-700/40">duplicate</span>
+                                  <span className="font-mono opacity-60">—</span>
+                                </div>
+                                <div>(nessun dettaglio registrato)</div>
+                              </div>
+                            ));
+                          }
+                          return null;
+                        })()}
+                      </div>
                     </div>
                   )}
                   {r.__group ? (
