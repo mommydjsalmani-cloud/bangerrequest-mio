@@ -63,6 +63,8 @@ export default function DJPanel() {
   const [rawVisible, setRawVisible] = useState(false);
   const [rawLoading, setRawLoading] = useState(false);
   const [rawData, setRawData] = useState<GenericJSON | null>(null);
+  // Stato per mostrare ultimo detection_mode ricevuto da un POST duplicato (se si decide di integrare in futuro la creazione client-side)
+  const [lastDetectionMode, setLastDetectionMode] = useState<string | null>(null);
 
   useEffect(() => {
     // Recupera stato persistenza (non blocca il resto)
@@ -730,6 +732,9 @@ export default function DJPanel() {
                     </div>
                     <div className="mt-2 opacity-50 leading-snug">
                       Suggerimento: se <code>replicated</code> è false o manca una riga attesa, controlla eventuale <code>replicated_error</code> nel POST duplicato.
+                      {lastDetectionMode && (
+                        <div className="mt-1">Ultima rilevazione duplicato: <code>{lastDetectionMode}</code></div>
+                      )}
                     </div>
                   </div>
                 )}
