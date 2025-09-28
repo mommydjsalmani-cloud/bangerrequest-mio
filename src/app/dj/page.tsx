@@ -238,7 +238,13 @@ export default function DJPanel() {
         __group: true,
         groupKey: key,
         groupedItems: arr,
+        // duplicates_log aggregato: concatena log di tutti e aggiungi le note principali come entry sintetica
+        duplicates_log: arr.flatMap(r => r.duplicates_log || [])
       };
+      // Ordiniamo il log aggregato per timestamp crescente
+      if (aggregated.duplicates_log) {
+        aggregated.duplicates_log.sort((a,b)=> new Date(a.at).getTime() - new Date(b.at).getTime());
+      }
       groups.push(aggregated);
     }
     // Ordine dei gruppi: manteniamo l'ordine originale apparizione (primo created_at in gruppo)
@@ -632,18 +638,36 @@ export default function DJPanel() {
                           title={r.__group ? 'Clicca per vedere richieste individuali' : (r.duplicates ? 'Clicca per vedere duplicati' : '')}
                         >{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</button>
                         {r.__group && expanded[r.groupKey || r.id] && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[400px] space-y-1">
-                            <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length}):</div>
-                            {r.groupedItems?.map((sub) => (
-                              <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                                <div className="flex flex-wrap gap-2 items-center">
-                                  <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
-                                  <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
-                                  <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[420px] space-y-2">
+                            <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length})</div>
+                            <div className="space-y-1">
+                              {r.groupedItems?.map((sub) => (
+                                <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
+                                    <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
+                                    <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                                  </div>
+                                  {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
                                 </div>
-                                {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
+                              ))}
+                            </div>
+                            {r.duplicates_log && r.duplicates_log.length > 0 && (
+                              <div className="mt-1 pt-1 border-t border-zinc-800">
+                                <div className="opacity-70 mb-1">Dediche duplicate ({r.duplicates_log.length})</div>
+                                <div className="max-h-40 overflow-auto pr-1 space-y-1">
+                                  {r.duplicates_log.map((d,i)=>(
+                                    <div key={i} className="border border-zinc-800/70 rounded p-1">
+                                      <div className="flex justify-between gap-2 mb-0.5">
+                                        <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
+                                        <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                                      </div>
+                                      {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
                       </td>
@@ -688,18 +712,36 @@ export default function DJPanel() {
                     >{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</button>
                   </div>
                   {r.__group && expanded[r.groupKey || r.id] && (
-                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
-                      <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length}):</div>
-                      {r.groupedItems?.map(sub => (
-                        <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                          <div className="flex flex-wrap gap-2 items-center">
-                            <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
-                            <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
-                            <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
+                      <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length})</div>
+                      <div className="space-y-1">
+                        {r.groupedItems?.map(sub => (
+                          <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                            <div className="flex flex-wrap gap-2 items-center">
+                              <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
+                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
+                              <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                            </div>
+                            {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
                           </div>
-                          {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
+                        ))}
+                      </div>
+                      {r.duplicates_log && r.duplicates_log.length > 0 && (
+                        <div className="mt-1 pt-1 border-t border-zinc-800">
+                          <div className="opacity-70 mb-1">Dediche duplicate ({r.duplicates_log.length})</div>
+                          <div className="max-h-40 overflow-auto pr-1 space-y-1">
+                            {r.duplicates_log.map((d,i)=>(
+                              <div key={i} className="border border-zinc-800/70 rounded p-1">
+                                <div className="flex justify-between gap-2 mb-0.5">
+                                  <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
+                                  <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                                </div>
+                                {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                   {r.__group ? (
