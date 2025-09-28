@@ -22,6 +22,13 @@ type RequestItem = {
   duplicates_log?: { at: string; requester?: string | null; note?: string | null }[];
 };
 
+// Estensione per rappresentare un gruppo aggregato di richieste identiche
+type GroupedRequest = RequestItem & {
+  __group?: true;
+  groupKey?: string;
+  groupedItems?: RequestItem[]; // richieste originali (incl. rappresentante)
+};
+
 type EventItem = {
   id: string;
   code: string;
@@ -36,7 +43,7 @@ export default function DJPanel() {
   const [authed, setAuthed] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [list, setList] = useState<RequestItem[]>([]);
+  const [list, setList] = useState<RequestItem[]>([]); // lista "raw" dal backend
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -201,6 +208,42 @@ export default function DJPanel() {
     const lastHour = list.filter((r) => Date.now() - new Date(r.created_at).getTime() <= 3600_000).length;
     const duplicates = list.reduce((acc, r) => acc + (r.duplicates || 0), 0);
     return { total, lastHour, duplicates };
+  }, [list]);
+
+  // Raggruppa richieste identiche (track_id + event_code). Se track_id assente, fallback su titolo+artisti normalizzati
+  const groupedList: GroupedRequest[] = useMemo(() => {
+    const byKey = new Map<string, RequestItem[]>();
+    const norm = (s?: string|null) => (s||'').toLowerCase().trim();
+    for (const r of list) {
+      const key = r.event_code + '::' + (r.track_id || (norm(r.title)+'::'+norm(r.artists)));
+      if (!byKey.has(key)) byKey.set(key, []);
+      byKey.get(key)!.push(r);
+    }
+    const groups: GroupedRequest[] = [];
+    for (const [key, arr] of byKey.entries()) {
+      if (arr.length === 1) {
+        groups.push(arr[0]);
+        continue;
+      }
+      // Ordiniamo per created_at crescente per avere rappresentante stabile
+      arr.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      // Scegliamo rappresentante: priorità accepted > new > resto, altrimenti primo
+      const representative = arr.find(r=>r.status==='accepted') || arr.find(r=>r.status==='new') || arr[0];
+      // Calcolo duplicates aggregati: duplicates del representative + sum degli altri duplicates + (numero righe extra)
+      const extraRows = arr.length - 1;
+      const aggregatedDuplicates = arr.reduce((acc,r)=> acc + (r.duplicates||0), 0) + extraRows;
+      const aggregated: GroupedRequest = {
+        ...representative,
+        duplicates: aggregatedDuplicates,
+        __group: true,
+        groupKey: key,
+        groupedItems: arr,
+      };
+      groups.push(aggregated);
+    }
+    // Ordine dei gruppi: manteniamo l'ordine originale apparizione (primo created_at in gruppo)
+    groups.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    return groups.reverse(); // manteniamo lo stesso orientamento (latest first) come lista originale originaria
   }, [list]);
 
   const [loginLoading, setLoginLoading] = useState(false);
@@ -572,7 +615,7 @@ export default function DJPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((r) => (
+                  {groupedList.map((r) => (
                     <tr key={r.id} className="border-b border-zinc-800">
                       <td className="p-2">{r.requester || '-'}</td>
                       <td className="p-2">{r.title}</td>
@@ -584,27 +627,37 @@ export default function DJPanel() {
                       <td className="p-2 align-top">
                         <button
                           type="button"
-                          onClick={() => r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
-                          className={`px-1 rounded text-left min-w-[70px] ${r.duplicates?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                          title={r.duplicates ? 'Clicca per vedere richieste duplicate' : ''}
+                          onClick={() => r.__group ? setExpanded(e=>({...e,[r.groupKey||r.id]:!e[r.groupKey||r.id]})) : r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
+                          className={`px-1 rounded text-left min-w-[70px] ${(r.__group || r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                          title={r.__group ? 'Clicca per vedere richieste individuali' : (r.duplicates ? 'Clicca per vedere duplicati' : '')}
                         >{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</button>
-                        {expanded[r.id] && r.duplicates_log && r.duplicates_log.length > 0 && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[220px] space-y-1">
-                            <div className="opacity-70">Duplicati:</div>
-                            {r.duplicates_log.map((d,i)=>(
-                              <div key={i} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                                <div className="flex justify-between gap-2"><span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span><span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span></div>
-                                {d.note ? <div className="mt-0.5 whitespace-pre-wrap break-words">{d.note}</div> : null}
+                        {r.__group && expanded[r.groupKey || r.id] && (
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[400px] space-y-1">
+                            <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length}):</div>
+                            {r.groupedItems?.map((sub) => (
+                              <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                                <div className="flex flex-wrap gap-2 items-center">
+                                  <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
+                                  <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
+                                  <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                                </div>
+                                {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
                               </div>
                             ))}
                           </div>
                         )}
                       </td>
                       <td className="p-2 flex flex-wrap gap-1">
-                        <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
-                        <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
-                        <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
-                        <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
+                        {r.__group ? (
+                          <span className="text-[10px] opacity-60">Espandi per moderare</span>
+                        ) : (
+                          <>
+                            <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
+                            <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
+                            <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
+                            <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -612,7 +665,7 @@ export default function DJPanel() {
               </table>
             </div>
             <div className="md:hidden flex flex-col gap-2">
-              {list.map((r) => (
+              {groupedList.map((r) => (
                 <div key={r.id} className="bg-zinc-800 rounded p-3 flex flex-col gap-2 text-xs">
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold truncate">{r.title}</span>
@@ -629,28 +682,36 @@ export default function DJPanel() {
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
                     <button
                       type="button"
-                      onClick={() => r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
-                      className={`px-1 rounded ${r.duplicates?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                      title={r.duplicates ? 'Tocca per vedere richieste duplicate' : ''}
+                      onClick={() => r.__group ? setExpanded(e=>({...e,[r.groupKey||r.id]:!e[r.groupKey||r.id]})) : r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
+                      className={`px-1 rounded ${(r.__group || r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                      title={r.__group ? 'Tocca per vedere richieste individuali' : (r.duplicates ? 'Tocca per vedere duplicati' : '')}
                     >{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</button>
                   </div>
-                  {expanded[r.id] && r.duplicates_log && r.duplicates_log.length > 0 && (
+                  {r.__group && expanded[r.groupKey || r.id] && (
                     <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
-                      <div className="opacity-70">Duplicati:</div>
-                      {r.duplicates_log.map((d,i)=>(
-                        <div key={i} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
-                          <div className="flex justify-between gap-2"><span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span><span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span></div>
-                          {d.note ? <div className="mt-0.5 whitespace-pre-wrap break-words">{d.note}</div> : null}
+                      <div className="opacity-70 mb-1">Richieste unite ({r.groupedItems?.length}):</div>
+                      {r.groupedItems?.map(sub => (
+                        <div key={sub.id} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <span className="px-1 rounded bg-zinc-700">{sub.requester||'-'}</span>
+                            <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}{sub.duplicates?` +${sub.duplicates}`:''}</span>
+                            <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
+                          </div>
+                          {sub.note && <div className="mt-0.5 whitespace-pre-wrap break-words">{sub.note}</div>}
                         </div>
                       ))}
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
-                    <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
-                    <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
-                    <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
-                  </div>
+                  {r.__group ? (
+                    <div className="text-[10px] opacity-60">Espandi per moderare le singole richieste</div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
+                      <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
+                      <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
+                      <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
