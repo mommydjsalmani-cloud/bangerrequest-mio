@@ -47,9 +47,6 @@ export default function DJPanel() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
-  const [persistenceMode, setPersistenceMode] = useState<'supabase' | 'in-memory' | 'unknown'>('unknown');
-  const [authConfigOk, setAuthConfigOk] = useState<boolean | null>(null);
-  const [authEndpointMissing, setAuthEndpointMissing] = useState(false);
   const [eventCreateLoading, setEventCreateLoading] = useState(false);
   // Debug states
   const [debugVisible, setDebugVisible] = useState(false);
@@ -65,22 +62,7 @@ export default function DJPanel() {
   const [lastDetectionMode] = useState<string | null>(null); // placeholder per future integrazione
 
   useEffect(() => {
-    // Recupera stato persistenza (non blocca il resto)
-    fetch('/api/health/supabase').then(r => r.json()).then(j => {
-      if (j.mode === 'supabase') setPersistenceMode('supabase');
-      else if (j.mode === 'in-memory' || j.error === 'missing_env') setPersistenceMode('in-memory');
-      else setPersistenceMode('unknown');
-    }).catch(()=> setPersistenceMode('unknown'));
-    fetch('/api/health/auth').then(r => {
-      if (r.status === 404) {
-        setAuthEndpointMissing(true);
-        setAuthConfigOk(null);
-        return { ok:false };
-      }
-      return r.json();
-    }).then(j => {
-      if (j) setAuthConfigOk(!!j.ok);
-    }).catch(()=> setAuthConfigOk(null));
+    // Note: health checks removed as persistence mode and auth config not displayed
   }, []);
 
   useEffect(() => {
