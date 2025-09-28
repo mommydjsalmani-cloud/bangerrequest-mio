@@ -87,7 +87,13 @@ export async function POST(req: Request) {
     isrc: body.isrc ?? null,
     explicit: !!body.explicit,
     preview_url: body.preview_url ?? null,
-    duration_ms: typeof body.duration_ms === 'number' ? body.duration_ms : (typeof (body as any).duration === 'number' ? ((body as any).duration as number) * 1000 : null),
+    duration_ms: (() => {
+      if (typeof body.duration_ms === 'number') return body.duration_ms;
+      // supporta campo alternativo "duration" in secondi senza usare any
+      const maybeSeconds = (body as unknown as { duration?: unknown }).duration;
+      if (typeof maybeSeconds === 'number') return maybeSeconds * 1000;
+      return null;
+    })(),
     note: body.note,
     event_code: body.event_code ?? null,
     requester: body.requester ?? null,
