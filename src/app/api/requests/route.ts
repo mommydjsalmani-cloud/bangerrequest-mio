@@ -97,53 +97,47 @@ export async function POST(req: Request) {
         .select('*')
         .eq('event_code', body.event_code)
         .eq('track_id', body.track_id)
-        .in('status', ['new', 'accepted', 'muted']);
+        .in('status', ['new', 'accepted', 'muted'])
+        .order('created_at', { ascending: true });
       if (!dupErr && dupList && dupList.length > 0) {
-        // Incrementiamo duplicates sull'esistente per contare arrivo di una nuova richiesta uguale
-        const existing = dupList[0];
-        const newLogEntry = { at: now, requester: body.requester ?? null, note: body.note ?? null };
-        let updated;
-        // Proviamo ad aggiornare anche duplicates_log se la colonna esiste; se fallisce per colonna inesistente ripieghiamo su solo duplicates
-        const currentLog = (existing as unknown as RequestItem).duplicates_log || [];
-        const fullUpdate: Partial<RequestItem> & { duplicates: number } = {
-          duplicates: (existing.duplicates || 0) + 1,
-          duplicates_log: [...currentLog, newLogEntry],
-        };
-  let updErr: unknown;
-  let usedFallback = false;
-        let primaryError: unknown = null;
+        // Primo record esistente considerato "originale".
+        const original = dupList[0];
+        const newDuplicatesCount = (original.duplicates || 0) + 1;
+        // Aggiorna solo il contatore sul record originale.
+        const { data: updatedOriginal, error: updErr } = await supabase
+          .from('requests')
+          .update({ duplicates: newDuplicatesCount })
+          .eq('id', original.id)
+          .select('*')
+          .single();
+        if (updErr || !updatedOriginal) {
+          return withVersion({ ok: true, duplicate: true, existing: { id: original.id, status: original.status, duplicates: newDuplicatesCount, title: original.title, artists: original.artists }, log_saved: false, fallback_reason: updErr?.message || 'update_failed' });
+        }
+        // Inserisce una nuova riga per il duplicato (replica metadati, ma nota e requester nuovi se forniti)
+        const duplicateRow = {
+          id: randomUUID(),
+          created_at: now,
+          track_id: original.track_id,
+          uri: original.uri,
+          title: original.title,
+          artists: original.artists,
+            album: original.album,
+          cover_url: original.cover_url,
+          isrc: original.isrc,
+          explicit: original.explicit,
+          preview_url: original.preview_url,
+          note: body.note,
+          event_code: original.event_code,
+          requester: body.requester ?? null,
+          status: 'new' as const,
+          duplicates: 0,
+          duplicates_log: [],
+        } satisfies RequestItem;
+        // Anche se l'inserimento fallisce, non blocchiamo il flusso utente.
         try {
-          const r = await supabase.from('requests').update(fullUpdate).eq('id', existing.id).select('*').single();
-          updated = r.data as unknown as RequestItem | null;
-          updErr = r.error || null;
-          if (updErr) {
-            primaryError = r.error || null;
-            usedFallback = true;
-            const r2 = await supabase.from('requests').update({ duplicates: fullUpdate.duplicates }).eq('id', existing.id).select('*').single();
-            updated = r2.data as unknown as RequestItem | null;
-            updErr = r2.error || null;
-          }
-        } catch (eFirst) {
-          primaryError = eFirst;
-          // fallback finale
-          try {
-            usedFallback = true;
-            const r3 = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
-            updated = r3.data as unknown as RequestItem | null;
-            updErr = r3.error || null;
-          } catch (e3) {
-            updErr = e3;
-          }
-        }
-        if (updErr || !updated) {
-          // In ultima istanza non blocchiamo l'UX: restituiamo comunque duplicate true senza updated record (raro)
-          const primaryMsg = primaryError instanceof Error ? primaryError.message : undefined;
-          const updMsg = updErr instanceof Error ? updErr.message : undefined;
-          return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists }, log_saved: !usedFallback, fallback_reason: usedFallback ? (primaryMsg || updMsg || 'unknown_error') : undefined });
-        }
-        const updLogHolder = updated as SupabaseRequestRow;
-        const primaryMsg = primaryError instanceof Error ? primaryError.message : undefined;
-        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: updLogHolder.duplicates_log ?? [] }, log_saved: !usedFallback, fallback_reason: usedFallback ? (primaryMsg || 'unknown_error') : undefined });
+          await supabase.from('requests').insert(duplicateRow).select('*').single();
+        } catch {}
+        return withVersion({ ok: true, duplicate: true, existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists }, replicated: true });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
