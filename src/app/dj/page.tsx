@@ -766,6 +766,7 @@ export default function DJPanel() {
                     <th className="p-2">Messaggio</th>
                     <th className="p-2">Ora</th>
                     <th className="p-2">Explicit</th>
+                    <th className="p-2">Dup</th>
                     <th className="p-2">Stato</th>
                     <th className="p-2">Azioni</th>
                   </tr>
@@ -781,6 +782,7 @@ export default function DJPanel() {
                       <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
                       <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
                       <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
+                      <td className="p-2">{r.__group ? (r.duplicates ? r.duplicates : '-') : (r.__isDuplicateRow ? '•' : (r.duplicates ? r.duplicates : '-'))}</td>
                       <td className="p-2 align-top">
                         {!r.__isDuplicateRow && (
                           <div className="flex flex-col gap-0.5">
@@ -926,7 +928,7 @@ export default function DJPanel() {
                   {(!r.__group && r.duplicates && expanded[r.id]) && (
                     <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
                       <div className="opacity-70 mb-1">Duplicati: {r.duplicates}</div>
-                      <div className="opacity-50 italic">Apri la versione desktop per vedere le righe oppure attendi raggruppamento automatico.</div>
+                      <div className="opacity-50 italic">Duplicati raggruppati: usa espansione per dettagli (solo se disponibile).</div>
                     </div>
                   )}
                   {r.__group ? (
