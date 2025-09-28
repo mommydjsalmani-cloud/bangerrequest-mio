@@ -36,12 +36,14 @@ export async function GET(req: Request) {
   const eventCode = url.searchParams.get('event_code');
   const status = url.searchParams.get('status');
   const id = url.searchParams.get('id');
+  const trackId = url.searchParams.get('track_id');
   const supabase = getSupabase();
   if (supabase) {
     let q = supabase.from('requests').select('*').order('created_at', { ascending: false });
     if (id) q = q.eq('id', id);
     if (eventCode) q = q.eq('event_code', eventCode);
     if (status) q = q.eq('status', status);
+    if (trackId) q = q.eq('track_id', trackId);
     const { data, error } = await q;
     if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
     return withVersion({ ok: true, requests: data || [] });
@@ -50,6 +52,7 @@ export async function GET(req: Request) {
     if (id) list = list.filter((r) => r.id === id);
     if (eventCode) list = list.filter((r) => r.event_code === eventCode);
     if (status) list = list.filter((r) => r.status === status);
+    if (trackId) list = list.filter((r) => r.track_id === trackId);
     return withVersion({ ok: true, requests: list });
   }
 }
@@ -103,25 +106,25 @@ export async function POST(req: Request) {
           const r = await supabase.from('requests').update(fullUpdate).eq('id', existing.id).select('*').single();
           updated = r.data as unknown as RequestItem | null;
           updErr = r.error || null;
-          // Se errore per colonna mancante (42703) facciamo fallback
-          if (updErr && typeof updErr === 'object' && updErr !== null && 'code' in updErr && (updErr as { code?: string }).code === '42703') {
+          if (updErr) {
+            // Fallback immediato per QUALSIASI errore: riprova senza duplicates_log
             const r2 = await supabase.from('requests').update({ duplicates: fullUpdate.duplicates }).eq('id', existing.id).select('*').single();
             updated = r2.data as unknown as RequestItem | null;
             updErr = r2.error || null;
           }
         } catch {
-          // fallback: prova update semplice
+          // fallback finale
           try {
             const r3 = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
             updated = r3.data as unknown as RequestItem | null;
             updErr = r3.error || null;
-          } catch (e2) {
-            updErr = e2;
+          } catch (e3) {
+            updErr = e3;
           }
         }
         if (updErr || !updated) {
-          const message = (typeof updErr === 'object' && updErr !== null && 'message' in updErr) ? (updErr as { message?: string }).message : undefined;
-          return withVersion({ ok: false, error: message || 'duplicate_update_failed' }, { status: 500 });
+          // In ultima istanza non blocchiamo l'UX: restituiamo comunque duplicate true senza updated record (raro)
+          return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists } });
         }
         return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: (updated as RequestItem).duplicates_log } });
       }

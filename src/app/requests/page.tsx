@@ -64,6 +64,7 @@ export default function Requests() {
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [lastRequestStatus, setLastRequestStatus] = useState<"new"|"accepted"|"rejected"|"muted"|"cancelled"|null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
+  const [selectedMeta, setSelectedMeta] = useState<{ alreadyQueued?: boolean; acceptedBefore?: boolean } | null>(null);
   const submitted = !!lastRequestId;
 
   useEffect(() => {
@@ -168,7 +169,7 @@ export default function Requests() {
       // Caso duplicate
       if (j.duplicate && j.existing) {
         const ex = j.existing;
-        setMessage('Questo brano è già in coda ✅');
+        setMessage('Questo brano è già stato richiesto ✅');
         if (ex.id) {
           sessionStorage.setItem('banger_last_request_id', ex.id);
           setLastRequestId(ex.id);
@@ -183,8 +184,8 @@ export default function Requests() {
           sessionStorage.setItem('banger_last_request_artists', ex.artists || '');
           setSubmittedTrack({ title: ex.title, artists: ex.artists });
         }
-        setSelected(null);
-        setNote('');
+        // Non azzeriamo subito selected: lasciamo visibile stato nella box conferma già richiesta
+        setSelectedMeta({ alreadyQueued: true, acceptedBefore: ex.status === 'accepted' });
         setTimeout(()=> setMessage(null), 3500);
         return; // fine
       }
@@ -204,6 +205,7 @@ export default function Requests() {
       }
       setSelected(null);
       setNote('');
+      setSelectedMeta(null);
     } else {
       const errMsg = j?.error ? `Errore: ${j.error}` : 'Errore generico richiesta';
       const detail = j?.details?.code ? ` (code: ${j.details.code})` : '';
@@ -268,6 +270,11 @@ export default function Requests() {
         {selected && !submitted && (
           <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
             <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
+            {selectedMeta?.alreadyQueued && (
+              <div className="mt-2 text-xs bg-yellow-800/40 border border-yellow-700 rounded p-2 leading-snug">
+                Questo brano è già stato richiesto{selectedMeta.acceptedBefore ? ' ed è già stato riprodotto/accettato' : ''}. Puoi comunque aggiungere una dedica: verrà unita alla richiesta esistente.
+              </div>
+            )}
             <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Nota o dedica (opzionale)" className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" rows={3} />
             <div className="flex gap-2 mt-3">
               <button onClick={confirmTrack} className="flex-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm">Conferma</button>
