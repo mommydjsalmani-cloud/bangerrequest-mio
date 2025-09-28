@@ -669,6 +669,35 @@ export default function DJPanel() {
                               </div>
                             )}
                           </div>
+                            )}
+                        {(!r.__group && r.duplicates && expanded[r.id]) && (
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[420px] space-y-2">
+                            <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
+                            {r.note && (
+                              <div className="text-[10px] border border-zinc-800/70 rounded p-1">
+                                <div className="opacity-60 mb-0.5">Nota originale</div>
+                                <div className="whitespace-pre-wrap break-words">{r.note}</div>
+                              </div>
+                            )}
+                            {r.duplicates_log && r.duplicates_log.length > 0 && (
+                              <div className="space-y-1">
+                                {r.duplicates_log.map((d,i)=>(
+                                  <div key={i} className="border border-zinc-800/70 rounded p-1">
+                                    <div className="flex justify-between gap-2 mb-0.5">
+                                      <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
+                                      <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                                    </div>
+                                    {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {((r.duplicates||0) - (r.duplicates_log?.length||0)) > 0 && (
+                              <div className="text-[10px] opacity-50 italic">
+                                {(r.duplicates||0) - (r.duplicates_log?.length||0)} duplicati storici senza dettagli.
+                              </div>
+                            )}
+                          </div>
                         )}
                       </td>
                       <td className="p-2 flex flex-wrap gap-1">
@@ -742,6 +771,35 @@ export default function DJPanel() {
                           </div>
                         </div>
                       )}
+                  {(!r.__group && r.duplicates && expanded[r.id]) && (
+                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
+                      <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
+                      {r.note && (
+                        <div className="text-[10px] border border-zinc-800/70 rounded p-1">
+                          <div className="opacity-60 mb-0.5">Nota originale</div>
+                          <div className="whitespace-pre-wrap break-words">{r.note}</div>
+                        </div>
+                      )}
+                      {r.duplicates_log && r.duplicates_log.length > 0 && (
+                        <div className="space-y-1">
+                          {r.duplicates_log.map((d,i)=>(
+                            <div key={i} className="border border-zinc-800/70 rounded p-1">
+                              <div className="flex justify-between gap-2 mb-0.5">
+                                <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
+                                <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
+                              </div>
+                              {d.note ? <div className="whitespace-pre-wrap break-words">{d.note}</div> : <div className="opacity-40 italic">(nessuna nota)</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {((r.duplicates||0) - (r.duplicates_log?.length||0)) > 0 && (
+                        <div className="text-[10px] opacity-50 italic">
+                          {(r.duplicates||0) - (r.duplicates_log?.length||0)} duplicati storici senza dettagli.
+                        </div>
+                      )}
+                    </div>
+                  )}
                     </div>
                   )}
                   {r.__group ? (
