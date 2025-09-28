@@ -23,11 +23,7 @@ type RequestItem = {
 };
 
 // Estensione per rappresentare un gruppo aggregato di richieste identiche
-type GroupedRequest = RequestItem & {
-  __group?: true;
-  groupKey?: string;
-  groupedItems?: RequestItem[]; // richieste originali (incl. rappresentante)
-};
+// (Grouping rimosso: usiamo lista flat)
 
 type EventItem = {
   id: string;
@@ -44,7 +40,7 @@ export default function DJPanel() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [list, setList] = useState<RequestItem[]>([]); // lista "raw" dal backend
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // grouping rimosso -> nessun expanded state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -201,10 +197,10 @@ export default function DJPanel() {
       else if (res.status === 500) setError('Configurazione server mancante (DJ_PANEL_USER/SECRET).');
       return;
     }
-    // optimistic refresh
-  const code = selectedEvent || '';
+    // refresh lista dopo azione
+    const code = selectedEvent || '';
     const qs = code ? `?event_code=${encodeURIComponent(code)}` : '';
-  const r2 = await fetch(`/api/requests${qs}`, { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
+    const r2 = await fetch(`/api/requests${qs}`, { headers: { ...(password ? { 'x-dj-secret': password } : {}), ...(username ? { 'x-dj-user': username } : {}) } });
     const j2 = await r2.json();
     setList(j2.requests || []);
   }
@@ -212,92 +208,17 @@ export default function DJPanel() {
   const stats = useMemo(() => {
     const total = list.length;
     const lastHour = list.filter((r) => Date.now() - new Date(r.created_at).getTime() <= 3600_000).length;
-    // Duplicati effettivi = total richieste - numero gruppi (ogni gruppo rappresenta almeno 1 originale)
-    // Per ottenere numero gruppi riutilizziamo la stessa logica di grouping in modo leggero
-    const byKey = new Set<string>();
-    const norm = (s?: string|null) => (s||'').toLowerCase().trim();
-    for (const r of list) {
-      const key = r.event_code + '::' + (r.track_id || (norm(r.title)+'::'+norm(r.artists)));
-      byKey.add(key);
-    }
-    const groupsCount = byKey.size;
-    const duplicates = Math.max(0, total - groupsCount);
-    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-      // Diagnostica: mostra come viene calcolato
-      console.debug('[dj-panel][stats] total', total, 'groups', groupsCount, 'duplicates', duplicates);
-    }
-    return { total, lastHour, duplicates };
+    return { total, lastHour };
   }, [list]);
 
-  // Raggruppa richieste identiche (track_id + event_code). Se track_id assente, fallback su titolo+artisti normalizzati
-  const groupedList: GroupedRequest[] = useMemo(() => {
-    const byKey = new Map<string, RequestItem[]>();
-    const norm = (s?: string|null) => (s||'').toLowerCase().trim();
-    for (const r of list) {
-      const key = r.event_code + '::' + (r.track_id || (norm(r.title)+'::'+norm(r.artists)));
-      if (!byKey.has(key)) byKey.set(key, []);
-      byKey.get(key)!.push(r);
-    }
-    const groups: GroupedRequest[] = [];
-    for (const [key, arr] of byKey.entries()) {
-      if (arr.length === 1) {
-        groups.push(arr[0]);
-        continue;
-      }
-      // Ordiniamo per created_at crescente per avere rappresentante stabile
-      arr.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-      // Scegliamo rappresentante: priorità accepted > new > resto, altrimenti primo
-      const representative = arr.find(r=>r.status==='accepted') || arr.find(r=>r.status==='new') || arr[0];
-      // Nuova semantica: duplicates = numero di righe duplicate (extra) rispetto all'originale
-      const aggregatedDuplicates = arr.length - 1;
-      const aggregated: GroupedRequest = {
-        ...representative,
-        duplicates: aggregatedDuplicates,
-        __group: true,
-        groupKey: key,
-        groupedItems: arr,
-        // duplicates_log non più usato nell'interfaccia (manteniamo proprietà vuota per compatibilità)
-        duplicates_log: []
-      };
-      groups.push(aggregated);
-    }
-    // Ordine dei gruppi: manteniamo l'ordine originale apparizione (primo created_at in gruppo)
-    groups.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    return groups.reverse(); // manteniamo lo stesso orientamento (latest first) come lista originale originaria
-  }, [list]);
+  // Lista flat: ordina solo per created_at DESC (già server likely ordina, reforziamo)
+  const flatList = useMemo(() => [...list].sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [list]);
 
   // Lista finale renderizzata: se un gruppo è espanso lo sostituiamo con le sue righe reali (originale + duplicate) marcando le duplicate
   // Con layout unificato non costruiamo più una lista intermedia a tabella.
 
   // Evidenziazione temporanea duplicati al momento dell'espansione
-  const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    // Quando un gruppo passa da collapsed -> expanded aggiungiamo gli id duplicati a flashIds
-    for (const g of groupedList) {
-      if (!g.__group) continue;
-      const key = g.groupKey || g.id;
-      if (expanded[key]) {
-        // gruppo espanso: prendi duplicati (tutti tranne il primo created_at) e aggiungi se non già presenti
-        if (g.groupedItems && g.groupedItems.length > 1) {
-          const original = [...g.groupedItems].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-            const duplicates = g.groupedItems.filter(it=>it.id!==original.id);
-            const newIds: string[] = [];
-            duplicates.forEach(d => { if (!flashIds.has(d.id)) newIds.push(d.id); });
-            if (newIds.length) {
-              setFlashIds(prev => new Set([...Array.from(prev), ...newIds]));
-              // Rimuove dopo 1400ms
-              setTimeout(() => {
-                setFlashIds(prev => {
-                  const copy = new Set(prev);
-                  newIds.forEach(id => copy.delete(id));
-                  return copy;
-                });
-              }, 1400);
-            }
-        }
-      }
-    }
-  }, [expanded, groupedList, flashIds]);
+  // Effetti flash duplicati rimossi
 
   const [loginLoading, setLoginLoading] = useState(false);
   async function login(e: React.FormEvent) {
@@ -313,8 +234,7 @@ export default function DJPanel() {
     }
     setLoginLoading(true);
     try {
-      // Effettuiamo una chiamata protetta per validare la password (es: lista eventi)
-  const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
+      const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
       if (!res.ok) {
         if (res.status === 401) setError('Password DJ errata. Accesso negato.');
         else if (res.status === 500) setError('Server non configurato: contatta admin (mancano credenziali).');
@@ -326,9 +246,8 @@ export default function DJPanel() {
         setError('Risposta inattesa dal server.');
         return;
       }
-  // Non salviamo più codice evento al login
-  sessionStorage.setItem('dj_secret', password.trim());
-  sessionStorage.setItem('dj_user', username.trim());
+      sessionStorage.setItem('dj_secret', password.trim());
+      sessionStorage.setItem('dj_user', username.trim());
       setAuthed(true);
     } catch {
       setError('Errore di rete durante il login.');
@@ -336,50 +255,29 @@ export default function DJPanel() {
       setLoginLoading(false);
     }
   }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white p-6">
       <div className="w-full max-w-5xl p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h2 className="text-2xl font-bold mb-2">Pannello DJ</h2>
-        {persistenceMode !== 'supabase' && (
-          <div className="text-xs bg-yellow-800/40 border border-yellow-700 rounded p-2 leading-snug">
-            {persistenceMode === 'in-memory' ? (
-              <>Avviso: stai usando storage <strong>in-memory</strong> (Supabase non attivo). Le richieste si perdono a riavvio/scaling. Configura le variabili e redeploy per attivare persistenza.</>
-            ) : (
-              <>Verifica stato persistenza…</>
-            )}
-          </div>
-        )}
-        {authEndpointMissing && (
-          <div className="text-xs bg-blue-800/40 border border-blue-700 rounded p-2 leading-snug">
-            Endpoint auth mancante (deployment vecchio). Esegui un redeploy per includere <code>/api/health/auth</code>.
-          </div>
-        )}
-        {authConfigOk === false && !authEndpointMissing && (
-          <div className="text-xs bg-red-800/40 border border-red-700 rounded p-2 leading-snug">
-            Credenziali DJ non configurate: imposta <code>DJ_PANEL_USER</code> e <code>DJ_PANEL_SECRET</code> nelle variabili (Production) e redeploy per creare/moderare eventi.
-          </div>
-        )}
-
         {!authed ? (
           <div className="flex flex-col gap-2 mb-4 w-full max-w-xl">
-          <form className="flex gap-2 flex-col sm:flex-row" onSubmit={login}>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username DJ"
-              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password DJ (se impostata)"
-              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-            />
-            <button disabled={loginLoading} className="bg-green-600 disabled:opacity-50 hover:bg-green-700 text-white font-bold py-2 px-4 rounded min-w-[90px]">{loginLoading ? 'Verifico…' : 'Entra'}</button>
-          </form>
-          {error && <div className="text-xs text-red-400">{error}</div>}
+            <form className="flex gap-2 flex-col sm:flex-row" onSubmit={login}>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Username DJ"
+                className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password DJ (se impostata)"
+                className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+              />
+              <button disabled={loginLoading} className="bg-green-600 disabled:opacity-50 hover:bg-green-700 text-white font-bold py-2 px-4 rounded min-w-[90px]">{loginLoading ? 'Verifico…' : 'Entra'}</button>
+            </form>
+            {error && <div className="text-xs text-red-400">{error}</div>}
           </div>
         ) : null}
 
@@ -713,19 +611,7 @@ export default function DJPanel() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <div className="text-[10px] flex flex-wrap gap-2 items-center">
-                <span className="opacity-60">Legenda:</span>
-                <span className="px-1 rounded bg-yellow-800/60 text-yellow-200 font-mono">dup new</span>
-                <span className="px-1 rounded bg-green-800/60 text-green-200 font-mono">dup acc</span>
-              </div>
-              {Object.keys(expanded).some(k=>expanded[k]) && (
-                <button
-                  type="button"
-                  onClick={()=> setExpanded({})}
-                  className="self-end text-[11px] bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
-                >Collassa tutti</button>
-              )}
-              {groupedList.map((r) => (
+              {flatList.map(r => (
                 <div key={r.id} className="bg-zinc-800 rounded p-3 flex flex-col gap-2 text-xs">
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold truncate">{r.title}</span>
@@ -740,93 +626,14 @@ export default function DJPanel() {
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
-                    <button
-                      type="button"
-                      onClick={() => r.__group ? setExpanded(e=>({...e,[r.groupKey||r.id]:!e[r.groupKey||r.id]})) : r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
-                      className={`px-1 rounded ${(r.__group || r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                      title={r.__group ? 'Tocca per vedere richieste individuali' : (r.duplicates ? 'Tocca per vedere duplicati' : '')}
-                    >{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</button>
+                    <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
                   </div>
-                  {r.__group && expanded[r.groupKey || r.id] && (
-                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
-                      <div className="opacity-70 mb-1">Richieste unite e duplicati</div>
-                      <div className="space-y-1">
-                        {r.groupedItems?.map((sub, idx) => (
-                          <div key={sub.id} className="border border-zinc-800/60 rounded p-1">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px]">
-                              {idx===0 ? (
-                                <span className="px-1 rounded bg-zinc-700/70">originale</span>
-                              ) : (
-                                <span className={`px-1 rounded font-mono ${sub.status==='accepted'?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'}`}>{sub.status==='accepted'?'dup acc':'dup new'}</span>
-                              )}
-                              <span className="px-1 rounded bg-zinc-700 max-w-[100px] truncate" title={sub.requester||'-'}>{sub.requester||'-'}</span>
-                              <span className="font-mono opacity-60">{new Date(sub.created_at).toLocaleTimeString()}</span>
-                              <span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span>
-                              {idx>0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const original = r.groupedItems?.[0];
-                                    if (original) act(sub.id, 'merge', original.id);
-                                  }}
-                                  className="ml-auto text-[10px] bg-blue-700 px-1 rounded"
-                                >Merge</button>
-                              )}
-                            </div>
-                            {sub.note && (
-                              <div className="mt-1 whitespace-pre-wrap break-words leading-snug text-[10px] bg-zinc-900/60 px-1 py-0.5 rounded">
-                                {sub.note}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {r.duplicates_log && r.duplicates_log.map((d,i)=>(
-                          <div key={`dup-${i}`} className="border border-zinc-800/60 rounded p-1">
-                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
-                              <span className="px-1 rounded bg-yellow-700/60">duplicate</span>
-                              <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                              <span className="px-1 rounded bg-yellow-800/50">new</span>
-                              <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                            </div>
-                            <div className="whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
-                          </div>
-                        ))}
-                        {(() => {
-                          const missing = (r.duplicates || 0) - (r.duplicates_log?.length || 0) - ((r.groupedItems?.length||1)-1);
-                          if (missing > 0) {
-                            return Array.from({length: missing}).map((_,i)=>(
-                              <div key={`missing-${i}`} className="border border-zinc-800/60 rounded p-1 opacity-50 italic">
-                                <div className="flex flex-wrap gap-2 items-center mb-0.5">
-                                  <span className="px-1 rounded bg-zinc-700/40">storico</span>
-                                  <span className="px-1 rounded bg-zinc-700/40">?</span>
-                                  <span className="px-1 rounded bg-zinc-700/40">duplicate</span>
-                                  <span className="font-mono opacity-60">—</span>
-                                </div>
-                                <div>(nessun dettaglio registrato)</div>
-                              </div>
-                            ));
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    </div>
-                  )}
-                  {(!r.__group && r.duplicates && expanded[r.id]) && (
-                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
-                      <div className="opacity-70 mb-1">Duplicati: {r.duplicates}</div>
-                      <div className="opacity-50 italic">Duplicati raggruppati: usa espansione per dettagli (solo se disponibile).</div>
-                    </div>
-                  )}
-                  {r.__group ? (
-                    <div className="text-[10px] opacity-60">Espandi per moderare le singole richieste</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
-                      <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
-                      <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
-                      <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
+                    <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
+                    <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
+                    <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
+                  </div>
                 </div>
               ))}
             </div>
@@ -834,7 +641,6 @@ export default function DJPanel() {
             <div className="flex gap-4 mt-4 text-sm">
               <span>Totali: {stats.total}</span>
               <span>Ultima ora: {stats.lastHour}</span>
-              <span>Duplicati: {stats.duplicates}</span>
             </div>
           </>
         )}
