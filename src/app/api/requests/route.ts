@@ -134,10 +134,26 @@ export async function POST(req: Request) {
           duplicates_log: [],
         } satisfies RequestItem;
         // Anche se l'inserimento fallisce, non blocchiamo il flusso utente.
+        let insertedDuplicate: RequestItem | null = null;
+        let replicatedError: string | null = null;
         try {
-          await supabase.from('requests').insert(duplicateRow).select('*').single();
-        } catch {}
-        return withVersion({ ok: true, duplicate: true, existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists }, replicated: true });
+          const { data: insData, error: insErr } = await supabase.from('requests').insert(duplicateRow).select('*').single();
+          if (insErr) {
+            replicatedError = insErr.message;
+          } else if (insData) {
+            insertedDuplicate = normalizeRow(insData);
+          }
+        } catch (e: unknown) {
+          replicatedError = e instanceof Error ? e.message : String(e);
+        }
+        return withVersion({
+          ok: true,
+          duplicate: true,
+            existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists },
+          replicated: !!insertedDuplicate,
+          duplicate_row: insertedDuplicate,
+          replicated_error: replicatedError || undefined
+        });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
@@ -149,13 +165,24 @@ export async function POST(req: Request) {
     const normInsert = data ? normalizeRow(data) : data;
     return withVersion({ ok: true, item: normInsert });
   } else {
-    // In-memory duplicate detection
+    // In-memory duplicate detection (allineata alla semantica Supabase: nuova riga duplicata)
     if (body.track_id && body.event_code) {
-      const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
-      if (existing) {
-        existing.duplicates = (existing.duplicates || 0) + 1;
-        existing.duplicates_log = [...(existing.duplicates_log || []), { at: now, requester: body.requester ?? null, note: body.note ?? null }];
-        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists, duplicates_log: existing.duplicates_log } });
+      const dupList = store.filter(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
+      if (dupList.length > 0) {
+        // primo come originale (più vecchio => fine array, ma store è unshift quindi invertito; identifichiamo per created_at)
+        const original = [...dupList].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+        original.duplicates = (original.duplicates || 0) + 1;
+        const duplicateRow: RequestItem = {
+          ...original,
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          created_at: now,
+          note: body.note,
+          requester: body.requester ?? null,
+          duplicates: 0,
+          duplicates_log: []
+        };
+        store.unshift(duplicateRow);
+        return withVersion({ ok: true, duplicate: true, existing: { id: original.id, status: original.status, duplicates: original.duplicates, title: original.title, artists: original.artists }, replicated: true, duplicate_row: duplicateRow });
       }
     }
     store.unshift(item);
