@@ -111,17 +111,20 @@ export async function POST(req: Request) {
         };
   let updErr: unknown;
   let usedFallback = false;
+        let primaryError: unknown = null;
         try {
           const r = await supabase.from('requests').update(fullUpdate).eq('id', existing.id).select('*').single();
           updated = r.data as unknown as RequestItem | null;
           updErr = r.error || null;
           if (updErr) {
+            primaryError = r.error || null;
             usedFallback = true;
             const r2 = await supabase.from('requests').update({ duplicates: fullUpdate.duplicates }).eq('id', existing.id).select('*').single();
             updated = r2.data as unknown as RequestItem | null;
             updErr = r2.error || null;
           }
-        } catch {
+        } catch (eFirst) {
+          primaryError = eFirst;
           // fallback finale
           try {
             usedFallback = true;
@@ -134,10 +137,13 @@ export async function POST(req: Request) {
         }
         if (updErr || !updated) {
           // In ultima istanza non blocchiamo l'UX: restituiamo comunque duplicate true senza updated record (raro)
-          return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists }, log_saved: !usedFallback });
+          const primaryMsg = primaryError instanceof Error ? primaryError.message : undefined;
+          const updMsg = updErr instanceof Error ? updErr.message : undefined;
+          return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists }, log_saved: !usedFallback, fallback_reason: usedFallback ? (primaryMsg || updMsg || 'unknown_error') : undefined });
         }
         const updLogHolder = updated as SupabaseRequestRow;
-        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: updLogHolder.duplicates_log ?? [] }, log_saved: !usedFallback });
+        const primaryMsg = primaryError instanceof Error ? primaryError.message : undefined;
+        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: updLogHolder.duplicates_log ?? [] }, log_saved: !usedFallback, fallback_reason: usedFallback ? (primaryMsg || 'unknown_error') : undefined });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
