@@ -41,6 +41,17 @@ main {
   overscroll-behavior: contain;
 }
 
+/* Flash evidenziazione righe duplicate appena espanse */
+@keyframes flashHighlight {
+  0% { background-color: rgba(234,179,8,0.25); }
+  40% { background-color: rgba(234,179,8,0.15); }
+  70% { background-color: rgba(234,179,8,0.08); }
+  100% { background-color: transparent; }
+}
+.animate-flash-highlight {
+  animation: flashHighlight 1.2s ease-out forwards;
+}
+
 /* Splash styles */
 .splash-overlay {
   position: fixed;
