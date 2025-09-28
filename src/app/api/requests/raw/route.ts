@@ -25,9 +25,9 @@ export async function GET(req: Request) {
   }
   // Fallback in-memory: accediamo allo store tramite import dinamico del modulo principale
   try {
-    const mainMod = await import('../route');
-    // @ts-ignore access internal store (non esportato: se non presente ritorna info)
-    const internalStore: RequestItem[] | undefined = mainMod.__store || mainMod.store || undefined;
+  // Recupero dallo spazio globale impostato nel modulo principale
+  // @ts-expect-error reading debug exposure
+  const internalStore: RequestItem[] | undefined = globalThis.__requestsStore;
     if (!internalStore) {
       return NextResponse.json({ ok: true, supabase: false, reason: 'no_supabase_client_no_store' });
     }

@@ -31,8 +31,11 @@ function normalizeRow(row: unknown): RequestItem {
   const base = row as SupabaseRequestRow;
   return { ...base, duplicates_log: Array.isArray(base?.duplicates_log) ? base.duplicates_log : [] } as RequestItem;
 }
-
-export const store: RequestItem[] = [];
+// Internal in-memory store (non export per compatibilità con type Route Next.js)
+const _memoryStore: RequestItem[] = [];
+// Esposto solo per endpoint debug raw tramite globalThis
+// @ts-expect-error debug exposure
+globalThis.__requestsStore = _memoryStore;
 const BUILD_TAG = 'requests-diagnostics-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
@@ -56,8 +59,8 @@ export async function GET(req: Request) {
     const normalized = (data || []).map(r => normalizeRow(r));
     return withVersion({ ok: true, requests: normalized });
   } else {
-    let list = store;
-    if (id) list = list.filter((r) => r.id === id);
+  let list = _memoryStore;
+  if (id) list = list.filter((r) => r.id === id);
     if (eventCode) list = list.filter((r) => r.event_code === eventCode);
     if (status) list = list.filter((r) => r.status === status);
     if (trackId) list = list.filter((r) => r.track_id === trackId);
@@ -94,8 +97,8 @@ export async function POST(req: Request) {
     // 1. Se disponibile track_id tenta match diretto.
     // 2. Se non trova (o track_id assente) e sono presenti title+artists effettua fallback su normalizzazione (case insensitive, trim) di title+artists.
     if (body.event_code) {
-      type DetectionResult = { original: any; mode: 'track_id' | 'title_artists' } | null;
-      let detection: DetectionResult = null;
+  type DetectionResult = { original: RequestItem; mode: 'track_id' | 'title_artists' } | null;
+  let detection: DetectionResult = null;
       const norm = (s?: string | null) => (s || '').toLowerCase().trim();
 
       // 1. Tentativo via track_id
@@ -108,7 +111,7 @@ export async function POST(req: Request) {
           .in('status', ['new', 'accepted', 'muted'])
           .order('created_at', { ascending: true });
         if (!dupErr && dupList && dupList.length > 0) {
-          detection = { original: dupList[0], mode: 'track_id' };
+          detection = { original: normalizeRow(dupList[0]) as RequestItem, mode: 'track_id' };
         }
       }
 
@@ -124,7 +127,8 @@ export async function POST(req: Request) {
         if (!candErr && candidates && candidates.length > 0) {
           const t = norm(body.title);
           const a = norm(body.artists);
-          const found = candidates.find(r => norm(r.title) === t && norm(r.artists) === a);
+          const typed = candidates.map(c => normalizeRow(c));
+          const found = typed.find(r => norm(r.title) === t && norm(r.artists) === a);
           if (found) {
             detection = { original: found, mode: 'title_artists' };
           }
@@ -202,7 +206,7 @@ export async function POST(req: Request) {
       const norm = (s?: string | null) => (s || '').toLowerCase().trim();
       let original: RequestItem | null = null;
       let detectionMode: 'track_id' | 'title_artists' | null = null;
-      const candidates = store.filter(r => r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
+  const candidates = _memoryStore.filter(r => r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
       if (body.track_id) {
         const byTrack = candidates.filter(r => r.track_id === body.track_id);
         if (byTrack.length > 0) {
@@ -229,11 +233,11 @@ export async function POST(req: Request) {
           duplicates: 0,
           duplicates_log: []
         };
-        store.unshift(duplicateRow);
+  _memoryStore.unshift(duplicateRow);
         return withVersion({ ok: true, duplicate: true, detection_mode: detectionMode, existing: { id: original.id, status: original.status, duplicates: original.duplicates, title: original.title, artists: original.artists }, replicated: true, duplicate_row: duplicateRow });
       }
     }
-    store.unshift(item);
+  _memoryStore.unshift(item);
     return withVersion({ ok: true, item });
   }
 }
@@ -312,9 +316,9 @@ export async function PATCH(req: Request) {
     }
 
     // fallback in-memory
-    const idx = store.findIndex((r) => r.id === body.id);
+  const idx = _memoryStore.findIndex((r) => r.id === body.id);
   if (idx === -1) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
-    const item = store[idx];
+  const item = _memoryStore[idx];
     switch (body.action) {
       case 'accept':
         item.status = 'accepted';
@@ -329,10 +333,10 @@ export async function PATCH(req: Request) {
         item.status = 'cancelled';
         break;
       case 'merge': {
-        const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;
+  const target = body.mergeWithId ? _memoryStore.find((r) => r.id === body.mergeWithId) : null;
         if (target) {
           // Rimuove origin senza incrementare duplicates
-          store.splice(idx, 1);
+          _memoryStore.splice(idx, 1);
           return withVersion({ ok: true, mergedInto: target.id, target });
         } else {
           return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item });
