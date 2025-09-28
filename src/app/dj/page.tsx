@@ -247,6 +247,32 @@ export default function DJPanel() {
     return groups.reverse(); // manteniamo lo stesso orientamento (latest first) come lista originale originaria
   }, [list]);
 
+  // Lista finale renderizzata: se un gruppo è espanso lo sostituiamo con le sue righe reali (originale + duplicate) marcando le duplicate
+  const renderList = useMemo(() => {
+    const out: (GroupedRequest & { __isDuplicateRow?: boolean; __originalGroupId?: string })[] = [];
+    for (const g of groupedList) {
+      const expandedKey = g.__group ? (g.groupKey || g.id) : g.id;
+      if (g.__group && expanded[expandedKey]) {
+        if (g.groupedItems) {
+          g.groupedItems.forEach((item, idx) => {
+            const clone = { ...(item as GroupedRequest), __isDuplicateRow: idx>0, __originalGroupId: expandedKey } as GroupedRequest & { __isDuplicateRow?: boolean; __originalGroupId?: string };
+            // Assicuriamoci che non resti il flag __group sul clone
+            // Rimuove eventuale flag __group ereditato
+            if ('__group' in clone) {
+              delete (clone as unknown as { __group?: true }).__group;
+            }
+            out.push(clone);
+          });
+        } else {
+          out.push(g);
+        }
+      } else {
+        out.push(g);
+      }
+    }
+    return out;
+  }, [groupedList, expanded]);
+
   const [loginLoading, setLoginLoading] = useState(false);
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -616,8 +642,8 @@ export default function DJPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {groupedList.map((r) => (
-                    <tr key={r.id} className="border-b border-zinc-800">
+                  {renderList.map((r) => (
+                    <tr key={r.id + (r.__isDuplicateRow?'-dup':'' )} className="border-b border-zinc-800">
                       <td className="p-2">{r.requester || '-'}</td>
                       <td className="p-2">{r.title}</td>
                       <td className="p-2">{r.artists}</td>
@@ -626,56 +652,37 @@ export default function DJPanel() {
                       <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
                       <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
                       <td className="p-2 align-top">
-                        <button
-                          type="button"
-                          onClick={() => r.__group ? setExpanded(e=>({...e,[r.groupKey||r.id]:!e[r.groupKey||r.id]})) : r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
-                          className={`px-1 rounded text-left min-w-[70px] ${(r.__group || r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                          title={r.__group ? 'Clicca per vedere richieste individuali' : (r.duplicates ? 'Clicca per vedere duplicati' : '')}
-                        >{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</button>
-                        {r.__group && expanded[r.groupKey || r.id] && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[620px] space-y-2">
-                            <div className="opacity-70 mb-1">Richieste unite e duplicati</div>
-                            <table className="w-full text-[10px] border-collapse">
-                              <thead>
-                                <tr className="text-left opacity-60">
-                                  <th className="py-1 pr-2">Tipo</th>
-                                  <th className="py-1 pr-2">Utente</th>
-                                  <th className="py-1 pr-2">Ora</th>
-                                  <th className="py-1 pr-2">Stato</th>
-                                  <th className="py-1 pr-2">Nota</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {r.groupedItems?.map((sub, idx) => (
-                                  <tr key={sub.id} className="border-t border-zinc-800/60">
-                                    <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${idx===0?'bg-zinc-700/70':'bg-yellow-700/60'}`}>{idx===0?'originale':'duplicate'}</span></td>
-                                    <td className="py-1 pr-2 align-top">{sub.requester||'-'}</td>
-                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(sub.created_at).toLocaleTimeString()}</td>
-                                    <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span></td>
-                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{sub.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                        {!r.__isDuplicateRow && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (r.__group) {
+                                const k = r.groupKey || r.id;
+                                setExpanded(e => ({ ...e, [k]: !e[k] }));
+                              }
+                            }}
+                            className={`px-1 rounded text-left min-w-[70px] ${(r.__group && r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                            title={r.__group ? 'Clicca per espandere / collassare' : ''}
+                          >{r.status}{r.__group && r.duplicates ? ` (+${r.duplicates})` : ''}</button>
                         )}
-                        {(!r.__group && r.duplicates && expanded[r.id]) && (
-                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[620px] space-y-2">
-                            <div className="opacity-70 mb-1">Duplicati (solo righe reali)</div>
-                            <div className="opacity-50 italic">(Formato semplificato: creare più richieste identiche per vederle qui)</div>
-                          </div>
+                        {r.__isDuplicateRow && (
+                          <span className={`px-1 rounded text-left inline-block ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
+                        )}
+                        {r.__isDuplicateRow && (
+                          <div className="mt-1 text-[9px] text-yellow-500/70">duplicate</div>
                         )}
                       </td>
                       <td className="p-2 flex flex-wrap gap-1">
-                        {r.__group ? (
-                          <span className="text-[10px] opacity-60">Espandi per moderare</span>
-                        ) : (
+                        {(!r.__group || r.__isDuplicateRow) && (
                           <>
                             <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
                             <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
                             <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
                             <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
                           </>
+                        )}
+                        {r.__group && !r.__isDuplicateRow && (
+                          <span className="text-[10px] opacity-60">Click per vedere duplicati</span>
                         )}
                       </td>
                     </tr>
