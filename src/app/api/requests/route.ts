@@ -24,6 +24,17 @@ type RequestItem = {
   duplicates_log?: { at: string; requester?: string | null; note?: string | null }[];
 };
 
+// Tipo row Supabase (duplicates_log può essere null / assente)
+type SupabaseRequestRow = Omit<RequestItem, 'duplicates_log'> & { duplicates_log?: RequestItem['duplicates_log'] | null };
+
+function normalizeRow(row: unknown): RequestItem {
+  const base = row as SupabaseRequestRow; // cast strutturale (Supabase non tipizzato)
+  return {
+    ...base,
+    duplicates_log: base && Array.isArray(base.duplicates_log) ? base.duplicates_log : [],
+  } as RequestItem;
+}
+
 const store: RequestItem[] = [];
 const BUILD_TAG = 'requests-diagnostics-v1';
 
@@ -46,7 +57,7 @@ export async function GET(req: Request) {
     if (trackId) q = q.eq('track_id', trackId);
   const { data, error } = await q;
   if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
-  const normalized = (data || []).map(r => ({ ...r, duplicates_log: (r as any).duplicates_log ?? [] }));
+  const normalized = (data || []).map(r => normalizeRow(r));
   return withVersion({ ok: true, requests: normalized });
   } else {
     let list = store;
@@ -127,7 +138,8 @@ export async function POST(req: Request) {
           // In ultima istanza non blocchiamo l'UX: restituiamo comunque duplicate true senza updated record (raro)
           return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists } });
         }
-  return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: (updated as any).duplicates_log ?? [] } });
+  const updLogHolder = updated as SupabaseRequestRow;
+  return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: updLogHolder.duplicates_log ?? [] } });
       }
     }
   const { data, error } = await supabase.from('requests').insert(item).select('*').single();
@@ -136,7 +148,7 @@ export async function POST(req: Request) {
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
-  const normInsert = data ? { ...data, duplicates_log: (data as any).duplicates_log ?? [] } : data;
+  const normInsert = data ? normalizeRow(data) : data;
   return withVersion({ ok: true, item: normInsert });
   } else {
     // In-memory duplicate detection
