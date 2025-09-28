@@ -14,6 +14,8 @@ type RequestItem = {
   isrc?: string | null;
   explicit?: boolean; // keep boolean type
   preview_url?: string | null;
+  duration_ms?: number; // opzionale: se presente formattiamo mm:ss
+  duration?: number; // fallback in secondi se arriva dal client
   note?: string;
   event_code?: string | null;
   requester?: string | null;
@@ -213,6 +215,35 @@ export default function DJPanel() {
 
   // Lista flat: ordina solo per created_at DESC (già server likely ordina, reforziamo)
   const flatList = useMemo(() => [...list].sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [list]);
+
+  // Mappa per contare quante richieste per coppia (event_code + track_id OR title+artists) e identificare la più recente
+  const latestDuplicateIds = useMemo(() => {
+    const latest: Set<string> = new Set();
+    const groups: Record<string, { latestId: string; latestAt: number; count: number }> = {};
+    const norm = (s?: string|null) => (s||'').toLowerCase().trim();
+    for (const r of list) {
+      const key = (r.event_code||'') + '::' + (r.track_id || (norm(r.title)+'::'+norm(r.artists)));
+      const ts = new Date(r.created_at).getTime();
+      if (!groups[key]) groups[key] = { latestId: r.id, latestAt: ts, count: 1 };
+      else {
+        groups[key].count += 1;
+        if (ts > groups[key].latestAt) { groups[key].latestAt = ts; groups[key].latestId = r.id; }
+      }
+    }
+    Object.values(groups).forEach(g => { if (g.count > 1) latest.add(g.latestId); });
+    return latest;
+  }, [list]);
+
+  function formatDuration(r: RequestItem): string | null {
+    let ms: number | undefined;
+    if (typeof r.duration_ms === 'number') ms = r.duration_ms;
+    else if (typeof r.duration === 'number') ms = r.duration * 1000;
+    if (ms == null || isNaN(ms) || ms <= 0) return null;
+    const totalSec = Math.round(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m}:${s.toString().padStart(2,'0')}`;
+  }
 
   // Lista finale renderizzata: se un gruppo è espanso lo sostituiamo con le sue righe reali (originale + duplicate) marcando le duplicate
   // Con layout unificato non costruiamo più una lista intermedia a tabella.
@@ -611,8 +642,11 @@ export default function DJPanel() {
             </div>
 
             <div className="flex flex-col gap-2">
-              {flatList.map(r => (
-                <div key={r.id} className="bg-zinc-800 rounded p-3 flex flex-col gap-2 text-xs">
+              {flatList.map(r => {
+                const isLatestDuplicate = latestDuplicateIds.has(r.id);
+                const durationFmt = formatDuration(r);
+                return (
+                <div key={r.id} className={`rounded p-3 flex flex-col gap-2 text-xs border ${isLatestDuplicate ? 'bg-yellow-900/50 border-yellow-600' : 'bg-zinc-800 border-transparent'}`}>
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold truncate">{r.title}</span>
                     <span className="text-[10px] opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</span>
@@ -621,12 +655,14 @@ export default function DJPanel() {
                     <span>{r.artists}</span>
                     <span className="opacity-50">•</span>
                     <span className="truncate max-w-[40%]">{r.album}</span>
+                    {durationFmt && <><span className="opacity-50">•</span><span className="font-mono">{durationFmt}</span></>}
                   </div>
                   {r.note ? <div className="text-[11px] bg-zinc-900/70 px-2 py-1 rounded leading-snug whitespace-pre-wrap break-words">{r.note}</div> : null}
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
                     <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
+                    {isLatestDuplicate && <span className="px-1 rounded bg-yellow-600 text-black font-semibold">dup latest</span>}
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
@@ -635,7 +671,7 @@ export default function DJPanel() {
                     <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
                   </div>
                 </div>
-              ))}
+              );})}
             </div>
 
             <div className="flex gap-4 mt-4 text-sm">

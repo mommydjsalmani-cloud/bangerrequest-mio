@@ -14,6 +14,7 @@ export type RequestItem = {
   isrc?: string | null;
   explicit?: boolean;
   preview_url?: string | null;
+  duration_ms?: number | null;
   note?: string;
   event_code?: string | null;
   requester?: string | null;
@@ -86,6 +87,7 @@ export async function POST(req: Request) {
     isrc: body.isrc ?? null,
     explicit: !!body.explicit,
     preview_url: body.preview_url ?? null,
+    duration_ms: typeof body.duration_ms === 'number' ? body.duration_ms : (typeof (body as any).duration === 'number' ? ((body as any).duration as number) * 1000 : null),
     note: body.note,
     event_code: body.event_code ?? null,
     requester: body.requester ?? null,
@@ -159,6 +161,7 @@ export async function POST(req: Request) {
           isrc: updatedOriginal.isrc,
           explicit: updatedOriginal.explicit,
           preview_url: updatedOriginal.preview_url,
+          duration_ms: updatedOriginal.duration_ms ?? null,
           note: body.note,
           event_code: updatedOriginal.event_code,
           requester: body.requester ?? null,
