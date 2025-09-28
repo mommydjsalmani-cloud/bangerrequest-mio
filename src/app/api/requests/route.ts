@@ -107,21 +107,50 @@ export async function PATCH(req: Request) {
     const supabase = getSupabase();
     if (supabase) {
       if (body.action === 'merge') {
+        // Se viene passato mergeWithId usiamo comportamento esplicito esistente
         if (body.mergeWithId) {
           const { data: target, error: e1 } = await supabase.from('requests').select('*').eq('id', body.mergeWithId).single();
           if (e1 || !target) return withVersion({ ok: false, error: 'merge_target_not_found' }, { status: 404 });
-          const { error: e2 } = await supabase.from('requests').delete().eq('id', body.id);
-          if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
-          const { data, error: e3 } = await supabase.from('requests').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
-          if (e3) return withVersion({ ok: false, error: e3.message }, { status: 500 });
-          return withVersion({ ok: true, mergedInto: body.mergeWithId, target: data });
-        } else {
-          const { data, error } = await supabase.from('requests').select('*').eq('id', body.id).single();
-          if (error || !data) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
-          const { data: upd, error: e2 } = await supabase.from('requests').update({ duplicates: (data.duplicates || 0) + 1 }).eq('id', body.id).select('*').single();
-          if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
-          return withVersion({ ok: true, item: upd });
+          const { data: origin, error: eOrigin } = await supabase.from('requests').select('*').eq('id', body.id).single();
+          if (eOrigin || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
+          // Elimina origin
+          const { error: delErr } = await supabase.from('requests').delete().eq('id', body.id);
+          if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
+          // Incrementa duplicates target
+            const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
+            if (updErr) return withVersion({ ok: false, error: updErr.message }, { status: 500 });
+            return withVersion({ ok: true, mergedInto: body.mergeWithId, target: updated, origin });
         }
+        // AUTO-MERGE: trova un candidato con stessa track_id oppure (titolo+artisti) simili nello stesso evento
+        const { data: origin, error: originErr } = await supabase.from('requests').select('*').eq('id', body.id).single();
+        if (originErr || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
+        // Criteri di similarità: stessa track_id OR (lower(title) + lower(artists)) e stesso event_code
+        let candidateQuery = supabase.from('requests').select('*').neq('id', origin.id);
+        if (origin.event_code) candidateQuery = candidateQuery.eq('event_code', origin.event_code);
+        const { data: allCandidates, error: candErr } = await candidateQuery.limit(200);
+        if (candErr) return withVersion({ ok: false, error: candErr.message }, { status: 500 });
+        const norm = (s?: string|null) => (s||'').toLowerCase().trim();
+        const oTitle = norm(origin.title);
+        const oArtists = norm(origin.artists);
+        let best: any = null;
+        if (origin.track_id) {
+          best = (allCandidates||[]).find(r => r.track_id === origin.track_id);
+        }
+        if (!best) {
+          best = (allCandidates||[]).find(r => norm(r.title) === oTitle && norm(r.artists) === oArtists);
+        }
+        if (!best) {
+          // Nessun candidato: incrementa duplicates sull'origin per indicare tentativo inutile (o restituisci errore specifico)
+          const { data: updSelf, error: selfErr } = await supabase.from('requests').update({ duplicates: (origin.duplicates || 0) + 1 }).eq('id', origin.id).select('*').single();
+          if (selfErr) return withVersion({ ok: false, error: selfErr.message }, { status: 500 });
+          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item: updSelf });
+        }
+        // Esegui merge origin -> best
+        const { error: delErr } = await supabase.from('requests').delete().eq('id', origin.id);
+        if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
+        const { data: updBest, error: updErr } = await supabase.from('requests').update({ duplicates: (best.duplicates || 0) + 1 }).eq('id', best.id).select('*').single();
+        if (updErr) return withVersion({ ok: false, error: updErr.message }, { status: 500 });
+        return withVersion({ ok: true, autoMerged: true, mergedInto: best.id, target: updBest, origin });
       }
       if (body.action === 'cancel') {
         const { data, error } = await supabase.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
