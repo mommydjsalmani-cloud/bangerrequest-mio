@@ -44,9 +44,10 @@ export async function GET(req: Request) {
     if (eventCode) q = q.eq('event_code', eventCode);
     if (status) q = q.eq('status', status);
     if (trackId) q = q.eq('track_id', trackId);
-    const { data, error } = await q;
-    if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
-    return withVersion({ ok: true, requests: data || [] });
+  const { data, error } = await q;
+  if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
+  const normalized = (data || []).map(r => ({ ...r, duplicates_log: (r as any).duplicates_log ?? [] }));
+  return withVersion({ ok: true, requests: normalized });
   } else {
     let list = store;
     if (id) list = list.filter((r) => r.id === id);
@@ -126,16 +127,17 @@ export async function POST(req: Request) {
           // In ultima istanza non blocchiamo l'UX: restituiamo comunque duplicate true senza updated record (raro)
           return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: (existing.duplicates||0)+1, title: existing.title, artists: existing.artists } });
         }
-        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: (updated as RequestItem).duplicates_log } });
+  return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: (updated as any).duplicates_log ?? [] } });
       }
     }
-    const { data, error } = await supabase.from('requests').insert(item).select('*').single();
+  const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
       interface PgErr { code?: string; hint?: string | null; details?: string | null }
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
-    return withVersion({ ok: true, item: data });
+  const normInsert = data ? { ...data, duplicates_log: (data as any).duplicates_log ?? [] } : data;
+  return withVersion({ ok: true, item: normInsert });
   } else {
     // In-memory duplicate detection
     if (body.track_id && body.event_code) {
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
       }
     }
     store.unshift(item);
-    return withVersion({ ok: true, item });
+  return withVersion({ ok: true, item });
   }
 }
 

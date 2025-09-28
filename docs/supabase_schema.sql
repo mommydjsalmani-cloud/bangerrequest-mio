@@ -18,7 +18,9 @@ create table if not exists public.requests (
   event_code text,
   requester text,
   status text not null default 'new',
-  duplicates integer not null default 0
+  duplicates integer not null default 0,
+  -- Log dei duplicati (solo POST duplicati). Array di oggetti: [{ at, requester, note }]
+  duplicates_log jsonb
 );
 
 create index if not exists idx_requests_event_code on public.requests(event_code);
@@ -41,3 +43,6 @@ create index if not exists idx_events_status on public.events(status);
 -- alter table public.events add column if not exists status text not null default 'active';
 -- update public.events set status = case when active then 'active' else 'paused' end where status is null or status not in ('active','paused','closed');
 -- create index concurrently if not exists idx_events_status on public.events(status);
+-- Per aggiungere il log duplicati se mancante:
+-- alter table public.requests add column if not exists duplicates_log jsonb;
+-- (opzionale) aggiornare i record esistenti senza log: update public.requests set duplicates_log = '[]'::jsonb where duplicates_log is null;
