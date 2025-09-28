@@ -585,7 +585,6 @@ export default function DJPanel() {
                       <td className="p-2 flex flex-wrap gap-1">
                         <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
                         <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
-                        <button onClick={() => act(r.id, 'merge')} className="bg-yellow-700 px-2 py-1 rounded">Unisci</button>
                         <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
                         <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
                       </td>
@@ -615,7 +614,6 @@ export default function DJPanel() {
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
                     <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
-                    <button onClick={() => act(r.id, 'merge')} className="flex-1 min-w-[30%] bg-yellow-700 py-1 rounded">Unisci</button>
                     <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
                     <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
                   </div>
