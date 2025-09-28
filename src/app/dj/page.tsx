@@ -62,7 +62,7 @@ export default function DJPanel() {
   const [lastDetectionMode] = useState<string | null>(null); // placeholder per future integrazione
 
   useEffect(() => {
-    // Note: health checks removed as persistence mode and auth config not displayed
+    // Health checks rimossi per evitare variabili non utilizzate
   }, []);
 
   useEffect(() => {
