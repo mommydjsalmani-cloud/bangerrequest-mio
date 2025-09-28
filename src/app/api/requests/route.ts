@@ -139,13 +139,10 @@ export async function PATCH(req: Request) {
           if (e1 || !target) return withVersion({ ok: false, error: 'merge_target_not_found' }, { status: 404 });
           const { data: origin, error: eOrigin } = await supabase.from('requests').select('*').eq('id', body.id).single();
           if (eOrigin || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
-          // Elimina origin
           const { error: delErr } = await supabase.from('requests').delete().eq('id', body.id);
           if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
-          // Incrementa duplicates target
-            const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
-            if (updErr) return withVersion({ ok: false, error: updErr.message }, { status: 500 });
-            return withVersion({ ok: true, mergedInto: body.mergeWithId, target: updated, origin });
+          // Non incrementiamo duplicates: semantica aggiornata (solo POST dup)
+          return withVersion({ ok: true, mergedInto: body.mergeWithId, target, origin });
         }
         // AUTO-MERGE: trova un candidato con stessa track_id oppure (titolo+artisti) simili nello stesso evento
         const { data: origin, error: originErr } = await supabase.from('requests').select('*').eq('id', body.id).single();
@@ -167,17 +164,12 @@ export async function PATCH(req: Request) {
           best = candidates.find(r => norm(r.title) === oTitle && norm(r.artists) === oArtists) || null;
         }
         if (!best) {
-          // Nessun candidato: incrementa duplicates sull'origin per indicare tentativo inutile (o restituisci errore specifico)
-          const { data: updSelf, error: selfErr } = await supabase.from('requests').update({ duplicates: (origin.duplicates || 0) + 1 }).eq('id', origin.id).select('*').single();
-          if (selfErr) return withVersion({ ok: false, error: selfErr.message }, { status: 500 });
-          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item: updSelf });
+          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item: origin });
         }
         // Esegui merge origin -> best
         const { error: delErr } = await supabase.from('requests').delete().eq('id', origin.id);
         if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
-        const { data: updBest, error: updErr } = await supabase.from('requests').update({ duplicates: (best.duplicates || 0) + 1 }).eq('id', best.id).select('*').single();
-        if (updErr) return withVersion({ ok: false, error: updErr.message }, { status: 500 });
-        return withVersion({ ok: true, autoMerged: true, mergedInto: best.id, target: updBest, origin });
+        return withVersion({ ok: true, autoMerged: true, mergedInto: best.id, target: best, origin });
       }
       if (body.action === 'cancel') {
         const { data, error } = await supabase.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
@@ -216,11 +208,11 @@ export async function PATCH(req: Request) {
       case 'merge': {
         const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;
         if (target) {
-          target.duplicates = (target.duplicates || 0) + 1;
+          // Rimuove origin senza incrementare duplicates
           store.splice(idx, 1);
-          return NextResponse.json({ ok: true, mergedInto: target.id, target });
+          return withVersion({ ok: true, mergedInto: target.id, target });
         } else {
-          item.duplicates = (item.duplicates || 0) + 1;
+          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item });
         }
         break;
       }

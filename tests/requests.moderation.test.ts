@@ -16,16 +16,16 @@ describe('Requests moderation (merge/mute)', () => {
     expect(mj.item.status).toBe('muted');
   });
 
-  it('merge incrementa duplicates senza target e poi con target', async () => {
+  it('merge non altera contatore duplicates (solo POST dup lo fa)', async () => {
     // primo request
     const r1 = await createRequest(buildRequest('POST', 'http://localhost/api/requests', { track_id:'x1', title:'Song X', artists:'Artist' }) as any);
     const j1 = await parseJSON(r1 as any);
     const id1 = j1.item.id;
-    // merge self (increment duplicates)
+    // merge self (auto merge senza target): ora non incrementa duplicates
     const mergeSelf = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id1, action:'merge' }, { 'x-dj-secret':'77', 'x-dj-user':'mommy' }) as any);
     expect(mergeSelf.status).toBe(200);
     const msj = await parseJSON(mergeSelf as any);
-    expect(msj.item.duplicates).toBe(1);
+    expect(msj.item.duplicates || 0).toBe(0);
 
     // seconda request
     const r2 = await createRequest(buildRequest('POST', 'http://localhost/api/requests', { track_id:'x1', title:'Song X', artists:'Artist' }) as any);
@@ -36,6 +36,6 @@ describe('Requests moderation (merge/mute)', () => {
     const mergeInto = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id2, action:'merge', mergeWithId: id1 }, { 'x-dj-secret':'77', 'x-dj-user':'mommy' }) as any);
     expect(mergeInto.status).toBe(200);
     const mi = await parseJSON(mergeInto as any);
-    expect(mi.target.duplicates).toBe(2);
+    expect(mi.target.duplicates || 0).toBe(0);
   });
 });
