@@ -153,12 +153,13 @@ export async function PATCH(req: Request) {
         const norm = (s?: string|null) => (s||'').toLowerCase().trim();
         const oTitle = norm(origin.title);
         const oArtists = norm(origin.artists);
-        let best: any = null;
+        let best: RequestItem | null = null;
+        const candidates: RequestItem[] = (allCandidates || []) as unknown as RequestItem[];
         if (origin.track_id) {
-          best = (allCandidates||[]).find(r => r.track_id === origin.track_id);
+          best = candidates.find(r => r.track_id === origin.track_id) || null;
         }
         if (!best) {
-          best = (allCandidates||[]).find(r => norm(r.title) === oTitle && norm(r.artists) === oArtists);
+          best = candidates.find(r => norm(r.title) === oTitle && norm(r.artists) === oArtists) || null;
         }
         if (!best) {
           // Nessun candidato: incrementa duplicates sull'origin per indicare tentativo inutile (o restituisci errore specifico)

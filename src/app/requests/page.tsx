@@ -160,14 +160,14 @@ export default function Requests() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-  type PostResp = { ok?: boolean; item?: { id?: string; status?: string }; error?: string; details?: { code?: string } } | null;
+  type PostRespBase = { ok?: boolean; error?: string; details?: { code?: string } };
+  type PostResp = (PostRespBase & { item?: { id?: string; status?: string } } & { duplicate?: boolean; existing?: { id?: string; status?: string; title?: string; artists?: string } }) | null;
   let j: PostResp = null;
   try { j = await res.json(); } catch { j = null; }
     if (j && j.ok) {
       // Caso duplicate
-      // @ts-expect-error proprietà duplicate possibile dalla API
       if (j.duplicate && j.existing) {
-        const ex = (j as any).existing as { id?: string; status?: string; title?: string; artists?: string };
+        const ex = j.existing;
         setMessage('Questo brano è già in coda ✅');
         if (ex.id) {
           sessionStorage.setItem('banger_last_request_id', ex.id);

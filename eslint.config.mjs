@@ -20,6 +20,25 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  // Override per test: consentiamo l'uso di any nei test per evitare build fail
+  {
+    files: ["tests/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      // Riduci rumore su variabili inutilizzate in test
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
+      ],
+    },
+  },
+  // Script Node puri: permettiamo require()
+  {
+    files: ["scripts/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;

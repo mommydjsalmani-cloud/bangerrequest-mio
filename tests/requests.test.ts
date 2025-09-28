@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { POST as createRequest, GET as getRequests, PATCH as patchRequest } from '@/app/api/requests/route';
-import { POST as eventsPOST } from '@/app/api/events/route';
+import { POST as createRequest, PATCH as patchRequest } from '@/app/api/requests/route';
 import { buildRequest, parseJSON } from './testRoutes';
 
 process.env.DJ_PANEL_SECRET = '77';
