@@ -216,6 +216,10 @@ export default function DJPanel() {
     }
     const groupsCount = byKey.size;
     const duplicates = Math.max(0, total - groupsCount);
+    if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+      // Diagnostica: mostra come viene calcolato
+      console.debug('[dj-panel][stats] total', total, 'groups', groupsCount, 'duplicates', duplicates);
+    }
     return { total, lastHour, duplicates };
   }, [list]);
 
@@ -672,7 +676,12 @@ export default function DJPanel() {
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-              <div className="flex justify-end mb-2">
+              <div className="flex flex-wrap items-center justify-between mb-2 gap-2 text-[11px]">
+                <div className="flex gap-2 items-center flex-wrap">
+                  <span className="opacity-60">Legenda:</span>
+                  <span className="flex items-center gap-1"><span className="px-1 rounded bg-yellow-800/60 text-yellow-200 font-mono text-[10px]">dup new</span><span className="opacity-50">= duplicato non accettato</span></span>
+                  <span className="flex items-center gap-1"><span className="px-1 rounded bg-green-800/60 text-green-200 font-mono text-[10px]">dup acc</span><span className="opacity-50">= duplicato già accettato</span></span>
+                </div>
                 {Object.keys(expanded).some(k=>expanded[k]) && (
                   <button
                     type="button"
@@ -708,17 +717,22 @@ export default function DJPanel() {
                       <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
                       <td className="p-2 align-top">
                         {!r.__isDuplicateRow && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (r.__group) {
-                                const k = r.groupKey || r.id;
-                                setExpanded(e => ({ ...e, [k]: !e[k] }));
-                              }
-                            }}
-                            className={`px-1 rounded text-left min-w-[70px] ${(r.__group && r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                            title={r.__group ? 'Clicca per espandere / collassare' : ''}
-                          >{r.status}{r.__group && r.duplicates ? ` (+${r.duplicates})` : ''}</button>
+                          <div className="flex flex-col gap-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (r.__group) {
+                                  const k = r.groupKey || r.id;
+                                  setExpanded(e => ({ ...e, [k]: !e[k] }));
+                                }
+                              }}
+                              className={`px-1 rounded text-left min-w-[70px] ${(r.__group && r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                              title={r.__group ? 'Clicca per espandere / collassare' : ''}
+                            >{r.status}{r.__group && r.duplicates ? ` (+${r.duplicates})` : ''}</button>
+                            {r.__group && r.duplicates ? (
+                              <span className={`px-1 rounded text-[9px] inline-block font-mono tracking-tight ${r.groupedItems?.some(gx=>gx.status==='accepted' && gx.id!==r.id)?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'}`}>{r.groupedItems?.some(gx=>gx.status==='accepted' && gx.id!==r.id)?'dup acc':'dup new'}</span>
+                            ) : null}
+                          </div>
                         )}
                         {r.__isDuplicateRow && (
                           <div className="flex flex-col gap-0.5">
@@ -749,6 +763,11 @@ export default function DJPanel() {
               </table>
             </div>
             <div className="md:hidden flex flex-col gap-2">
+              <div className="text-[10px] flex flex-wrap gap-2 items-center">
+                <span className="opacity-60">Legenda:</span>
+                <span className="px-1 rounded bg-yellow-800/60 text-yellow-200 font-mono">dup new</span>
+                <span className="px-1 rounded bg-green-800/60 text-green-200 font-mono">dup acc</span>
+              </div>
               {Object.keys(expanded).some(k=>expanded[k]) && (
                 <button
                   type="button"
