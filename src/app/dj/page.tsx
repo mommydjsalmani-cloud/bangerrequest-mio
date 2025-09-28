@@ -12,13 +12,14 @@ type RequestItem = {
   album?: string;
   cover_url?: string | null;
   isrc?: string | null;
-  explicit?: boolean;
+  explicit?: boolean; // keep boolean type
   preview_url?: string | null;
   note?: string;
   event_code?: string | null;
   requester?: string | null;
   status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
   duplicates?: number;
+  duplicates_log?: { at: string; requester?: string | null; note?: string | null }[];
 };
 
 type EventItem = {
@@ -36,6 +37,7 @@ export default function DJPanel() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [list, setList] = useState<RequestItem[]>([]);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -579,8 +581,24 @@ export default function DJPanel() {
                       <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
                       <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
                       <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
-                      <td className="p-2">
-                        <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</span>
+                      <td className="p-2 align-top">
+                        <button
+                          type="button"
+                          onClick={() => r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
+                          className={`px-1 rounded text-left min-w-[70px] ${r.duplicates?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                          title={r.duplicates ? 'Clicca per vedere richieste duplicate' : ''}
+                        >{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</button>
+                        {expanded[r.id] && r.duplicates_log && r.duplicates_log.length > 0 && (
+                          <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[220px] space-y-1">
+                            <div className="opacity-70">Duplicati:</div>
+                            {r.duplicates_log.map((d,i)=>(
+                              <div key={i} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                                <div className="flex justify-between gap-2"><span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span><span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span></div>
+                                {d.note ? <div className="mt-0.5 whitespace-pre-wrap break-words">{d.note}</div> : null}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="p-2 flex flex-wrap gap-1">
                         <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
@@ -609,8 +627,24 @@ export default function DJPanel() {
                   <div className="flex flex-wrap items-center gap-2 text-[11px]">
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
-                    <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</span>
+                    <button
+                      type="button"
+                      onClick={() => r.duplicates ? setExpanded(e=>({...e,[r.id]:!e[r.id]})) : undefined}
+                      className={`px-1 rounded ${r.duplicates?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
+                      title={r.duplicates ? 'Tocca per vedere richieste duplicate' : ''}
+                    >{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</button>
                   </div>
+                  {expanded[r.id] && r.duplicates_log && r.duplicates_log.length > 0 && (
+                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
+                      <div className="opacity-70">Duplicati:</div>
+                      {r.duplicates_log.map((d,i)=>(
+                        <div key={i} className="border-b border-zinc-800 last:border-0 pb-1 last:pb-0">
+                          <div className="flex justify-between gap-2"><span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span><span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span></div>
+                          {d.note ? <div className="mt-0.5 whitespace-pre-wrap break-words">{d.note}</div> : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
                     <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>

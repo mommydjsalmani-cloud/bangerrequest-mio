@@ -19,6 +19,9 @@ type RequestItem = {
   requester?: string | null;
   status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
   duplicates?: number; // how many times merged/duplicated
+  // Log dettagliato degli arrivi duplicati (solo POST duplicati, non merge):
+  // Ogni entry: { at: ISO timestamp, requester, note }
+  duplicates_log?: { at: string; requester?: string | null; note?: string | null }[];
 };
 
 const store: RequestItem[] = [];
@@ -87,11 +90,40 @@ export async function POST(req: Request) {
       if (!dupErr && dupList && dupList.length > 0) {
         // Incrementiamo duplicates sull'esistente per contare arrivo di una nuova richiesta uguale
         const existing = dupList[0];
-        const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
-        if (updErr || !updated) {
-          return withVersion({ ok: false, error: updErr?.message || 'duplicate_update_failed' }, { status: 500 });
+        const newLogEntry = { at: now, requester: body.requester ?? null, note: body.note ?? null };
+        let updated;
+        // Proviamo ad aggiornare anche duplicates_log se la colonna esiste; se fallisce per colonna inesistente ripieghiamo su solo duplicates
+        const currentLog = (existing as unknown as RequestItem).duplicates_log || [];
+        const fullUpdate: Partial<RequestItem> & { duplicates: number } = {
+          duplicates: (existing.duplicates || 0) + 1,
+          duplicates_log: [...currentLog, newLogEntry],
+        };
+        let updErr: unknown;
+        try {
+          const r = await supabase.from('requests').update(fullUpdate).eq('id', existing.id).select('*').single();
+          updated = r.data as unknown as RequestItem | null;
+          updErr = r.error || null;
+          // Se errore per colonna mancante (42703) facciamo fallback
+          if (updErr && typeof updErr === 'object' && updErr !== null && 'code' in updErr && (updErr as { code?: string }).code === '42703') {
+            const r2 = await supabase.from('requests').update({ duplicates: fullUpdate.duplicates }).eq('id', existing.id).select('*').single();
+            updated = r2.data as unknown as RequestItem | null;
+            updErr = r2.error || null;
+          }
+        } catch {
+          // fallback: prova update semplice
+          try {
+            const r3 = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
+            updated = r3.data as unknown as RequestItem | null;
+            updErr = r3.error || null;
+          } catch (e2) {
+            updErr = e2;
+          }
         }
-        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists } });
+        if (updErr || !updated) {
+          const message = (typeof updErr === 'object' && updErr !== null && 'message' in updErr) ? (updErr as { message?: string }).message : undefined;
+          return withVersion({ ok: false, error: message || 'duplicate_update_failed' }, { status: 500 });
+        }
+        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists, duplicates_log: (updated as RequestItem).duplicates_log } });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
@@ -107,7 +139,8 @@ export async function POST(req: Request) {
       const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
       if (existing) {
         existing.duplicates = (existing.duplicates || 0) + 1;
-        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
+        existing.duplicates_log = [...(existing.duplicates_log || []), { at: now, requester: body.requester ?? null, note: body.note ?? null }];
+        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists, duplicates_log: existing.duplicates_log } });
       }
     }
     store.unshift(item);
