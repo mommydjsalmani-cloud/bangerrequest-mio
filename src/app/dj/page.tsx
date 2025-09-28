@@ -64,7 +64,7 @@ export default function DJPanel() {
   const [rawLoading, setRawLoading] = useState(false);
   const [rawData, setRawData] = useState<GenericJSON | null>(null);
   // Stato per mostrare ultimo detection_mode ricevuto da un POST duplicato (se si decide di integrare in futuro la creazione client-side)
-  const [lastDetectionMode, setLastDetectionMode] = useState<string | null>(null);
+  const [lastDetectionMode] = useState<string | null>(null); // placeholder per future integrazione
 
   useEffect(() => {
     // Recupera stato persistenza (non blocca il resto)
@@ -267,36 +267,7 @@ export default function DJPanel() {
   }, [list]);
 
   // Lista finale renderizzata: se un gruppo è espanso lo sostituiamo con le sue righe reali (originale + duplicate) marcando le duplicate
-  const renderList = useMemo(() => {
-    const out: (GroupedRequest & { __isDuplicateRow?: boolean; __originalGroupId?: string; __originalRequestId?: string })[] = [];
-    for (const g of groupedList) {
-      const expandedKey = g.__group ? (g.groupKey || g.id) : g.id;
-      if (g.__group && expanded[expandedKey]) {
-        if (g.groupedItems && g.groupedItems.length) {
-          // L'item originale rimane il rappresentante (prima riga). Duplicati mostrati subito sotto più RECENTI per primi.
-          // Troviamo l'originale: è l'elemento della groupedItems con created_at minore (già ordinati asc) oppure rappresentante stesso.
-          const originalItem = [...g.groupedItems].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-          // Costruiamo lista duplicati escludendo original e ordinandoli per created_at DESC
-          const duplicates = g.groupedItems.filter(it => it.id !== originalItem.id).sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-          // Push originale (non marcato come duplicate)
-          const originalClone = { ...(originalItem as GroupedRequest), __isDuplicateRow: false, __originalGroupId: expandedKey, __originalRequestId: originalItem.id } as GroupedRequest & { __isDuplicateRow?: boolean; __originalGroupId?: string; __originalRequestId?: string };
-          if ('__group' in originalClone) delete (originalClone as unknown as { __group?: true }).__group;
-          out.push(originalClone);
-          // Push duplicati
-          duplicates.forEach((dup) => {
-            const clone = { ...(dup as GroupedRequest), __isDuplicateRow: true, __originalGroupId: expandedKey, __originalRequestId: originalItem.id } as GroupedRequest & { __isDuplicateRow?: boolean; __originalGroupId?: string; __originalRequestId?: string };
-            if ('__group' in clone) delete (clone as unknown as { __group?: true }).__group;
-            out.push(clone);
-          });
-        } else {
-          out.push(g);
-        }
-      } else {
-        out.push(g);
-      }
-    }
-    return out;
-  }, [groupedList, expanded]);
+  // Con layout unificato non costruiamo più una lista intermedia a tabella.
 
   // Evidenziazione temporanea duplicati al momento dell'espansione
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
@@ -741,96 +712,7 @@ export default function DJPanel() {
               </div>
             </div>
 
-            <div className="hidden md:block overflow-x-auto">
-              <div className="flex flex-wrap items-center justify-between mb-2 gap-2 text-[11px]">
-                <div className="flex gap-2 items-center flex-wrap">
-                  <span className="opacity-60">Legenda:</span>
-                  <span className="flex items-center gap-1"><span className="px-1 rounded bg-yellow-800/60 text-yellow-200 font-mono text-[10px]">dup new</span><span className="opacity-50">= duplicato non accettato</span></span>
-                  <span className="flex items-center gap-1"><span className="px-1 rounded bg-green-800/60 text-green-200 font-mono text-[10px]">dup acc</span><span className="opacity-50">= duplicato già accettato</span></span>
-                </div>
-                {Object.keys(expanded).some(k=>expanded[k]) && (
-                  <button
-                    type="button"
-                    onClick={()=> setExpanded({})}
-                    className="text-[11px] bg-zinc-700 hover:bg-zinc-600 px-2 py-1 rounded"
-                  >Collassa tutti</button>
-                )}
-              </div>
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="bg-zinc-800 text-left">
-                    <th className="p-2">Utente</th>
-                    <th className="p-2">Titolo</th>
-                    <th className="p-2">Artista</th>
-                    <th className="p-2">Album</th>
-                    <th className="p-2">Messaggio</th>
-                    <th className="p-2">Ora</th>
-                    <th className="p-2">Explicit</th>
-                    <th className="p-2">Dup</th>
-                    <th className="p-2">Stato</th>
-                    <th className="p-2">Azioni</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {renderList.map((r) => (
-                    <tr key={r.id + (r.__isDuplicateRow?'-dup':'' )} className={`border-b border-zinc-800 ${r.__isDuplicateRow && flashIds.has(r.id) ? 'animate-flash-highlight' : ''}`}
-                    >
-                      <td className="p-2">{r.requester || '-'}</td>
-                      <td className="p-2">{r.title}</td>
-                      <td className="p-2">{r.artists}</td>
-                      <td className="p-2">{r.album}</td>
-                      <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
-                      <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
-                      <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
-                      <td className="p-2">{r.__group ? (r.duplicates ? r.duplicates : '-') : (r.__isDuplicateRow ? '•' : (r.duplicates ? r.duplicates : '-'))}</td>
-                      <td className="p-2 align-top">
-                        {!r.__isDuplicateRow && (
-                          <div className="flex flex-col gap-0.5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (r.__group) {
-                                  const k = r.groupKey || r.id;
-                                  setExpanded(e => ({ ...e, [k]: !e[k] }));
-                                }
-                              }}
-                              className={`px-1 rounded text-left min-w-[70px] ${(r.__group && r.duplicates)?'cursor-pointer hover:brightness-110':''} ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}
-                              title={r.__group ? 'Clicca per espandere / collassare' : ''}
-                            >{r.status}{r.__group && r.duplicates ? ` (+${r.duplicates})` : ''}</button>
-                            {r.__group && r.duplicates ? (
-                              <span className={`px-1 rounded text-[9px] inline-block font-mono tracking-tight ${r.groupedItems?.some(gx=>gx.status==='accepted' && gx.id!==r.id)?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'}`}>{r.groupedItems?.some(gx=>gx.status==='accepted' && gx.id!==r.id)?'dup acc':'dup new'}</span>
-                            ) : null}
-                          </div>
-                        )}
-                        {r.__isDuplicateRow && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className={`px-1 rounded text-left inline-block ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
-                            <span className={`px-1 rounded text-[9px] inline-block font-mono tracking-tight ${r.status==='accepted'?'bg-green-800/60 text-green-200':'bg-yellow-800/60 text-yellow-200'}`}>{r.status==='accepted'?'dup acc':'dup new'}</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-2 flex flex-wrap gap-1">
-                        {(!r.__group || r.__isDuplicateRow) && (
-                          <>
-                            <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
-                            <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
-                            <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
-                            <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
-                            {r.__isDuplicateRow && r.__originalRequestId && (
-                              <button onClick={() => act(r.id, 'merge', r.__originalRequestId)} className="bg-blue-700 px-2 py-1 rounded">Merge</button>
-                            )}
-                          </>
-                        )}
-                        {r.__group && !r.__isDuplicateRow && (
-                          <span className="text-[10px] opacity-60">Click per vedere duplicati</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="md:hidden flex flex-col gap-2">
+            <div className="flex flex-col gap-2">
               <div className="text-[10px] flex flex-wrap gap-2 items-center">
                 <span className="opacity-60">Legenda:</span>
                 <span className="px-1 rounded bg-yellow-800/60 text-yellow-200 font-mono">dup new</span>
