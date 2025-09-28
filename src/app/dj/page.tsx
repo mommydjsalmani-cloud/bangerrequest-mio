@@ -229,22 +229,17 @@ export default function DJPanel() {
       arr.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       // Scegliamo rappresentante: priorità accepted > new > resto, altrimenti primo
       const representative = arr.find(r=>r.status==='accepted') || arr.find(r=>r.status==='new') || arr[0];
-      // Calcolo duplicates aggregati: duplicates del representative + sum degli altri duplicates + (numero righe extra)
-      const extraRows = arr.length - 1;
-      const aggregatedDuplicates = arr.reduce((acc,r)=> acc + (r.duplicates||0), 0) + extraRows;
+      // Nuova semantica: duplicates = numero di righe duplicate (extra) rispetto all'originale
+      const aggregatedDuplicates = arr.length - 1;
       const aggregated: GroupedRequest = {
         ...representative,
         duplicates: aggregatedDuplicates,
         __group: true,
         groupKey: key,
         groupedItems: arr,
-        // duplicates_log aggregato: concatena log di tutti e aggiungi le note principali come entry sintetica
-        duplicates_log: arr.flatMap(r => r.duplicates_log || [])
+        // duplicates_log non più usato nell'interfaccia (manteniamo proprietà vuota per compatibilità)
+        duplicates_log: []
       };
-      // Ordiniamo il log aggregato per timestamp crescente
-      if (aggregated.duplicates_log) {
-        aggregated.duplicates_log.sort((a,b)=> new Date(a.at).getTime() - new Date(b.at).getTime());
-      }
       groups.push(aggregated);
     }
     // Ordine dei gruppi: manteniamo l'ordine originale apparizione (primo created_at in gruppo)
@@ -651,90 +646,23 @@ export default function DJPanel() {
                                 </tr>
                               </thead>
                               <tbody>
-                                {r.groupedItems?.map(sub => (
+                                {r.groupedItems?.map((sub, idx) => (
                                   <tr key={sub.id} className="border-t border-zinc-800/60">
-                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/70">originale</span></td>
+                                    <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${idx===0?'bg-zinc-700/70':'bg-yellow-700/60'}`}>{idx===0?'originale':'duplicate'}</span></td>
                                     <td className="py-1 pr-2 align-top">{sub.requester||'-'}</td>
                                     <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(sub.created_at).toLocaleTimeString()}</td>
                                     <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${sub.status==='accepted'?'bg-green-700':sub.status==='rejected'?'bg-red-700':sub.status==='muted'?'bg-gray-700':sub.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{sub.status}</span></td>
                                     <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{sub.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
                                   </tr>
                                 ))}
-                                {r.duplicates_log && r.duplicates_log.map((d,i)=> (
-                                  <tr key={`dup-${i}`} className="border-t border-zinc-800/60">
-                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-700/60">duplicate</span></td>
-                                    <td className="py-1 pr-2 align-top">{d.requester||'-'}</td>
-                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(d.at).toLocaleTimeString()}</td>
-                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-800/50">new</span></td>
-                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
-                                  </tr>
-                                ))}
-                                {(() => {
-                                  const missing = (r.duplicates || 0) - (r.duplicates_log?.length || 0) - ((r.groupedItems?.length||1)-1); // stima duplicati storici
-                                  if (missing > 0) {
-                                    return Array.from({length: missing}).map((_,i)=>(
-                                      <tr key={`missing-${i}`} className="border-t border-zinc-800/60 opacity-50 italic">
-                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">storico</span></td>
-                                        <td className="py-1 pr-2 align-top">?</td>
-                                        <td className="py-1 pr-2 align-top font-mono">—</td>
-                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">duplicate</span></td>
-                                        <td className="py-1 pr-2 align-top">(nessun dettaglio registrato)</td>
-                                      </tr>
-                                    ));
-                                  }
-                                  return null;
-                                })()}
                               </tbody>
                             </table>
                           </div>
                         )}
                         {(!r.__group && r.duplicates && expanded[r.id]) && (
                           <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-1 max-w-[620px] space-y-2">
-                            <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
-                            <table className="w-full text-[10px] border-collapse">
-                              <thead>
-                                <tr className="text-left opacity-60">
-                                  <th className="py-1 pr-2">Tipo</th>
-                                  <th className="py-1 pr-2">Utente</th>
-                                  <th className="py-1 pr-2">Ora</th>
-                                  <th className="py-1 pr-2">Stato</th>
-                                  <th className="py-1 pr-2">Nota</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr className="border-t border-zinc-800/60">
-                                  <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/70">originale</span></td>
-                                  <td className="py-1 pr-2 align-top">{r.requester||'-'}</td>
-                                  <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
-                                  <td className="py-1 pr-2 align-top"><span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span></td>
-                                  <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{r.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
-                                </tr>
-                                {r.duplicates_log && r.duplicates_log.map((d,i)=>(
-                                  <tr key={`dup-${i}`} className="border-t border-zinc-800/60">
-                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-700/60">duplicate</span></td>
-                                    <td className="py-1 pr-2 align-top">{d.requester||'-'}</td>
-                                    <td className="py-1 pr-2 align-top font-mono opacity-70 whitespace-nowrap">{new Date(d.at).toLocaleTimeString()}</td>
-                                    <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-yellow-800/50">new</span></td>
-                                    <td className="py-1 pr-2 align-top max-w-[220px] whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</td>
-                                  </tr>
-                                ))}
-                                {(() => {
-                                  const missing = (r.duplicates||0) - (r.duplicates_log?.length||0);
-                                  if (missing > 0) {
-                                    return Array.from({length: missing}).map((_,i)=>(
-                                      <tr key={`missing-${i}`} className="border-t border-zinc-800/60 opacity-50 italic">
-                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">storico</span></td>
-                                        <td className="py-1 pr-2 align-top">?</td>
-                                        <td className="py-1 pr-2 align-top font-mono">—</td>
-                                        <td className="py-1 pr-2 align-top"><span className="px-1 rounded bg-zinc-700/40">duplicate</span></td>
-                                        <td className="py-1 pr-2 align-top">(nessun dettaglio registrato)</td>
-                                      </tr>
-                                    ));
-                                  }
-                                  return null;
-                                })()}
-                              </tbody>
-                            </table>
+                            <div className="opacity-70 mb-1">Duplicati (solo righe reali)</div>
+                            <div className="opacity-50 italic">(Formato semplificato: creare più richieste identiche per vederle qui)</div>
                           </div>
                         )}
                       </td>
@@ -825,47 +753,9 @@ export default function DJPanel() {
                     </div>
                   )}
                   {(!r.__group && r.duplicates && expanded[r.id]) && (
-                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-2">
-                      <div className="opacity-70 mb-1">Duplicati ({r.duplicates})</div>
-                      <div className="space-y-1">
-                        <div className="border border-zinc-800/60 rounded p-1">
-                          <div className="flex flex-wrap gap-2 items-center mb-0.5">
-                            <span className="px-1 rounded bg-zinc-700/70">originale</span>
-                            <span className="px-1 rounded bg-zinc-700">{r.requester||'-'}</span>
-                            <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
-                            <span className="font-mono opacity-60">{new Date(r.created_at).toLocaleTimeString()}</span>
-                          </div>
-                          <div className="whitespace-pre-wrap break-words">{r.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
-                        </div>
-                        {r.duplicates_log && r.duplicates_log.map((d,i)=>(
-                          <div key={`dup-${i}`} className="border border-zinc-800/60 rounded p-1">
-                            <div className="flex flex-wrap gap-2 items-center mb-0.5">
-                              <span className="px-1 rounded bg-yellow-700/60">duplicate</span>
-                              <span className="px-1 rounded bg-zinc-700/70">{d.requester||'-'}</span>
-                              <span className="px-1 rounded bg-yellow-800/50">new</span>
-                              <span className="font-mono opacity-60">{new Date(d.at).toLocaleTimeString()}</span>
-                            </div>
-                            <div className="whitespace-pre-wrap break-words">{d.note || <span className="opacity-30 italic">(nessuna)</span>}</div>
-                          </div>
-                        ))}
-                        {(() => {
-                          const missing = (r.duplicates||0) - (r.duplicates_log?.length||0);
-                          if (missing > 0) {
-                            return Array.from({length: missing}).map((_,i)=>(
-                              <div key={`missing-${i}`} className="border border-zinc-800/60 rounded p-1 opacity-50 italic">
-                                <div className="flex flex-wrap gap-2 items-center mb-0.5">
-                                  <span className="px-1 rounded bg-zinc-700/40">storico</span>
-                                  <span className="px-1 rounded bg-zinc-700/40">?</span>
-                                  <span className="px-1 rounded bg-zinc-700/40">duplicate</span>
-                                  <span className="font-mono opacity-60">—</span>
-                                </div>
-                                <div>(nessun dettaglio registrato)</div>
-                              </div>
-                            ));
-                          }
-                          return null;
-                        })()}
-                      </div>
+                    <div className="mt-1 text-[10px] bg-zinc-900/80 rounded p-2 space-y-1">
+                      <div className="opacity-70 mb-1">Duplicati: {r.duplicates}</div>
+                      <div className="opacity-50 italic">Apri la versione desktop per vedere le righe oppure attendi raggruppamento automatico.</div>
                     </div>
                   )}
                   {r.__group ? (
