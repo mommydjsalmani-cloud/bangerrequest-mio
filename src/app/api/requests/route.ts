@@ -144,32 +144,10 @@ export async function PATCH(req: Request) {
           // Non incrementiamo duplicates: semantica aggiornata (solo POST dup)
           return withVersion({ ok: true, mergedInto: body.mergeWithId, target, origin });
         }
-        // AUTO-MERGE: trova un candidato con stessa track_id oppure (titolo+artisti) simili nello stesso evento
+        // Auto-merge disabilitato: mantieni richieste separate
         const { data: origin, error: originErr } = await supabase.from('requests').select('*').eq('id', body.id).single();
         if (originErr || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
-        // Criteri di similarità: stessa track_id OR (lower(title) + lower(artists)) e stesso event_code
-        let candidateQuery = supabase.from('requests').select('*').neq('id', origin.id);
-        if (origin.event_code) candidateQuery = candidateQuery.eq('event_code', origin.event_code);
-        const { data: allCandidates, error: candErr } = await candidateQuery.limit(200);
-        if (candErr) return withVersion({ ok: false, error: candErr.message }, { status: 500 });
-        const norm = (s?: string|null) => (s||'').toLowerCase().trim();
-        const oTitle = norm(origin.title);
-        const oArtists = norm(origin.artists);
-        let best: RequestItem | null = null;
-        const candidates: RequestItem[] = (allCandidates || []) as unknown as RequestItem[];
-        if (origin.track_id) {
-          best = candidates.find(r => r.track_id === origin.track_id) || null;
-        }
-        if (!best) {
-          best = candidates.find(r => norm(r.title) === oTitle && norm(r.artists) === oArtists) || null;
-        }
-        if (!best) {
-          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item: origin });
-        }
-        // Esegui merge origin -> best
-        const { error: delErr } = await supabase.from('requests').delete().eq('id', origin.id);
-        if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
-        return withVersion({ ok: true, autoMerged: true, mergedInto: best.id, target: best, origin });
+        return withVersion({ ok: true, autoMerged: false, reason: 'auto_merge_disabled', item: origin });
       }
       if (body.action === 'cancel') {
         const { data, error } = await supabase.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
@@ -212,7 +190,8 @@ export async function PATCH(req: Request) {
           store.splice(idx, 1);
           return withVersion({ ok: true, mergedInto: target.id, target });
         } else {
-          return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item });
+          // Auto-merge disabilitato: mantieni richieste separate
+          return withVersion({ ok: true, autoMerged: false, reason: 'auto_merge_disabled', item });
         }
         break;
       }
