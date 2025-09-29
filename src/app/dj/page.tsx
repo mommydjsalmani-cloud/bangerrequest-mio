@@ -202,18 +202,35 @@ export default function DJPanel() {
     return { total, lastHour, dupPct };
   }, [list]);
 
-  // Identifica quali richieste sono duplicate (stesso titolo + artista, mantenendo la prima normale)
+  // Identifica quali richieste sono duplicate (stesso titolo + artista, evidenziando solo l'ultima)
   const duplicateMap = useMemo(() => {
     const map = new Map<string, boolean>();
-    const seen = new Set<string>();
+    const trackGroups = new Map<string, RequestItem[]>();
     
+    // Raggruppa le richieste per titolo + artista
     list.forEach((r) => {
       const key = `${r.title?.toLowerCase().trim()}-${r.artists?.toLowerCase().trim()}`;
-      if (seen.has(key)) {
-        map.set(r.id, true); // È un duplicato
+      if (!trackGroups.has(key)) {
+        trackGroups.set(key, []);
+      }
+      trackGroups.get(key)!.push(r);
+    });
+    
+    // Per ogni gruppo, evidenzia solo l'ultima richiesta se ci sono duplicati
+    trackGroups.forEach((requests) => {
+      if (requests.length > 1) {
+        // Ordina per timestamp (più recente per ultimo)
+        requests.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        
+        // Tutte le richieste tranne l'ultima rimangono normali
+        requests.slice(0, -1).forEach(r => map.set(r.id, false));
+        
+        // Solo l'ultima viene evidenziata
+        const latest = requests[requests.length - 1];
+        map.set(latest.id, true);
       } else {
-        seen.add(key);
-        map.set(r.id, false); // È la prima occorrenza
+        // Se non ci sono duplicati, la richiesta rimane normale
+        map.set(requests[0].id, false);
       }
     });
     
