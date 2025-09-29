@@ -14,6 +14,7 @@ create table if not exists public.requests (
   isrc text,
   explicit boolean,
   preview_url text,
+  duration_ms integer, -- durata in millisecondi
   note text,
   event_code text,
   requester text,

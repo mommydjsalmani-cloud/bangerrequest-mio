@@ -14,6 +14,7 @@ type RequestItem = {
   isrc?: string | null;
   explicit?: boolean;
   preview_url?: string | null;
+  duration_ms?: number;
   note?: string;
   event_code?: string | null;
   requester?: string | null;
