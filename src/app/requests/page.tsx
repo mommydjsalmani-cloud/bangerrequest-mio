@@ -286,6 +286,18 @@ export default function Requests() {
               Stato attuale: <span className="font-semibold text-white">{lastRequestStatus || 'in attesa'}</span><br/>
               La pagina si aggiorna automaticamente quando il DJ decide.
             </div>
+            
+            {/* Pulsante Instagram */}
+            <div className="mt-2 p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
+              <div className="text-white text-sm font-medium mb-2">Ti è piaciuto il servizio?</div>
+              <a 
+                href="/instagram" 
+                className="inline-block w-full text-center bg-white text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 active:scale-[0.98] transition text-sm"
+              >
+                🎵 Seguici su Instagram
+              </a>
+            </div>
+
             {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'muted' || lastRequestStatus === 'cancelled') && (
               <button onClick={()=>{ sessionStorage.removeItem('banger_last_request_id'); sessionStorage.removeItem('banger_last_request_status'); sessionStorage.removeItem('banger_last_request_title'); sessionStorage.removeItem('banger_last_request_artists'); setLastRequestId(null); setLastRequestStatus(null); setSubmittedTrack(null); }} className="mt-2 bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm">Invia un&#39;altra richiesta</button>
             )}
