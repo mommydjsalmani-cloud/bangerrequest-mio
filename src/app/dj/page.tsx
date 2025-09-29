@@ -198,22 +198,32 @@ export default function DJPanel() {
   // Lista flat: ordina solo per created_at DESC (già server likely ordina, reforziamo)
   const flatList = useMemo(() => [...list].sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime()), [list]);
 
-  // Mappa per contare quante richieste per coppia (event_code + track_id OR title+artists) e identificare la più recente
+  // Mappa per contare quante richieste per coppia (event_code + track_id OR title+artists) e identificare TUTTI i duplicati tranne il primo
   const latestDuplicateIds = useMemo(() => {
-    const latest: Set<string> = new Set();
-    const groups: Record<string, { latestId: string; latestAt: number; count: number }> = {};
+    const duplicateIds: Set<string> = new Set();
+    const groups: Record<string, RequestItem[]> = {};
     const norm = (s?: string|null) => (s||'').toLowerCase().trim();
+    
+    // Raggruppa le richieste per chiave
     for (const r of list) {
       const key = (r.event_code||'') + '::' + (r.track_id || (norm(r.title)+'::'+norm(r.artists)));
-      const ts = new Date(r.created_at).getTime();
-      if (!groups[key]) groups[key] = { latestId: r.id, latestAt: ts, count: 1 };
-      else {
-        groups[key].count += 1;
-        if (ts > groups[key].latestAt) { groups[key].latestAt = ts; groups[key].latestId = r.id; }
-      }
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(r);
     }
-    Object.values(groups).forEach(g => { if (g.count > 1) latest.add(g.latestId); });
-    return latest;
+    
+    // Per ogni gruppo con più di 1 elemento, evidenzia tutti tranne il primo (più vecchio)
+    Object.values(groups).forEach(groupItems => {
+      if (groupItems.length > 1) {
+        // Ordina per timestamp (più vecchi prima)
+        const sorted = groupItems.sort((a,b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        // Aggiungi tutti tranne il primo (indice 0) al Set dei duplicati da evidenziare
+        for (let i = 1; i < sorted.length; i++) {
+          duplicateIds.add(sorted[i].id);
+        }
+      }
+    });
+    
+    return duplicateIds;
   }, [list]);
 
   function formatDuration(r: RequestItem): string | null {
@@ -625,10 +635,10 @@ export default function DJPanel() {
 
             <div className="flex flex-col gap-2">
               {flatList.map(r => {
-                const isLatestDuplicate = latestDuplicateIds.has(r.id);
+                const isDuplicate = latestDuplicateIds.has(r.id);
                 const durationFmt = formatDuration(r);
                 return (
-                <div key={r.id} className={`rounded p-3 flex flex-col gap-2 text-xs border ${isLatestDuplicate ? 'bg-orange-900/50 border-orange-600' : 'bg-zinc-800 border-transparent'}`}>
+                <div key={r.id} className={`rounded p-3 flex flex-col gap-2 text-xs border ${isDuplicate ? 'bg-orange-900/50 border-orange-600' : 'bg-zinc-800 border-transparent'}`}>
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold truncate">{r.title}</span>
                     <span className="text-[10px] opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</span>
@@ -644,7 +654,7 @@ export default function DJPanel() {
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
                     <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
-                    {isLatestDuplicate && <span className="px-1 rounded bg-orange-600 text-white font-semibold">dup latest</span>}
+                    {isDuplicate && <span className="px-1 rounded bg-orange-600 text-white font-semibold">duplicate</span>}
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
