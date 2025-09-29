@@ -14,6 +14,7 @@ type RequestItem = {
   isrc?: string | null;
   explicit?: boolean;
   preview_url?: string | null;
+  duration_ms?: number;
   note?: string;
   event_code?: string | null;
   requester?: string | null;
@@ -31,6 +32,15 @@ type EventItem = {
 };
 
 export default function DJPanel() {
+  // Helper function per convertire millisecondi in formato mm:ss
+  const formatDuration = (durationMs?: number) => {
+    if (!durationMs) return '--:--';
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   // Codice evento rimosso: la selezione avviene creando/selezionando eventi dopo login
   const [authed, setAuthed] = useState(false);
   const [username, setUsername] = useState('');
@@ -598,6 +608,7 @@ export default function DJPanel() {
                     <th className="p-2">Titolo</th>
                     <th className="p-2">Artista</th>
                     <th className="p-2">Album</th>
+                    <th className="p-2">Durata</th>
                     <th className="p-2">Messaggio</th>
                     <th className="p-2">Ora</th>
                     <th className="p-2">Explicit</th>
@@ -614,6 +625,7 @@ export default function DJPanel() {
                         <td className="p-2">{r.title}</td>
                         <td className="p-2">{r.artists}</td>
                         <td className="p-2">{r.album}</td>
+                        <td className="p-2 text-center">{formatDuration(r.duration_ms)}</td>
                         <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
                         <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
                         <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
@@ -645,6 +657,8 @@ export default function DJPanel() {
                       <span>{r.artists}</span>
                       <span className="opacity-50">•</span>
                       <span className="truncate max-w-[40%]">{r.album}</span>
+                      <span className="opacity-50">•</span>
+                      <span className="font-mono">{formatDuration(r.duration_ms)}</span>
                     </div>
                     {r.note ? <div className="text-[11px] bg-zinc-900/70 px-2 py-1 rounded leading-snug whitespace-pre-wrap break-words">{r.note}</div> : null}
                     <div className="flex flex-wrap items-center gap-2 text-[11px]">
