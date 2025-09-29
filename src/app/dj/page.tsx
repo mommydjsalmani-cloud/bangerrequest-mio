@@ -202,6 +202,24 @@ export default function DJPanel() {
     return { total, lastHour, dupPct };
   }, [list]);
 
+  // Identifica quali richieste sono duplicate (stesso titolo + artista, mantenendo la prima normale)
+  const duplicateMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    const seen = new Set<string>();
+    
+    list.forEach((r) => {
+      const key = `${r.title?.toLowerCase().trim()}-${r.artists?.toLowerCase().trim()}`;
+      if (seen.has(key)) {
+        map.set(r.id, true); // È un duplicato
+      } else {
+        seen.add(key);
+        map.set(r.id, false); // È la prima occorrenza
+      }
+    });
+    
+    return map;
+  }, [list]);
+
   const [loginLoading, setLoginLoading] = useState(false);
   async function login(e: React.FormEvent) {
     e.preventDefault();
@@ -571,63 +589,66 @@ export default function DJPanel() {
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((r) => (
-                    <tr key={r.id} className="border-b border-zinc-800">
-                      <td className="p-2">{r.requester || '-'}</td>
-                      <td className="p-2">{r.title}</td>
-                      <td className="p-2">{r.artists}</td>
-                      <td className="p-2">{r.album}</td>
-                      <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
-                      <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
-                      <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
-                      <td className="p-2">
-                        <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</span>
-                      </td>
-                      <td className="p-2 flex flex-wrap gap-1">
-                        <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
-                        <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
-                        <button onClick={() => act(r.id, 'merge')} className="bg-yellow-700 px-2 py-1 rounded">Unisci</button>
-                        <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
-                        <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
-                      </td>
-                    </tr>
-                  ))}
+                  {list.map((r) => {
+                    const isDuplicate = duplicateMap.get(r.id) || false;
+                    return (
+                      <tr key={r.id} className={`border-b border-zinc-800 ${isDuplicate ? 'ring-2 ring-orange-500 bg-orange-900/10' : ''}`}>
+                        <td className="p-2">{r.requester || '-'}</td>
+                        <td className="p-2">{r.title}</td>
+                        <td className="p-2">{r.artists}</td>
+                        <td className="p-2">{r.album}</td>
+                        <td className="p-2 max-w-[260px] truncate" title={r.note || ''}>{r.note || '-'}</td>
+                        <td className="p-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</td>
+                        <td className="p-2">{r.explicit ? 'Sì' : 'No'}</td>
+                        <td className="p-2">
+                          <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` (+${r.duplicates})` : ''}</span>
+                        </td>
+                        <td className="p-2 flex flex-wrap gap-1">
+                          <button onClick={() => act(r.id, 'accept')} className="bg-green-700 px-2 py-1 rounded">Accetta</button>
+                          <button onClick={() => act(r.id, 'reject')} className="bg-red-700 px-2 py-1 rounded">Scarta</button>
+                          <button onClick={() => act(r.id, 'mute')} className="bg-gray-700 px-2 py-1 rounded">Mute</button>
+                          <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="bg-zinc-700 px-2 py-1 rounded">Apri</a>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             <div className="md:hidden flex flex-col gap-2">
-              {list.map((r) => (
-                <div key={r.id} className="bg-zinc-800 rounded p-3 flex flex-col gap-2 text-xs">
-                  <div className="flex justify-between gap-3">
-                    <span className="font-semibold truncate">{r.title}</span>
-                    <span className="text-[10px] opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</span>
+              {list.map((r) => {
+                const isDuplicate = duplicateMap.get(r.id) || false;
+                return (
+                  <div key={r.id} className={`bg-zinc-800 rounded p-3 flex flex-col gap-2 text-xs ${isDuplicate ? 'ring-2 ring-orange-500 bg-orange-900/10' : ''}`}>
+                    <div className="flex justify-between gap-3">
+                      <span className="font-semibold truncate">{r.title}</span>
+                      <span className="text-[10px] opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-[11px] opacity-80">
+                      <span>{r.artists}</span>
+                      <span className="opacity-50">•</span>
+                      <span className="truncate max-w-[40%]">{r.album}</span>
+                    </div>
+                    {r.note ? <div className="text-[11px] bg-zinc-900/70 px-2 py-1 rounded leading-snug whitespace-pre-wrap break-words">{r.note}</div> : null}
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
+                      {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
+                      <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
+                      <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
+                      <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
+                      <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-[11px] opacity-80">
-                    <span>{r.artists}</span>
-                    <span className="opacity-50">•</span>
-                    <span className="truncate max-w-[40%]">{r.album}</span>
-                  </div>
-                  {r.note ? <div className="text-[11px] bg-zinc-900/70 px-2 py-1 rounded leading-snug whitespace-pre-wrap break-words">{r.note}</div> : null}
-                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
-                    {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
-                    <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}{r.duplicates ? ` +${r.duplicates}` : ''}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
-                    <button onClick={() => act(r.id, 'reject')} className="flex-1 min-w-[30%] bg-red-700 py-1 rounded">Scarta</button>
-                    <button onClick={() => act(r.id, 'merge')} className="flex-1 min-w-[30%] bg-yellow-700 py-1 rounded">Unisci</button>
-                    <button onClick={() => act(r.id, 'mute')} className="flex-1 min-w-[30%] bg-gray-700 py-1 rounded">Mute</button>
-                    <a href={`https://open.spotify.com/track/${r.track_id}`} target="_blank" rel="noopener noreferrer" className="flex-1 min-w-[30%] bg-zinc-700 py-1 rounded text-center">Apri</a>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex gap-4 mt-4 text-sm">
               <span>Totali: {stats.total}</span>
               <span>Ultima ora: {stats.lastHour}</span>
-              <span>% Duplicati: {stats.dupPct}%</span>
             </div>
           </>
         )}

@@ -66,6 +66,14 @@ export default function Requests() {
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
   const submitted = !!lastRequestId;
 
+  // Helper function per convertire millisecondi in formato mm:ss
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (!query) {
@@ -239,7 +247,7 @@ export default function Requests() {
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm sm:text-base truncate">{t.title} {t.explicit ? <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span> : null}</div>
                     <div className="text-[11px] sm:text-xs text-gray-400 truncate">{t.artists} — {t.album}</div>
-                    <div className="text-[10px] text-gray-500">{Math.floor((t.duration_ms||0)/1000)}s</div>
+                    <div className="text-[10px] text-gray-500">{formatDuration(t.duration_ms || 0)}</div>
                   </div>
                   <div className="flex flex-col gap-1 items-end">
                     {t.preview_url ? (
