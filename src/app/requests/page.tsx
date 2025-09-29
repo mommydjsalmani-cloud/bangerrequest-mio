@@ -64,7 +64,6 @@ export default function Requests() {
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
   const [lastRequestStatus, setLastRequestStatus] = useState<"new"|"accepted"|"rejected"|"muted"|"cancelled"|null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
-  const [selectedMeta, setSelectedMeta] = useState<{ alreadyQueued?: boolean; acceptedBefore?: boolean } | null>(null);
   const submitted = !!lastRequestId;
 
   useEffect(() => {
@@ -169,7 +168,7 @@ export default function Requests() {
       // Caso duplicate
       if (j.duplicate && j.existing) {
         const ex = j.existing;
-        setMessage('Questo brano è già stato richiesto ✅');
+        setMessage('Questo brano è già in coda ✅');
         if (ex.id) {
           sessionStorage.setItem('banger_last_request_id', ex.id);
           setLastRequestId(ex.id);
@@ -184,11 +183,8 @@ export default function Requests() {
           sessionStorage.setItem('banger_last_request_artists', ex.artists || '');
           setSubmittedTrack({ title: ex.title, artists: ex.artists });
         }
-        // Non azzeriamo subito selected: lasciamo visibile stato nella box conferma già richiesta
-        const acceptedBefore = ex.status === 'accepted';
-        setSelectedMeta({ alreadyQueued: true, acceptedBefore });
-        sessionStorage.setItem('banger_last_request_duplicate','1');
-        sessionStorage.setItem('banger_last_request_duplicate_accepted', acceptedBefore ? '1':'0');
+        setSelected(null);
+        setNote('');
         setTimeout(()=> setMessage(null), 3500);
         return; // fine
       }
@@ -208,9 +204,6 @@ export default function Requests() {
       }
       setSelected(null);
       setNote('');
-      setSelectedMeta(null);
-      sessionStorage.removeItem('banger_last_request_duplicate');
-      sessionStorage.removeItem('banger_last_request_duplicate_accepted');
     } else {
       const errMsg = j?.error ? `Errore: ${j.error}` : 'Errore generico richiesta';
       const detail = j?.details?.code ? ` (code: ${j.details.code})` : '';
@@ -275,11 +268,6 @@ export default function Requests() {
         {selected && !submitted && (
           <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
             <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
-            {selectedMeta?.alreadyQueued && (
-              <div className="mt-2 text-xs bg-yellow-800/40 border border-yellow-700 rounded p-2 leading-snug">
-                Questo brano è già stato richiesto{selectedMeta.acceptedBefore ? ' ed è già stato riprodotto/accettato' : ''}. Puoi comunque aggiungere una dedica: verrà unita alla richiesta esistente.
-              </div>
-            )}
             <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Nota o dedica (opzionale)" className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" rows={3} />
             <div className="flex gap-2 mt-3">
               <button onClick={confirmTrack} className="flex-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm">Conferma</button>
@@ -296,16 +284,6 @@ export default function Requests() {
               Stato attuale: <span className="font-semibold text-white">{lastRequestStatus || 'in attesa'}</span><br/>
               La pagina si aggiorna automaticamente quando il DJ decide.
             </div>
-            {(() => {
-              const dup = typeof window !== 'undefined' ? sessionStorage.getItem('banger_last_request_duplicate') === '1' : false;
-              const acc = typeof window !== 'undefined' ? sessionStorage.getItem('banger_last_request_duplicate_accepted') === '1' : false;
-              if (!dup) return null;
-              return (
-                <div className="text-[11px] bg-yellow-800/30 border border-yellow-700/50 rounded p-2 leading-snug text-yellow-100">
-                  Questo brano era già stato richiesto{acc ? ' ed era già stato accettato' : ''}. La tua dedica è stata aggiunta alla richiesta esistente.
-                </div>
-              );
-            })()}
             {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'muted' || lastRequestStatus === 'cancelled') && (
               <button onClick={()=>{ sessionStorage.removeItem('banger_last_request_id'); sessionStorage.removeItem('banger_last_request_status'); sessionStorage.removeItem('banger_last_request_title'); sessionStorage.removeItem('banger_last_request_artists'); setLastRequestId(null); setLastRequestStatus(null); setSubmittedTrack(null); }} className="mt-2 bg-gray-700 hover:bg-gray-600 rounded px-3 py-2 text-sm">Invia un&#39;altra richiesta</button>
             )}

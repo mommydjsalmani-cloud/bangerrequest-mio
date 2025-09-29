@@ -5,6 +5,13 @@
   --foreground: #171717;
 }
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
@@ -32,17 +39,6 @@ html, body {
 /* Evita scroll bounce interno su container full height */
 main {
   overscroll-behavior: contain;
-}
-
-/* Flash evidenziazione righe duplicate appena espanse */
-@keyframes flashHighlight {
-  0% { background-color: rgba(234,179,8,0.25); }
-  40% { background-color: rgba(234,179,8,0.15); }
-  70% { background-color: rgba(234,179,8,0.08); }
-  100% { background-color: transparent; }
-}
-.animate-flash-highlight {
-  animation: flashHighlight 1.2s ease-out forwards;
 }
 
 /* Splash styles */

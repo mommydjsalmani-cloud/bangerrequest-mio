@@ -42,4 +42,3 @@ Se non imposti le variabili Supabase l'app funziona lo stesso ma i dati non sono
 - Setup Supabase: `docs/SETUP_SUPABASE.md`
 
 
-# Force redeploy Sun Sep 28 19:53:59 UTC 2025

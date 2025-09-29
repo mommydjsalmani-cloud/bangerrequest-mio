@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
 
-export type RequestItem = {
+type RequestItem = {
   id: string;
   created_at: string;
   track_id: string;
@@ -14,29 +14,14 @@ export type RequestItem = {
   isrc?: string | null;
   explicit?: boolean;
   preview_url?: string | null;
-  duration_ms?: number | null;
   note?: string;
   event_code?: string | null;
   requester?: string | null;
   status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
   duplicates?: number; // how many times merged/duplicated
-  // Log dettagliato degli arrivi duplicati (solo POST duplicati, non merge):
-  // Ogni entry: { at: ISO timestamp, requester, note }
-  duplicates_log?: { at: string; requester?: string | null; note?: string | null }[];
 };
 
-// Tipo row Supabase (duplicates_log può essere null / assente)
-type SupabaseRequestRow = Omit<RequestItem, 'duplicates_log'> & { duplicates_log?: RequestItem['duplicates_log'] | null };
-
-function normalizeRow(row: unknown): RequestItem {
-  const base = row as SupabaseRequestRow;
-  return { ...base, duplicates_log: Array.isArray(base?.duplicates_log) ? base.duplicates_log : [] } as RequestItem;
-}
-// Internal in-memory store (non export per compatibilità con type Route Next.js)
-const _memoryStore: RequestItem[] = [];
-// Esposto solo per endpoint debug raw tramite globalThis
-// @ts-expect-error debug exposure
-globalThis.__requestsStore = _memoryStore;
+const store: RequestItem[] = [];
 const BUILD_TAG = 'requests-diagnostics-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
@@ -48,37 +33,20 @@ export async function GET(req: Request) {
   const eventCode = url.searchParams.get('event_code');
   const status = url.searchParams.get('status');
   const id = url.searchParams.get('id');
-  const trackId = url.searchParams.get('track_id');
   const supabase = getSupabase();
   if (supabase) {
-  let q = supabase.from('requests').select('*').order('created_at', { ascending: false });
+    let q = supabase.from('requests').select('*').order('created_at', { ascending: false });
+    if (id) q = q.eq('id', id);
     if (eventCode) q = q.eq('event_code', eventCode);
     if (status) q = q.eq('status', status);
-    if (trackId) q = q.eq('track_id', trackId);
     const { data, error } = await q;
-    if (error) {
-      // Se errore contiene riferimento a duration_ms, proviamo senza quella colonna
-      if (error.message.includes('duration_ms')) {
-        console.warn('[requests][GET] duration_ms column missing, falling back to basic select');
-        let qFallback = supabase.from('requests').select('id,created_at,track_id,uri,title,artists,album,cover_url,isrc,explicit,preview_url,note,event_code,requester,status,duplicates,duplicates_log').order('created_at', { ascending: false });
-        if (eventCode) qFallback = qFallback.eq('event_code', eventCode);
-        if (status) qFallback = qFallback.eq('status', status);
-        if (trackId) qFallback = qFallback.eq('track_id', trackId);
-        const { data: fallbackData, error: fallbackError } = await qFallback;
-        if (fallbackError) return withVersion({ ok: false, error: fallbackError.message }, { status: 500 });
-        const normalizedFallback = (fallbackData || []).map(r => ({ ...normalizeRow(r), duration_ms: null }));
-        return withVersion({ ok: true, requests: normalizedFallback });
-      }
-      return withVersion({ ok: false, error: error.message }, { status: 500 });
-    }
-    const normalized = (data || []).map(r => normalizeRow(r));
-    return withVersion({ ok: true, requests: normalized });
+    if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
+    return withVersion({ ok: true, requests: data || [] });
   } else {
-  let list = _memoryStore;
-  if (id) list = list.filter((r) => r.id === id);
+    let list = store;
+    if (id) list = list.filter((r) => r.id === id);
     if (eventCode) list = list.filter((r) => r.event_code === eventCode);
     if (status) list = list.filter((r) => r.status === status);
-    if (trackId) list = list.filter((r) => r.track_id === trackId);
     return withVersion({ ok: true, requests: list });
   }
 }
@@ -101,13 +69,6 @@ export async function POST(req: Request) {
     isrc: body.isrc ?? null,
     explicit: !!body.explicit,
     preview_url: body.preview_url ?? null,
-    duration_ms: (() => {
-      if (typeof body.duration_ms === 'number') return body.duration_ms;
-      // supporta campo alternativo "duration" in secondi senza usare any
-      const maybeSeconds = (body as unknown as { duration?: unknown }).duration;
-      if (typeof maybeSeconds === 'number') return maybeSeconds * 1000;
-      return null;
-    })(),
     note: body.note,
     event_code: body.event_code ?? null,
     requester: body.requester ?? null,
@@ -115,178 +76,41 @@ export async function POST(req: Request) {
     duplicates: 0,
   };
   if (supabase) {
-    // Duplicate detection avanzata:
-    // 1. Se disponibile track_id tenta match diretto.
-    // 2. Se non trova (o track_id assente) e sono presenti title+artists effettua fallback su normalizzazione (case insensitive, trim) di title+artists.
-    if (body.event_code) {
-  type DetectionResult = { original: RequestItem; mode: 'track_id' | 'title_artists' } | null;
-  let detection: DetectionResult = null;
-      const norm = (s?: string | null) => (s || '').toLowerCase().trim();
-
-      // 1. Tentativo via track_id
-      if (body.track_id) {
-        const { data: dupList, error: dupErr } = await supabase
-          .from('requests')
-          .select('*')
-            .eq('event_code', body.event_code)
-          .eq('track_id', body.track_id)
-          .in('status', ['new', 'accepted', 'muted'])
-          .order('created_at', { ascending: true });
-        if (!dupErr && dupList && dupList.length > 0) {
-          detection = { original: normalizeRow(dupList[0]) as RequestItem, mode: 'track_id' };
+    // Duplicate detection: stessa canzone già in coda per stesso event_code (stati ancora rilevanti)
+    if (body.track_id && body.event_code) {
+      const { data: dupList, error: dupErr } = await supabase
+        .from('requests')
+        .select('*')
+        .eq('event_code', body.event_code)
+        .eq('track_id', body.track_id)
+        .in('status', ['new', 'accepted', 'muted']);
+      if (!dupErr && dupList && dupList.length > 0) {
+        // Incrementiamo duplicates sull'esistente per contare arrivo di una nuova richiesta uguale
+        const existing = dupList[0];
+        const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
+        if (updErr || !updated) {
+          return withVersion({ ok: false, error: updErr?.message || 'duplicate_update_failed' }, { status: 500 });
         }
-      }
-
-      // 2. Fallback via title+artists se non già trovato
-      if (!detection && body.title && body.artists) {
-        const { data: candidates, error: candErr } = await supabase
-          .from('requests')
-          .select('*')
-          .eq('event_code', body.event_code)
-          .in('status', ['new', 'accepted', 'muted'])
-          .order('created_at', { ascending: true })
-          .limit(200);
-        if (!candErr && candidates && candidates.length > 0) {
-          const t = norm(body.title);
-          const a = norm(body.artists);
-          const typed = candidates.map(c => normalizeRow(c));
-          const found = typed.find(r => norm(r.title) === t && norm(r.artists) === a);
-          if (found) {
-            detection = { original: found, mode: 'title_artists' };
-          }
-        }
-      }
-
-      if (detection) {
-        const original = detection.original;
-        const newDuplicatesCount = (original.duplicates || 0) + 1;
-        const { data: updatedOriginal, error: updErr } = await supabase
-          .from('requests')
-          .update({ duplicates: newDuplicatesCount })
-          .eq('id', original.id)
-          .select('*')
-          .single();
-        if (updErr || !updatedOriginal) {
-          return withVersion({ ok: true, duplicate: true, detection_mode: detection.mode, existing: { id: original.id, status: original.status, duplicates: newDuplicatesCount, title: original.title, artists: original.artists }, log_saved: false, fallback_reason: updErr?.message || 'update_failed' });
-        }
-        const duplicateRow = {
-          id: randomUUID(),
-          created_at: now,
-          track_id: updatedOriginal.track_id,
-          uri: updatedOriginal.uri,
-          title: updatedOriginal.title,
-          artists: updatedOriginal.artists,
-          album: updatedOriginal.album,
-          cover_url: updatedOriginal.cover_url,
-          isrc: updatedOriginal.isrc,
-          explicit: updatedOriginal.explicit,
-          preview_url: updatedOriginal.preview_url,
-          duration_ms: (updatedOriginal as Record<string, unknown>).duration_ms as number | null ?? null, // safe access
-          note: body.note,
-          event_code: updatedOriginal.event_code,
-          requester: body.requester ?? null,
-          status: 'new' as const,
-          duplicates: 0,
-          duplicates_log: [],
-        } satisfies RequestItem;
-        let insertedDuplicate: RequestItem | null = null;
-        let replicatedError: string | null = null;
-        try {
-          // Prima prova con duration_ms, poi senza se fallisce
-          const insertPayload = duplicateRow;
-          const { data: insData, error: insErr } = await supabase.from('requests').insert(insertPayload).select('*').single();
-          if (insErr && insErr.message.includes('duration_ms')) {
-            console.warn('[requests][duplicate][insert] duration_ms missing, retrying without it');
-            const payloadWithoutDuration = { ...insertPayload };
-            delete (payloadWithoutDuration as Record<string, unknown>).duration_ms;
-            const { data: fallbackInsData, error: fallbackInsErr } = await supabase.from('requests').insert(payloadWithoutDuration).select('*').single();
-            if (fallbackInsErr) {
-              replicatedError = fallbackInsErr.message;
-            } else if (fallbackInsData) {
-              insertedDuplicate = { ...normalizeRow(fallbackInsData), duration_ms: null };
-            }
-          } else if (insErr) {
-            replicatedError = insErr.message;
-          } else if (insData) {
-            insertedDuplicate = normalizeRow(insData);
-          }
-        } catch (e: unknown) {
-          replicatedError = e instanceof Error ? e.message : String(e);
-        }
-        if (replicatedError) {
-          console.error('[requests][duplicate][insert_failed]', { original_id: updatedOriginal.id, error: replicatedError });
-        }
-        return withVersion({
-          ok: true,
-          duplicate: true,
-          detection_mode: detection.mode,
-          existing: { id: updatedOriginal.id, status: updatedOriginal.status, duplicates: updatedOriginal.duplicates, title: updatedOriginal.title, artists: updatedOriginal.artists },
-          replicated: !!insertedDuplicate,
-          duplicate_row: insertedDuplicate,
-          replicated_error: replicatedError || undefined
-        });
+        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists } });
       }
     }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
-      // Se errore per duration_ms, riproviamo senza quel campo
-      if (error.message.includes('duration_ms')) {
-        console.warn('[requests][POST] duration_ms column missing, retrying without it');
-        const itemWithoutDuration = { ...item };
-        delete (itemWithoutDuration as Record<string, unknown>).duration_ms;
-        const { data: fallbackData, error: fallbackError } = await supabase.from('requests').insert(itemWithoutDuration).select('*').single();
-        if (fallbackError) {
-          interface PgErr { code?: string; hint?: string | null; details?: string | null }
-          const raw = fallbackError as unknown as PgErr;
-          return withVersion({ ok: false, error: fallbackError.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
-        }
-        const normInsertFallback = fallbackData ? { ...normalizeRow(fallbackData), duration_ms: null } : fallbackData;
-        return withVersion({ ok: true, item: normInsertFallback });
-      }
       interface PgErr { code?: string; hint?: string | null; details?: string | null }
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
-    const normInsert = data ? normalizeRow(data) : data;
-    return withVersion({ ok: true, item: normInsert });
+    return withVersion({ ok: true, item: data });
   } else {
-    // In-memory duplicate detection avanzata (parità con Supabase)
-    if (body.event_code) {
-      const norm = (s?: string | null) => (s || '').toLowerCase().trim();
-      let original: RequestItem | null = null;
-      let detectionMode: 'track_id' | 'title_artists' | null = null;
-  const candidates = _memoryStore.filter(r => r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
-      if (body.track_id) {
-        const byTrack = candidates.filter(r => r.track_id === body.track_id);
-        if (byTrack.length > 0) {
-          original = [...byTrack].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-          detectionMode = 'track_id';
-        }
-      }
-      if (!original && body.title && body.artists) {
-        const t = norm(body.title); const a = norm(body.artists);
-        const byMeta = candidates.filter(r => norm(r.title) === t && norm(r.artists) === a);
-        if (byMeta.length > 0) {
-          original = [...byMeta].sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
-          detectionMode = 'title_artists';
-        }
-      }
-      if (original && detectionMode) {
-        original.duplicates = (original.duplicates || 0) + 1;
-        const duplicateRow: RequestItem = {
-          ...original,
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          created_at: now,
-          note: body.note,
-          requester: body.requester ?? null,
-          duplicates: 0,
-          duplicates_log: []
-        };
-  _memoryStore.unshift(duplicateRow);
-        return withVersion({ ok: true, duplicate: true, detection_mode: detectionMode, existing: { id: original.id, status: original.status, duplicates: original.duplicates, title: original.title, artists: original.artists }, replicated: true, duplicate_row: duplicateRow });
+    // In-memory duplicate detection
+    if (body.track_id && body.event_code) {
+      const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
+      if (existing) {
+        existing.duplicates = (existing.duplicates || 0) + 1;
+        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
       }
     }
-  _memoryStore.unshift(item);
+    store.unshift(item);
     return withVersion({ ok: true, item });
   }
 }
@@ -365,9 +189,9 @@ export async function PATCH(req: Request) {
     }
 
     // fallback in-memory
-  const idx = _memoryStore.findIndex((r) => r.id === body.id);
+    const idx = store.findIndex((r) => r.id === body.id);
   if (idx === -1) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
-  const item = _memoryStore[idx];
+    const item = store[idx];
     switch (body.action) {
       case 'accept':
         item.status = 'accepted';
@@ -382,10 +206,10 @@ export async function PATCH(req: Request) {
         item.status = 'cancelled';
         break;
       case 'merge': {
-  const target = body.mergeWithId ? _memoryStore.find((r) => r.id === body.mergeWithId) : null;
+        const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;
         if (target) {
           // Rimuove origin senza incrementare duplicates
-          _memoryStore.splice(idx, 1);
+          store.splice(idx, 1);
           return withVersion({ ok: true, mergedInto: target.id, target });
         } else {
           return withVersion({ ok: true, autoMerged: false, reason: 'no_candidate_found', item });
