@@ -2,9 +2,16 @@ import { describe, it, expect } from 'vitest';
 import * as eventsRoute from '@/app/api/events/route';
 import * as requestsRoute from '@/app/api/requests/route';
 
+// Configura credenziali per passare auth
+process.env.DJ_PANEL_SECRET = '77';
+process.env.DJ_PANEL_USER = 'mommy';
+// Non impostiamo Supabase per usare store in-memory
+delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 async function call(path: string, init?: { method?: string; body?: any }) {
   const method = init?.method || 'GET';
-  const djHeaders = { 'x-dj-secret': process.env.DJ_PANEL_SECRET || 'test-secret', 'x-dj-user': process.env.DJ_PANEL_USER || 'test-user' };
+  const djHeaders = { 'x-dj-secret': '77', 'x-dj-user': 'mommy' };
   if (path === '/api/events' && method === 'POST') {
     const req = new Request('http://local/api/events', { method: 'POST', body: JSON.stringify(init?.body || {}), headers: { 'Content-Type': 'application/json', ...djHeaders } });
     const res = await (eventsRoute as any).POST(req);

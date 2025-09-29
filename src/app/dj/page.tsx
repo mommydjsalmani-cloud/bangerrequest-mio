@@ -628,7 +628,7 @@ export default function DJPanel() {
                 const isLatestDuplicate = latestDuplicateIds.has(r.id);
                 const durationFmt = formatDuration(r);
                 return (
-                <div key={r.id} className={`rounded p-3 flex flex-col gap-2 text-xs border ${isLatestDuplicate ? 'bg-yellow-900/50 border-yellow-600' : 'bg-zinc-800 border-transparent'}`}>
+                <div key={r.id} className={`rounded p-3 flex flex-col gap-2 text-xs border ${isLatestDuplicate ? 'bg-orange-900/50 border-orange-600' : 'bg-zinc-800 border-transparent'}`}>
                   <div className="flex justify-between gap-3">
                     <span className="font-semibold truncate">{r.title}</span>
                     <span className="text-[10px] opacity-70 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString()}</span>
@@ -644,7 +644,7 @@ export default function DJPanel() {
                     <span className="px-1 rounded bg-zinc-700">{r.requester || '-'}</span>
                     {r.explicit ? <span className="px-1 rounded bg-red-600">E</span> : null}
                     <span className={`px-1 rounded ${r.status==='accepted'?'bg-green-700':r.status==='rejected'?'bg-red-700':r.status==='muted'?'bg-gray-700':r.status==='cancelled'?'bg-zinc-700/60':'bg-yellow-700'}`}>{r.status}</span>
-                    {isLatestDuplicate && <span className="px-1 rounded bg-yellow-600 text-black font-semibold">dup latest</span>}
+                    {isLatestDuplicate && <span className="px-1 rounded bg-orange-600 text-white font-semibold">dup latest</span>}
                   </div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     <button onClick={() => act(r.id, 'accept')} className="flex-1 min-w-[30%] bg-green-700 py-1 rounded">Accetta</button>
