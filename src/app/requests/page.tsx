@@ -161,33 +161,11 @@ export default function Requests() {
       body: JSON.stringify(payload),
     });
   type PostRespBase = { ok?: boolean; error?: string; details?: { code?: string } };
-  type PostResp = (PostRespBase & { item?: { id?: string; status?: string } } & { duplicate?: boolean; existing?: { id?: string; status?: string; title?: string; artists?: string } }) | null;
+  type PostResp = (PostRespBase & { item?: { id?: string; status?: string; duplicates?: number } }) | null;
   let j: PostResp = null;
   try { j = await res.json(); } catch { j = null; }
     if (j && j.ok) {
-      // Caso duplicate
-      if (j.duplicate && j.existing) {
-        const ex = j.existing;
-        setMessage('Questo brano è già in coda ✅');
-        if (ex.id) {
-          sessionStorage.setItem('banger_last_request_id', ex.id);
-          setLastRequestId(ex.id);
-          const stRaw = ex.status || 'new';
-          const allowed: ReadonlyArray<'new'|'accepted'|'rejected'|'muted'|'cancelled'> = ['new','accepted','rejected','muted','cancelled'] as const;
-          const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
-          setLastRequestStatus(st);
-          sessionStorage.setItem('banger_last_request_status', st);
-        }
-        if (ex.title || ex.artists) {
-          sessionStorage.setItem('banger_last_request_title', ex.title || '');
-          sessionStorage.setItem('banger_last_request_artists', ex.artists || '');
-          setSubmittedTrack({ title: ex.title, artists: ex.artists });
-        }
-        setSelected(null);
-        setNote('');
-        setTimeout(()=> setMessage(null), 3500);
-        return; // fine
-      }
+      // Richiesta creata con successo
       if (j.item?.id) {
         sessionStorage.setItem('banger_last_request_id', j.item.id);
         setLastRequestId(j.item.id);
@@ -196,22 +174,37 @@ export default function Requests() {
         const st = (allowed as readonly string[]).includes(stRaw) ? (stRaw as typeof allowed[number]) : 'new';
         setLastRequestStatus(st);
         sessionStorage.setItem('banger_last_request_status', st);
+        
         if (selected) {
           sessionStorage.setItem('banger_last_request_title', selected.title || '');
           sessionStorage.setItem('banger_last_request_artists', selected.artists || '');
           setSubmittedTrack({ title: selected.title, artists: selected.artists });
         }
+
+        // Mostra messaggio appropriato basato sui duplicati
+        if (j.item.duplicates && j.item.duplicates > 0) {
+          setMessage('Questo brano è già in coda ✅');
+        } else {
+          setMessage('Richiesta inviata! ✅');
+        }
+        
+        setSelected(null);
+        setNote('');
+        setTimeout(() => setMessage(null), 3500);
+        return;
       }
-      setSelected(null);
-      setNote('');
-    } else {
-      const errMsg = j?.error ? `Errore: ${j.error}` : 'Errore generico richiesta';
-      const detail = j?.details?.code ? ` (code: ${j.details.code})` : '';
-      setMessage(errMsg + detail);
-      console.warn('[requests][POST] failure', { status: res.status, body: j });
-      setTimeout(() => setMessage(null), 4000);
     }
-  }
+
+    // Gestione errore
+    if (j && j.error) {
+      setMessage(`Errore: ${j.error}`);
+      setTimeout(() => setMessage(null), 3500);
+      return;
+    }
+
+    setMessage('Errore sconosciuto');
+    setTimeout(() => setMessage(null), 3500);
+  };
 
   if (validatingCode) {
     return (

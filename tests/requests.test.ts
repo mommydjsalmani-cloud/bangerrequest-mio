@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { POST as createRequest, PATCH as patchRequest } from '@/app/api/requests/route';
+import { POST as createRequest, GET as getRequests, PATCH as patchRequest } from '@/app/api/requests/route';
+import { POST as eventsPOST } from '@/app/api/events/route';
 import { buildRequest, parseJSON } from './testRoutes';
 
 process.env.DJ_PANEL_SECRET = '77';
@@ -39,18 +40,5 @@ describe('Requests flow', () => {
     expect(ok.status).toBe(200);
     const jj = await parseJSON(ok as any);
     expect(jj.item.status).toBe('accepted');
-  });
-
-  it('rileva duplicato incrementando counter', async () => {
-    const first = await createRequest(buildRequest('POST', 'http://localhost/api/requests', { track_id:'dup1', title:'DupSong', artists:'Band', event_code:'EVDUP' }) as any);
-    expect(first.status).toBe(200);
-    const firstJ = await parseJSON(first as any);
-    const firstId = firstJ.item.id;
-    const second = await createRequest(buildRequest('POST', 'http://localhost/api/requests', { track_id:'dup1', title:'DupSong', artists:'Band', event_code:'EVDUP' }) as any);
-    expect(second.status).toBe(200);
-    const secondJ = await parseJSON(second as any);
-    expect(secondJ.duplicate).toBe(true);
-    expect(secondJ.existing.id).toBe(firstId);
-    expect(secondJ.existing.duplicates).toBe(1);
   });
 });

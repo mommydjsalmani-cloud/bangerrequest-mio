@@ -76,24 +76,6 @@ export async function POST(req: Request) {
     duplicates: 0,
   };
   if (supabase) {
-    // Duplicate detection: stessa canzone già in coda per stesso event_code (stati ancora rilevanti)
-    if (body.track_id && body.event_code) {
-      const { data: dupList, error: dupErr } = await supabase
-        .from('requests')
-        .select('*')
-        .eq('event_code', body.event_code)
-        .eq('track_id', body.track_id)
-        .in('status', ['new', 'accepted', 'muted']);
-      if (!dupErr && dupList && dupList.length > 0) {
-        // Incrementiamo duplicates sull'esistente per contare arrivo di una nuova richiesta uguale
-        const existing = dupList[0];
-        const { data: updated, error: updErr } = await supabase.from('requests').update({ duplicates: (existing.duplicates || 0) + 1 }).eq('id', existing.id).select('*').single();
-        if (updErr || !updated) {
-          return withVersion({ ok: false, error: updErr?.message || 'duplicate_update_failed' }, { status: 500 });
-        }
-        return withVersion({ ok: true, duplicate: true, existing: { id: updated.id, status: updated.status, duplicates: updated.duplicates, title: updated.title, artists: updated.artists } });
-      }
-    }
     const { data, error } = await supabase.from('requests').insert(item).select('*').single();
     if (error) {
       interface PgErr { code?: string; hint?: string | null; details?: string | null }
@@ -102,14 +84,6 @@ export async function POST(req: Request) {
     }
     return withVersion({ ok: true, item: data });
   } else {
-    // In-memory duplicate detection
-    if (body.track_id && body.event_code) {
-      const existing = store.find(r => r.track_id === body.track_id && r.event_code === body.event_code && ['new','accepted','muted'].includes(r.status));
-      if (existing) {
-        existing.duplicates = (existing.duplicates || 0) + 1;
-        return withVersion({ ok: true, duplicate: true, existing: { id: existing.id, status: existing.status, duplicates: existing.duplicates, title: existing.title, artists: existing.artists } });
-      }
-    }
     store.unshift(item);
     return withVersion({ ok: true, item });
   }
@@ -133,21 +107,21 @@ export async function PATCH(req: Request) {
     const supabase = getSupabase();
     if (supabase) {
       if (body.action === 'merge') {
-        // Se viene passato mergeWithId usiamo comportamento esplicito esistente
         if (body.mergeWithId) {
           const { data: target, error: e1 } = await supabase.from('requests').select('*').eq('id', body.mergeWithId).single();
           if (e1 || !target) return withVersion({ ok: false, error: 'merge_target_not_found' }, { status: 404 });
-          const { data: origin, error: eOrigin } = await supabase.from('requests').select('*').eq('id', body.id).single();
-          if (eOrigin || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
-          const { error: delErr } = await supabase.from('requests').delete().eq('id', body.id);
-          if (delErr) return withVersion({ ok: false, error: delErr.message }, { status: 500 });
-          // Non incrementiamo duplicates: semantica aggiornata (solo POST dup)
-          return withVersion({ ok: true, mergedInto: body.mergeWithId, target, origin });
+          const { error: e2 } = await supabase.from('requests').delete().eq('id', body.id);
+          if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
+          const { data, error: e3 } = await supabase.from('requests').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
+          if (e3) return withVersion({ ok: false, error: e3.message }, { status: 500 });
+          return withVersion({ ok: true, mergedInto: body.mergeWithId, target: data });
+        } else {
+          const { data, error } = await supabase.from('requests').select('*').eq('id', body.id).single();
+          if (error || !data) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
+          const { data: upd, error: e2 } = await supabase.from('requests').update({ duplicates: (data.duplicates || 0) + 1 }).eq('id', body.id).select('*').single();
+          if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
+          return withVersion({ ok: true, item: upd });
         }
-        // Auto-merge disabilitato: mantieni richieste separate
-        const { data: origin, error: originErr } = await supabase.from('requests').select('*').eq('id', body.id).single();
-        if (originErr || !origin) return withVersion({ ok: false, error: 'merge_origin_not_found' }, { status: 404 });
-        return withVersion({ ok: true, autoMerged: false, reason: 'auto_merge_disabled', item: origin });
       }
       if (body.action === 'cancel') {
         const { data, error } = await supabase.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
@@ -186,12 +160,11 @@ export async function PATCH(req: Request) {
       case 'merge': {
         const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;
         if (target) {
-          // Rimuove origin senza incrementare duplicates
+          target.duplicates = (target.duplicates || 0) + 1;
           store.splice(idx, 1);
-          return withVersion({ ok: true, mergedInto: target.id, target });
+          return NextResponse.json({ ok: true, mergedInto: target.id, target });
         } else {
-          // Auto-merge disabilitato: mantieni richieste separate
-          return withVersion({ ok: true, autoMerged: false, reason: 'auto_merge_disabled', item });
+          item.duplicates = (item.duplicates || 0) + 1;
         }
         break;
       }
