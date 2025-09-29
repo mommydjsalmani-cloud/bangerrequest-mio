@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     isrc: body.isrc ?? null,
     explicit: !!body.explicit,
     preview_url: body.preview_url ?? null,
+    duration_ms: body.duration_ms,
     note: body.note,
     event_code: body.event_code ?? null,
     requester: body.requester ?? null,

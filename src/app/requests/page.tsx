@@ -158,6 +158,7 @@ export default function Requests() {
       isrc: selected.isrc,
       explicit: selected.explicit,
       preview_url: selected.preview_url,
+      duration_ms: selected.duration_ms,
       note,
       event_code: codice,
       requester: nome,
