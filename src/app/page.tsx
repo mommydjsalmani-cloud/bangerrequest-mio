@@ -48,9 +48,8 @@ export default function Home() {
       <div className="w-full max-w-md p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-1 leading-tight">Banger Request</h1>
         
-        {/* Pulsante Instagram uniformato */}
+        {/* Pulsante Instagram per home page */}
         <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
-          <div className="text-white text-sm font-medium mb-2 text-center">Ti è piaciuto il servizio?</div>
           <a 
             href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" 
             target="_blank" 
