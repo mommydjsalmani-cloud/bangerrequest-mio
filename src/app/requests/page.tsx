@@ -230,15 +230,14 @@ export default function Requests() {
 
         {!submitted && (
           <>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex flex-col gap-3">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 type="text"
                 placeholder="Cerca titolo o artista su Spotify"
-                className="flex-1 p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
               />
-              <a href="/instagram" className="text-center bg-pink-600 hover:bg-pink-700 active:scale-[0.97] transition text-white font-bold py-3 px-4 rounded text-sm">Segui su Instagram</a>
             </div>
             {loading && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
             <div className="grid grid-cols-1 gap-2">

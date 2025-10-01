@@ -47,8 +47,18 @@ export default function Home() {
     <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white px-4 py-6">
       <div className="w-full max-w-md p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
         <h1 className="text-3xl sm:text-4xl font-bold text-center mb-1 leading-tight">Banger Request</h1>
-        <div className="flex justify-center">
-          <a href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" target="_blank" rel="noopener noreferrer" className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded mb-2">Segui su Instagram</a>
+        
+        {/* Pulsante Instagram uniformato */}
+        <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
+          <div className="text-white text-sm font-medium mb-2 text-center">Ti è piaciuto il servizio?</div>
+          <a 
+            href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-block w-full text-center bg-white text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 active:scale-[0.98] transition text-sm"
+          >
+            🎵 Seguici su Instagram
+          </a>
         </div>
   <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
           <input
