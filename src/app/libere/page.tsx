@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
+import Image from 'next/image';
 
 type RequestFormData = {
   title: string;
@@ -120,6 +121,12 @@ function RichiesteLibereContent() {
     setSearchResults([]);
     setSearchQuery('');
   };
+
+  const formatDuration = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const seconds = Math.floor((ms % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
   
   const submitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,160 +193,147 @@ function RichiesteLibereContent() {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-white text-xl">Caricamento...</div>
-      </div>
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
+        <div className="text-sm text-gray-300">Caricamento sessione...</div>
+      </main>
     );
   }
   
   if (error && !session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="bg-red-500/20 border border-red-500 rounded-lg p-6 text-white max-w-md text-center">
-          <h1 className="text-xl font-bold mb-2">Errore</h1>
-          <p>{error}</p>
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
+        <div className="bg-zinc-900 rounded-xl p-8 text-center max-w-md">
+          <div className="text-red-400 text-xl mb-4">❌ {error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Riprova
+          </button>
         </div>
-      </div>
+      </main>
     );
   }
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">🎵 Richieste Libere</h1>
-            <p className="text-blue-200">{session?.name}</p>
-            
-            {session?.status === 'paused' && (
-              <div className="mt-4 bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-200">
-                <p>⏸️ Le richieste libere sono chiuse al momento</p>
-              </div>
-            )}
+    <main className="flex min-h-dvh flex-col items-center justify-start bg-black text-white p-4 sm:p-6">
+      <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
+        <h2 className="text-2xl font-bold mb-2">
+          🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
+        </h2>
+
+        {session?.status === 'paused' && (
+          <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-200">
+            <p>⏸️ Le richieste libere sono chiuse al momento</p>
           </div>
-          
-          {session?.status === 'active' && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 border border-white/20">
-              
-              {/* Spotify Search */}
-              <div className="mb-6">
-                <label className="block text-white text-sm font-medium mb-2">
-                  🔍 Cerca su Spotify (opzionale)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && searchSpotify()}
-                    placeholder="Cerca artista, titolo..."
-                    className="flex-1 px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        )}
+
+        {session?.status === 'active' && (
+          <>
+            {/* Nome utente */}
+            <div className="flex flex-col gap-3">
+              <input
+                value={formData.requester_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                type="text"
+                placeholder="Il tuo nome"
+                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+              />
+            </div>
+
+            {/* Ricerca Spotify */}
+            <div className="flex flex-col gap-3">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && searchSpotify()}
+                type="text"
+                placeholder="Cerca titolo o artista su Spotify"
+                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+              />
+            </div>
+
+            {searching && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
+
+            {/* Risultati ricerca */}
+            <div className="grid grid-cols-1 gap-2">
+              {searchResults.map((track) => (
+                <div 
+                  key={track.id} 
+                  className="p-2 rounded flex items-center gap-3 sm:gap-4 cursor-pointer transition bg-zinc-800/40 hover:bg-zinc-800"
+                  onClick={() => selectSpotifyTrack(track)}
+                >
+                  <Image 
+                    src={track.album.images?.[0]?.url || '/file.svg'} 
+                    alt={track.name || 'cover'} 
+                    width={56} 
+                    height={56} 
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" 
                   />
-                  <button
-                    type="button"
-                    onClick={searchSpotify}
-                    disabled={searching || !searchQuery.trim()}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white rounded-lg transition-colors"
-                  >
-                    {searching ? '...' : '🔍'}
-                  </button>
-                </div>
-                
-                {searchError && (
-                  <p className="text-red-300 text-sm mt-2">{searchError}</p>
-                )}
-                
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-                    {searchResults.map((track) => (
-                      <div
-                        key={track.id}
-                        onClick={() => selectSpotifyTrack(track)}
-                        className="p-3 bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer transition-colors border border-white/10"
-                      >
-                        <div className="font-medium text-white">{track.name}</div>
-                        <div className="text-blue-200 text-sm">{track.artists.map(a => a.name).join(', ')}</div>
-                        <div className="text-blue-300 text-xs">{track.album.name}</div>
-                      </div>
-                    ))}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm sm:text-base truncate">
+                      {track.name} 
+                      {track.explicit && (
+                        <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] sm:text-xs text-gray-400 truncate">
+                      {track.artists.map(a => a.name).join(', ')} — {track.album.name}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {formatDuration(track.duration_ms || 0)}
+                    </div>
                   </div>
-                )}
-              </div>
-              
-              {/* Manual Form */}
-              <form onSubmit={submitRequest} className="space-y-4">
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    🎵 Titolo brano *
-                  </label>
+                </div>
+              ))}
+            </div>
+
+            {/* Messaggi e form fallback */}
+            {searchResults.length === 0 && searchQuery.trim() && !searching && (
+              <div className="text-center text-gray-400 py-4">
+                <p>Nessun risultato trovato. Inserisci i dati manualmente:</p>
+                <div className="mt-4 space-y-3">
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Es. Bohemian Rhapsody"
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
+                    placeholder="Titolo brano"
+                    className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
                   />
-                </div>
-                
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    🎤 Artista
-                  </label>
                   <input
                     type="text"
                     value={formData.artists}
                     onChange={(e) => setFormData(prev => ({ ...prev, artists: e.target.value }))}
-                    placeholder="Es. Queen"
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Artista"
+                    className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
                   />
+                  <button
+                    onClick={submitRequest}
+                    disabled={submitting || !formData.title.trim()}
+                    className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {submitting ? '⏳ Invio...' : '🎶 Invia Richiesta'}
+                  </button>
                 </div>
-                
-                <div>
-                  <label className="block text-white text-sm font-medium mb-2">
-                    👤 Il tuo nome (opzionale)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.requester_name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
-                    placeholder="Come ti chiami?"
-                    className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                
-                {error && (
-                  <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200">
-                    {error}
-                  </div>
-                )}
-                
-                {success && (
-                  <div className="bg-green-500/20 border border-green-500 rounded-lg p-3 text-green-200">
-                    {success}
-                  </div>
-                )}
-                
-                <button
-                  type="submit"
-                  disabled={submitting || !formData.title.trim()}
-                  className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-600 disabled:to-gray-600 text-white font-medium rounded-lg transition-all"
-                >
-                  {submitting ? '⏳ Invio...' : '🎶 Invia Richiesta'}
-                </button>
-              </form>
-              
-              <div className="mt-6 text-center text-blue-200 text-sm">
-                <p>⏱️ Limite: 1 richiesta ogni 60 secondi</p>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+
+            {/* Messaggi di errore/successo */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200">
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="bg-green-500/20 border border-green-500 rounded-lg p-3 text-green-200">
+                {success}
+              </div>
+            )}
+          </>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
 
