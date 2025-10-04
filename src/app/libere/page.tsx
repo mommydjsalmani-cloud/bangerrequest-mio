@@ -19,14 +19,15 @@ type RequestFormData = {
 
 type SpotifyTrack = {
   id: string;
-  uri: string;
-  name: string;
-  artists: Array<{ name: string }>;
-  album: { name: string; images?: Array<{ url: string }> };
-  duration_ms: number;
-  preview_url?: string;
-  explicit: boolean;
-  external_ids?: { isrc?: string };
+  uri?: string;
+  title?: string;  // campo dall'API
+  artists?: string;  // già stringa processata dall'API
+  album?: string;  // già stringa processata dall'API
+  cover_url?: string | null;  // dall'API
+  duration_ms?: number;
+  preview_url?: string | null;
+  explicit?: boolean;
+  isrc?: string | null;
 };
 
 function RichiesteLibereContent() {
@@ -82,50 +83,46 @@ function RichiesteLibereContent() {
     loadSession();
   }, [token]);
   
-  const searchSpotify = async () => {
-    if (!searchQuery.trim()) return;
-    
-    setSearching(true);
-    setSearchError(null);
-    setSearchResults([]);
-    
-    try {
-      const response = await fetch(`/api/spotify/search?q=${encodeURIComponent(searchQuery.trim())}`);
-      const data = await response.json();
-      
-      if (!data.ok) {
-        setSearchError(data.error || 'Errore ricerca Spotify');
+  // Ricerca automatica Spotify con debounce (come pagina events)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
         return;
       }
-      
-      setSearchResults(data.tracks || []);
-    } catch {
-      setSearchError('Errore connessione Spotify');
-    } finally {
-      setSearching(false);
-    }
+      setSearching(true);
+      fetch(`/api/spotify/search?q=${encodeURIComponent(searchQuery)}&limit=10`)
+        .then((r) => r.json())
+        .then((data) => {
+          setSearchResults(data.tracks || []);
+        })
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearching(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
   
   const selectSpotifyTrack = (track: SpotifyTrack) => {
     setFormData({
-      title: track.name,
-      artists: track.artists.map(a => a.name).join(', '),
+      title: track.title || '',
+      artists: track.artists || '',
       requester_name: formData.requester_name,
       track_id: track.id,
       uri: track.uri,
-      album: track.album.name,
-      cover_url: track.album.images?.[0]?.url,
+      album: track.album || '',
+      cover_url: track.cover_url || '',
       duration_ms: track.duration_ms,
       source: 'spotify'
     });
     setSearchResults([]);
     setSearchQuery('');
-  };
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000);
-    const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
   
   const submitRequest = async (e: React.FormEvent) => {
@@ -246,7 +243,6 @@ function RichiesteLibereContent() {
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && searchSpotify()}
                 type="text"
                 placeholder="Cerca titolo o artista su Spotify"
                 className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
@@ -264,21 +260,21 @@ function RichiesteLibereContent() {
                   onClick={() => selectSpotifyTrack(track)}
                 >
                   <Image 
-                    src={track.album.images?.[0]?.url || '/file.svg'} 
-                    alt={track.name || 'cover'} 
+                    src={track.cover_url || '/file.svg'} 
+                    alt={track.title || 'cover'} 
                     width={56} 
                     height={56} 
                     className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" 
                   />
                   <div className="flex-1 min-w-0">
                     <div className="font-semibold text-sm sm:text-base truncate">
-                      {track.name} 
+                      {track.title} 
                       {track.explicit && (
                         <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span>
                       )}
                     </div>
                     <div className="text-[11px] sm:text-xs text-gray-400 truncate">
-                      {track.artists.map(a => a.name).join(', ')} — {track.album.name}
+                      {track.artists} — {track.album}
                     </div>
                     <div className="text-[10px] text-gray-500">
                       {formatDuration(track.duration_ms || 0)}
