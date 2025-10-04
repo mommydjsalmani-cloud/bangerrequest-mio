@@ -53,7 +53,6 @@ function RichiesteLibereContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
   
   useEffect(() => {
     if (!token) {
@@ -259,7 +258,7 @@ function RichiesteLibereContent() {
             {/* Debug info */}
             {searchQuery && !searching && searchResults.length === 0 && (
               <div className="text-sm text-yellow-300">
-                Nessun risultato per "{searchQuery}". Controlla la console per errori.
+                Nessun risultato per &quot;{searchQuery}&quot;. Controlla la console per errori.
               </div>
             )}
 
