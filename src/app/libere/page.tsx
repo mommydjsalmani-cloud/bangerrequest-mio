@@ -90,13 +90,18 @@ function RichiesteLibereContent() {
         setSearchResults([]);
         return;
       }
+      console.log('Cercando:', searchQuery);
       setSearching(true);
       fetch(`/api/spotify/search?q=${encodeURIComponent(searchQuery)}&limit=10`)
         .then((r) => r.json())
         .then((data) => {
+          console.log('Risultati ricevuti:', data);
           setSearchResults(data.tracks || []);
         })
-        .catch(() => setSearchResults([]))
+        .catch((err) => {
+          console.error('Errore ricerca:', err);
+          setSearchResults([]);
+        })
         .finally(() => setSearching(false));
     }, 400);
     return () => clearTimeout(t);
@@ -249,7 +254,14 @@ function RichiesteLibereContent() {
               />
             </div>
 
-            {searching && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
+            {searching && <div className="text-sm text-gray-300">Ricerca in corso... ({searchQuery})</div>}
+
+            {/* Debug info */}
+            {searchQuery && !searching && searchResults.length === 0 && (
+              <div className="text-sm text-yellow-300">
+                Nessun risultato per "{searchQuery}". Controlla la console per errori.
+              </div>
+            )}
 
             {/* Risultati ricerca */}
             <div className="grid grid-cols-1 gap-2">
