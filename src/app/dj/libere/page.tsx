@@ -23,6 +23,8 @@ export default function LibereAdminPanel() {
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [newSessionName, setNewSessionName] = useState('');
   const [showCreateSession, setShowCreateSession] = useState(false);
+  const [schemaError, setSchemaError] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
   
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +44,13 @@ export default function LibereAdminPanel() {
       const data = await response.json();
       
       if (!data.ok) {
-        setError(data.error || 'Errore autenticazione');
+        // Controlla se è un errore di schema database
+        if (data.error && data.error.includes('sessioni_libere')) {
+          setSchemaError(true);
+          setError('Database non configurato: le tabelle delle Richieste Libere non sono state create.');
+        } else {
+          setError(data.error || 'Errore autenticazione');
+        }
         return;
       }
       
@@ -195,6 +203,42 @@ export default function LibereAdminPanel() {
     }
   };
   
+  const setupDatabase = async () => {
+    setSetupLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const response = await fetch('/api/libere/setup', {
+        method: 'POST',
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!data.ok) {
+        setError(data.error || 'Errore setup database');
+        return;
+      }
+      
+      setSuccess('Database configurato con successo! ✓');
+      setSchemaError(false);
+      
+      // Riprova il login
+      setTimeout(() => {
+        login({ preventDefault: () => {} } as React.FormEvent);
+      }, 1000);
+      
+    } catch {
+      setError('Errore connessione durante setup database');
+    } finally {
+      setSetupLoading(false);
+    }
+  };
+  
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
   
   if (!authed) {
@@ -206,6 +250,25 @@ export default function LibereAdminPanel() {
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
+              {schemaError && (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                  <h4 className="font-medium text-blue-800 mb-2">🔧 Configurazione Database</h4>
+                  <button
+                    onClick={setupDatabase}
+                    disabled={setupLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                  >
+                    {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
+                  </button>
+                  <div className="text-sm text-blue-700 bg-blue-50 p-2 rounded border-l-4 border-blue-300">
+                    <strong>Setup Manuale:</strong><br/>
+                    1. Vai su <strong>Supabase Dashboard</strong><br/>
+                    2. Clicca <strong>SQL Editor</strong><br/>
+                    3. Incolla il contenuto di <code className="bg-gray-100 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
+                    4. Clicca <strong>Run</strong>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
