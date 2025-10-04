@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 
 type RequestItem = {
   id: string;
@@ -333,6 +334,22 @@ export default function DJPanel() {
 
         {authed && (
           <>
+            {/* Navigation Buttons */}
+            <div className="mb-6 flex gap-4 justify-center">
+              <Link 
+                href="/dj"
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+              >
+                🎧 Pannello Eventi
+              </Link>
+              <Link 
+                href="/dj/libere"
+                className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
+              >
+                🎵 Richieste Libere
+              </Link>
+            </div>
+
             <div className="text-sm text-gray-300 flex justify-between items-center">
               <div>
                 Evento: <span className="font-mono">{selectedEvent || '-'}</span>
