@@ -26,6 +26,10 @@ export default function LibereAdminPanel() {
   const [schemaError, setSchemaError] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   
+  // Filtri
+  const [maxDurationSeconds, setMaxDurationSeconds] = useState<number | null>(null);
+  const [showDurationFilter, setShowDurationFilter] = useState(false);
+  
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) return;
@@ -338,6 +342,27 @@ export default function LibereAdminPanel() {
       setError('Errore copia link');
     }
   };
+
+  // Funzione per filtrare richieste per durata
+  const getFilteredRequests = () => {
+    if (!maxDurationSeconds) return requests;
+    
+    return requests.filter(request => {
+      if (!request.duration_ms) return true; // Include brani senza durata
+      const durationSeconds = Math.floor(request.duration_ms / 1000);
+      return durationSeconds <= maxDurationSeconds;
+    });
+  };
+
+  // Presets comuni per durata
+  const durationPresets = [
+    { label: 'Nessun filtro', value: null },
+    { label: '≤ 3 min', value: 180 },
+    { label: '≤ 4 min', value: 240 },
+    { label: '≤ 5 min', value: 300 },
+    { label: '≤ 6 min', value: 360 },
+    { label: '≤ 8 min', value: 480 }
+  ];
   
   const setupDatabase = async () => {
     setSetupLoading(true);
@@ -663,15 +688,68 @@ export default function LibereAdminPanel() {
             
             {/* Requests List */}
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">📝 Richieste ({requests.length})</h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                <div>
+                  <h2 className="text-xl font-bold">📝 Richieste ({getFilteredRequests().length}/{requests.length})</h2>
+                  {maxDurationSeconds && (
+                    <div className="text-sm text-gray-600 mt-1">
+                      Filtrate per durata ≤ {Math.floor(maxDurationSeconds / 60)}:{(maxDurationSeconds % 60).toString().padStart(2, '0')}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Filtro Durata */}
+                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
+                  <button
+                    onClick={() => setShowDurationFilter(!showDurationFilter)}
+                    className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    ⏱️ Filtro Durata
+                  </button>
+                  
+                  {showDurationFilter && (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap gap-1">
+                        {durationPresets.map((preset) => (
+                          <button
+                            key={preset.label}
+                            onClick={() => setMaxDurationSeconds(preset.value)}
+                            className={`px-2 py-1 text-xs rounded transition-colors ${
+                              maxDurationSeconds === preset.value
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                            }`}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-1 items-center">
+                        <input
+                          type="number"
+                          placeholder="sec"
+                          min="1"
+                          max="3600"
+                          className="w-16 px-1 py-1 text-xs border rounded"
+                          onChange={(e) => {
+                            const value = parseInt(e.target.value);
+                            if (value > 0) setMaxDurationSeconds(value);
+                          }}
+                        />
+                        <span className="text-xs text-gray-600">secondi</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               
-              {requests.length === 0 ? (
+              {getFilteredRequests().length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
-                  Nessuna richiesta presente
+                  {requests.length === 0 ? 'Nessuna richiesta presente' : 'Nessuna richiesta corrisponde al filtro durata'}
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {requests.map((request) => (
+                  {getFilteredRequests().map((request) => (
                     <div key={request.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
@@ -689,8 +767,14 @@ export default function LibereAdminPanel() {
                             {STATUS_LABELS[request.status]}
                           </span>
                           {request.duration_ms && (
-                            <div className="text-gray-500 text-sm mt-1">
-                              {formatDuration(request.duration_ms)}
+                            <div className={`text-sm mt-1 font-medium ${
+                              maxDurationSeconds && Math.floor(request.duration_ms / 1000) <= maxDurationSeconds
+                                ? 'text-green-600'
+                                : maxDurationSeconds 
+                                ? 'text-red-500'
+                                : 'text-gray-500'
+                            }`}>
+                              ⏱️ {formatDuration(request.duration_ms)}
                             </div>
                           )}
                         </div>
