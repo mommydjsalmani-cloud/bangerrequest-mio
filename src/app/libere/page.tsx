@@ -246,7 +246,7 @@ function RichiesteLibereContent() {
   }
   
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 sm:p-6">
+    <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-red-900 via-purple-900 to-blue-900 text-white p-4 sm:p-6">
       <div className="w-full max-w-3xl p-6 sm:p-8 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 flex flex-col gap-6 mt-4 mb-8">
         <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
           🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
