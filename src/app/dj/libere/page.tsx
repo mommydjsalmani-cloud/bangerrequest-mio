@@ -169,7 +169,8 @@ export default function LibereAdminPanel() {
   }, [authed, selectedSessionId, password, username]);
   
   const adminAction = async (action: string, extraData: Record<string, unknown> = {}) => {
-    if (!authed || !selectedSessionId) return;
+    // Per la creazione di sessioni non serve selectedSessionId
+    if (!authed || (!selectedSessionId && action !== 'create_session')) return;
     
     setLoading(true);
     setError(null);
@@ -201,6 +202,10 @@ export default function LibereAdminPanel() {
       
       // Ricarica dati
       if (action === 'create_session') {
+        // Pulisci il form e chiudi la creazione
+        setNewSessionName('');
+        setShowCreateSession(false);
+        
         // Ricarica lista sessioni
         const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
           headers: {
@@ -215,6 +220,22 @@ export default function LibereAdminPanel() {
             setSelectedSessionId(data.session.id);
             loadSessionData(data.session.id);
           }
+        }
+      } else if (action === 'delete_session') {
+        // Ricarica lista sessioni e resetta selezione
+        const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+          headers: {
+            'x-dj-user': username,
+            'x-dj-secret': password
+          }
+        });
+        const sessionsData = await sessionsResponse.json();
+        if (sessionsData.ok) {
+          setSessions(sessionsData.sessions || []);
+          setSelectedSessionId('');
+          setCurrentSession(null);
+          setRequests([]);
+          setStats(null);
         }
       } else {
         loadSessionData(selectedSessionId);
@@ -253,6 +274,60 @@ export default function LibereAdminPanel() {
     
     // Refresh ottimistico immediato
     loadSessionData(selectedSessionId);
+  };
+  
+  // Gestione eliminazione sessione
+  const handleDeleteSession = async (sessionId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa sessione? Verranno eliminate anche tutte le richieste associate.')) return;
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/libere/admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          action: 'delete_session',
+          session_id: sessionId
+        })
+      });
+
+      const data = await response.json();
+      
+      if (!data.ok) {
+        setError(data.error || 'Errore durante l\'eliminazione della sessione');
+        return;
+      }
+
+      setSuccess('Sessione eliminata con successo ✓');
+
+      // Ricarica lista sessioni e resetta selezione
+      const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      const sessionsData = await sessionsResponse.json();
+      if (sessionsData.ok) {
+        setSessions(sessionsData.sessions || []);
+        setSelectedSessionId('');
+        setCurrentSession(null);
+        setRequests([]);
+        setStats(null);
+      }
+      
+    } catch (error) {
+      setError('Errore durante l\'eliminazione della sessione');
+    } finally {
+      setLoading(false);
+    }
   };
   
   const copyToClipboard = async (text: string) => {
@@ -304,16 +379,16 @@ export default function LibereAdminPanel() {
   
   if (!authed) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <form onSubmit={login} className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
-          <h1 className="text-2xl font-bold mb-6 text-center">🎵 Pannello Richieste Libere</h1>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
+        <form onSubmit={login} className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20">
+          <h1 className="text-2xl font-bold mb-6 text-center text-white">🎵 Pannello Richieste Libere</h1>
           
           {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
               {error}
               {schemaError && (
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                  <h4 className="font-medium text-blue-800 mb-2">🔧 Configurazione Database</h4>
+                <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm">
+                  <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
                   <button
                     onClick={setupDatabase}
                     disabled={setupLoading}
@@ -321,11 +396,11 @@ export default function LibereAdminPanel() {
                   >
                     {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
                   </button>
-                  <div className="text-sm text-blue-700 bg-blue-50 p-2 rounded border-l-4 border-blue-300">
+                  <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
                     <strong>Setup Manuale:</strong><br/>
                     1. Vai su <strong>Supabase Dashboard</strong><br/>
                     2. Clicca <strong>SQL Editor</strong><br/>
-                    3. Incolla il contenuto di <code className="bg-gray-100 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
+                    3. Incolla il contenuto di <code className="bg-white/20 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
                     4. Clicca <strong>Run</strong>
                   </div>
                 </div>
@@ -339,7 +414,7 @@ export default function LibereAdminPanel() {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
               disabled={loading}
             />
             <input
@@ -347,13 +422,13 @@ export default function LibereAdminPanel() {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
               disabled={loading}
             />
             <button
               type="submit"
               disabled={loading || !username.trim() || !password.trim()}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
+              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors shadow-lg"
             >
               {loading ? 'Accesso...' : 'Accedi'}
             </button>
@@ -364,34 +439,34 @@ export default function LibereAdminPanel() {
   }
   
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-2 md:p-4">
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold">🎵 Pannello Richieste Libere</h1>
+        <div className="bg-white/10 backdrop-blur-lg rounded-lg shadow-xl p-4 md:p-6 mb-4 md:mb-6 border border-white/20">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <h1 className="text-xl md:text-2xl font-bold text-white">🎵 Pannello Richieste Libere</h1>
             <button
               onClick={() => setAuthed(false)}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
             >
               Logout
             </button>
           </div>
           
           {/* Session Selection */}
-          <div className="flex gap-4 items-center mb-4">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-4 items-stretch sm:items-center mb-4">
             <select
               value={selectedSessionId}
               onChange={(e) => {
                 setSelectedSessionId(e.target.value);
                 if (e.target.value) loadSessionData(e.target.value);
               }}
-              className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white"
             >
-              <option value="">Seleziona sessione...</option>
+              <option value="" className="text-gray-800">Seleziona sessione...</option>
               {sessions.map(session => (
-                <option key={session.id} value={session.id}>
+                <option key={session.id} value={session.id} className="text-gray-800">
                   {session.name} ({SESSION_STATUS_LABELS[session.status]})
                 </option>
               ))}
@@ -399,10 +474,24 @@ export default function LibereAdminPanel() {
             
             <button
               onClick={() => setShowCreateSession(!showCreateSession)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
             >
-              + Nuova Sessione
+              + Nuova
             </button>
+            
+            {selectedSessionId && (
+              <button
+                onClick={() => handleDeleteSession(selectedSessionId)}
+                disabled={loading}
+                className={`px-4 py-2 text-white rounded-lg transition-colors shadow-lg ${
+                  loading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-600 hover:bg-red-700'
+                }`}
+              >
+                {loading ? '⏳ Eliminando...' : '🗑️ Elimina'}
+              </button>
+            )}
           </div>
           
           {/* Create Session Form */}

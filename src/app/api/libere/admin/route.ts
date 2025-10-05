@@ -356,6 +356,36 @@ export async function POST(req: Request) {
         token: newToken 
       });
     }
+
+    case 'delete_session': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      // Prima elimina tutte le richieste associate
+      await supabase
+        .from('richieste_libere')
+        .delete()
+        .eq('session_id', session_id);
+      
+      // Elimina rate limit associato
+      await supabase
+        .from('libere_rate_limit')
+        .delete()
+        .eq('session_id', session_id);
+      
+      // Infine elimina la sessione (soft delete)
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ archived: true })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ ok: true, message: 'Sessione eliminata ✓' });
+    }
     
     default:
       return withVersion({ ok: false, error: 'Azione non supportata' }, { status: 400 });
