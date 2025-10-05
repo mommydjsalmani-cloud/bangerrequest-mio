@@ -322,7 +322,7 @@ function RichiesteLibereContent() {
             {/* Pulsante Instagram */}
             <div className="mt-3 pt-3 border-t border-zinc-700">
               <a
-                href="https://instagram.com/mommydjsalmani"
+                href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 px-4 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98]"
@@ -330,7 +330,7 @@ function RichiesteLibereContent() {
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path fillRule="evenodd" d="M12.017 0C8.396 0 7.989.013 7.041.048 6.094.082 5.48.204 4.955.388a5.42 5.42 0 0 0-1.96 1.276A5.42 5.42 0 0 0 .82 3.624c-.185.526-.307 1.14-.342 2.088C.445 6.659.433 7.067.433 10.688s.012 4.029.047 4.977c.035.948.157 1.562.342 2.088a5.42 5.42 0 0 0 1.276 1.96 5.42 5.42 0 0 0 1.96 1.276c.526.185 1.14.307 2.088.342.948.035 1.356.047 4.977.047s4.029-.012 4.977-.047c.948-.035 1.562-.157 2.088-.342a5.42 5.42 0 0 0 1.96-1.276 5.42 5.42 0 0 0 1.276-1.96c.185-.526.307-1.14.342-2.088.035-.948.047-1.356.047-4.977s-.012-4.029-.047-4.977c-.035-.948-.157-1.562-.342-2.088a5.42 5.42 0 0 0-1.276-1.96A5.42 5.42 0 0 0 16.466.867c-.526-.185-1.14-.307-2.088-.342C13.43.445 13.022.433 9.401.433h2.616zm-.566 5.448c-3.31 0-5.99 2.68-5.99 5.99 0 3.31 2.68 5.99 5.99 5.99 3.31 0 5.99-2.68 5.99-5.99 0-3.31-2.68-5.99-5.99-5.99zm0 9.882a3.892 3.892 0 1 1 0-7.784 3.892 3.892 0 0 1 0 7.784zM16.806 5.222a1.4 1.4 0 1 1-2.8 0 1.4 1.4 0 0 1 2.8 0z" clipRule="evenodd" />
                 </svg>
-                Seguimi su Instagram @mommydjsalmani
+                Seguimi su Instagram @mommymusicentertainment
               </a>
               <div className="text-xs text-gray-400 text-center mt-2">
                 Supporta il DJ seguendo su Instagram! 💜
