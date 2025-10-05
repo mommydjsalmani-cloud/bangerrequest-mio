@@ -356,7 +356,7 @@ export default function LibereAdminPanel() {
         setStats(null);
       }
       
-    } catch (error) {
+    } catch (err) {
       setError('Errore durante l\'eliminazione della sessione');
     } finally {
       setLoading(false);
@@ -880,7 +880,7 @@ export default function LibereAdminPanel() {
                             )}
                           </div>
                           <div className="text-gray-800 italic leading-relaxed">
-                            "{request.note}"
+                            &ldquo;{request.note}&rdquo;
                           </div>
                         </div>
                       )}

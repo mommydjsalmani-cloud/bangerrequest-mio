@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           migrationNeeded: true
         }, { status: 400 });
       }
-    } catch (migrationError) {
+    } catch {
       return NextResponse.json({ 
         ok: false, 
         error: 'Errore verifica migrazione database',
