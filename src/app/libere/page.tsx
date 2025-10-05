@@ -116,6 +116,7 @@ function RichiesteLibereContent() {
   };
   
   const selectSpotifyTrack = (track: SpotifyTrack) => {
+    console.log('🎵 Selecting track:', track);
     setFormData({
       title: track.title || '',
       artists: track.artists || '',
@@ -129,6 +130,7 @@ function RichiesteLibereContent() {
     });
     setSearchResults([]);
     setSearchQuery('');
+    console.log('✅ Track selected, form updated');
   };
   
   const submitRequest = async (e: React.FormEvent) => {
@@ -303,6 +305,62 @@ function RichiesteLibereContent() {
                 );
               })}
             </div>
+
+            {/* Form con canzone selezionata */}
+            {formData.source === 'spotify' && formData.title && (
+              <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4">
+                <h3 className="text-lg font-semibold text-green-400">🎵 Canzone Selezionata</h3>
+                <div className="flex items-center gap-4">
+                  {formData.cover_url && (
+                    <Image 
+                      src={formData.cover_url} 
+                      alt={formData.title} 
+                      width={64} 
+                      height={64} 
+                      className="w-16 h-16 rounded object-cover" 
+                    />
+                  )}
+                  <div>
+                    <div className="font-semibold">{formData.title}</div>
+                    <div className="text-sm text-gray-400">{formData.artists}</div>
+                    {formData.album && (
+                      <div className="text-xs text-gray-500">{formData.album}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <input
+                  type="text"
+                  value={formData.requester_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                  placeholder="Il tuo nome"
+                  className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+                />
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitRequest}
+                    disabled={submitting || !formData.requester_name.trim()}
+                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {submitting ? '⏳ Invio...' : '🎶 Invia Richiesta'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFormData({
+                        title: '',
+                        requester_name: formData.requester_name,
+                        artists: '',
+                        source: 'manual'
+                      });
+                    }}
+                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                  >
+                    ↺
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Messaggi e form fallback */}
             {searchResults.length === 0 && searchQuery.trim() && !searching && (
