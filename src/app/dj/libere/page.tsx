@@ -161,37 +161,32 @@ export default function LibereAdminPanel() {
     }
   };
   
-  const updateRequestStatus = async (requestId: string, status: 'accepted' | 'rejected' | 'cancelled', note?: string) => {
+  // Funzione veloce stile eventi
+  const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled') => {
     if (!authed) return;
     
-    try {
-      const response = await fetch('/api/libere/admin', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          request_id: requestId,
-          status,
-          note
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        setError(data.error || 'Errore aggiornamento');
-        return;
-      }
-      
-      setSuccess(data.message);
-      loadSessionData(selectedSessionId);
-      
-    } catch {
-      setError('Errore connessione');
+    const response = await fetch('/api/libere/admin', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-dj-user': username,
+        'x-dj-secret': password
+      },
+      body: JSON.stringify({
+        request_id: requestId,
+        status: action,
+        note: action === 'cancelled' ? 'Cambiato idea - richiesta cancellata dal DJ' : undefined
+      })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) setError('Non autorizzato: credenziali DJ errate.');
+      else if (response.status === 500) setError('Errore server.');
+      return;
     }
+    
+    // Refresh ottimistico immediato
+    loadSessionData(selectedSessionId);
   };
   
   const copyToClipboard = async (text: string) => {
@@ -556,16 +551,16 @@ export default function LibereAdminPanel() {
                       {request.status === 'new' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => updateRequestStatus(request.id, 'accepted')}
-                            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
+                            onClick={() => act(request.id, 'accepted')}
+                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
                           >
-                            ✅ Accetta
+                            Accetta
                           </button>
                           <button
-                            onClick={() => updateRequestStatus(request.id, 'rejected')}
-                            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                            onClick={() => act(request.id, 'rejected')}
+                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
                           >
-                            ❌ Rifiuta
+                            Scarta
                           </button>
                         </div>
                       )}
@@ -573,10 +568,10 @@ export default function LibereAdminPanel() {
                       {request.status === 'accepted' && (
                         <div className="flex gap-2">
                           <button
-                            onClick={() => updateRequestStatus(request.id, 'cancelled', 'Cambiato idea - richiesta cancellata dal DJ')}
-                            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+                            onClick={() => act(request.id, 'cancelled')}
+                            className="bg-orange-700 px-2 py-1 rounded text-white hover:bg-orange-600 transition"
                           >
-                            🚫 Cancella
+                            Cancella
                           </button>
                         </div>
                       )}
