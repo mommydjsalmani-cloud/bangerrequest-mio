@@ -223,20 +223,20 @@ function RichiesteLibereContent() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
-        <div className="text-sm text-gray-300">Caricamento sessione...</div>
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-6">
+        <div className="text-xl text-blue-300 font-medium">🔄 Caricamento sessione...</div>
       </main>
     );
   }
   
   if (error && !session) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
-        <div className="bg-zinc-900 rounded-xl p-8 text-center max-w-md">
-          <div className="text-red-400 text-xl mb-4">❌ {error}</div>
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-6">
+        <div className="bg-white/10 backdrop-blur rounded-xl p-8 text-center max-w-md border border-white/20 shadow-2xl">
+          <div className="text-red-400 text-2xl mb-6 font-bold">❌ {error}</div>
           <button 
             onClick={() => window.location.reload()}
-            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-bold shadow-lg transition-all"
           >
             Riprova
           </button>
@@ -246,49 +246,49 @@ function RichiesteLibereContent() {
   }
   
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-start bg-black text-white p-4 sm:p-6">
-      <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
-        <h2 className="text-2xl font-bold mb-2">
+    <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4 sm:p-6">
+      <div className="w-full max-w-3xl p-6 sm:p-8 bg-white/10 backdrop-blur-lg rounded-xl shadow-2xl border border-white/20 flex flex-col gap-6 mt-4 mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-2 text-center bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
           🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
         </h2>
 
         {!submitted && (
           <>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
               <input
                 value={requesterName}
                 onChange={(e) => setRequesterName(e.target.value)}
                 type="text"
                 placeholder="Il tuo nome"
-                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 type="text"
                 placeholder="Cerca titolo o artista su Spotify"
-                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
               />
             </div>
-            {searching && <div className="text-sm text-gray-300">Ricerca in corso...</div>}
-            <div className="grid grid-cols-1 gap-2">
+            {searching && <div className="text-base text-blue-300 font-medium text-center">🔍 Ricerca in corso...</div>}
+            <div className="grid grid-cols-1 gap-3">
               {results.map((t) => (
-                <div key={t.id} className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}>
-                  <Image src={t.cover_url || '/file.svg'} alt={t.title || 'cover'} width={56} height={56} className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" />
+                <div key={t.id} className={`p-4 rounded-lg flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-400 bg-green-500/20' : 'bg-white/10 backdrop-blur border border-white/20 hover:bg-white/15'} transition-all duration-200`}>
+                  <Image src={t.cover_url || '/file.svg'} alt={t.title || 'cover'} width={64} height={64} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-lg" />
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm sm:text-base truncate">{t.title} {t.explicit ? <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span> : null}</div>
-                    <div className="text-[11px] sm:text-xs text-gray-400 truncate">{t.artists} — {t.album}</div>
-                    <div className="text-[10px] text-gray-500">{formatDuration(t.duration_ms || 0)}</div>
+                    <div className="font-bold text-base sm:text-lg truncate text-white">{t.title} {t.explicit ? <span className="text-xs bg-red-500 px-1.5 py-0.5 rounded ml-2 align-middle">E</span> : null}</div>
+                    <div className="text-sm sm:text-base text-gray-200 truncate font-medium">{t.artists} — {t.album}</div>
+                    <div className="text-sm text-gray-300">{formatDuration(t.duration_ms || 0)}</div>
                   </div>
-                  <div className="flex flex-col gap-1 items-end">
+                  <div className="flex flex-col gap-2 items-end">
                     {t.preview_url ? (
-                      <audio controls src={t.preview_url} className="w-28 sm:w-36 h-8" preload="none" />
+                      <audio controls src={t.preview_url} className="w-32 sm:w-40 h-8" preload="none" />
                     ) : (
-                      <div className="text-[10px] text-gray-500">No preview</div>
+                      <div className="text-sm text-gray-400">No preview</div>
                     )}
-                    <div className="flex gap-1">
-                      <button onClick={() => setSelected(t)} className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Sel.</button>
-                      <a href={`https://open.spotify.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
+                    <div className="flex gap-2">
+                      <button onClick={() => setSelected(t)} className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-medium shadow-lg transition-all">Seleziona</button>
+                      <a href={`https://open.spotify.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-3 rounded-lg text-sm font-medium shadow-lg transition-all">Spotify</a>
                     </div>
                   </div>
                 </div>
@@ -298,25 +298,46 @@ function RichiesteLibereContent() {
         )}
 
         {selected && !submitted && (
-          <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
-            <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
-            <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Nota o dedica (opzionale)" className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" rows={3} />
-            <div className="flex gap-2 mt-3">
-              <button onClick={confirmTrack} disabled={submitting || !requesterName.trim()} className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm">
-                {submitting ? '⏳ Invio...' : 'Conferma'}
+          <div className="p-6 bg-white/15 backdrop-blur rounded-lg border border-white/30 text-base sm:text-lg">
+            <div className="font-bold text-xl text-green-400 mb-3">✅ Conferma richiesta:</div>
+            <div className="text-white font-medium text-lg mb-4">{selected.title} — {selected.artists}</div>
+            <textarea 
+              value={note} 
+              onChange={(e)=>setNote(e.target.value)} 
+              placeholder="Nota o dedica (opzionale)" 
+              className="w-full mt-2 p-4 rounded-lg bg-white/10 backdrop-blur text-white text-base placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-white/20" 
+              rows={3} 
+            />
+            <div className="flex gap-3 mt-4">
+              <button 
+                onClick={confirmTrack} 
+                disabled={submitting || !requesterName.trim()} 
+                className="flex-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-500 disabled:cursor-not-allowed active:scale-[0.98] transition-all text-white py-3 px-6 rounded-lg text-lg font-bold shadow-lg"
+              >
+                {submitting ? '⏳ Invio...' : '🎵 Conferma Richiesta'}
               </button>
-              <button onClick={()=>setSelected(null)} className="flex-1 bg-gray-700 hover:bg-gray-600 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm">Annulla</button>
+              <button 
+                onClick={()=>setSelected(null)} 
+                className="flex-1 bg-gray-500 hover:bg-gray-600 active:scale-[0.98] transition-all text-white py-3 px-6 rounded-lg text-lg font-bold shadow-lg"
+              >
+                ❌ Annulla
+              </button>
             </div>
           </div>
         )}
 
         {submitted && (
-          <div className="p-5 bg-zinc-800 rounded text-sm sm:text-base flex flex-col gap-3">
-            <div className="font-semibold text-lg">Richiesta inviata</div>
-            <div className="text-gray-300 text-sm">Brano: <span className="text-white font-medium">{submittedTrack?.title || '—'}</span>{submittedTrack?.artists ? <span className="text-gray-400"> — {submittedTrack.artists}</span> : null}</div>
-            <div className="text-xs text-gray-400">
-              Stato attuale: <span className="font-semibold text-white">{lastRequestStatus || 'in attesa'}</span><br/>
-              La pagina si aggiorna automaticamente quando il DJ decide.
+          <div className="p-6 bg-white/15 backdrop-blur rounded-lg border border-white/30 text-base sm:text-lg flex flex-col gap-4">
+            <div className="font-bold text-2xl text-green-400 text-center">🎶 Richiesta inviata!</div>
+            <div className="text-gray-200 text-lg text-center">
+              <span className="text-white font-bold text-xl">{submittedTrack?.title || '—'}</span>
+              {submittedTrack?.artists ? <span className="text-gray-300 block text-base"> di {submittedTrack.artists}</span> : null}
+            </div>
+            <div className="text-base text-gray-300 bg-white/10 rounded-lg p-4 border border-white/20">
+              <div className="text-center">
+                Stato attuale: <span className="font-bold text-white text-lg uppercase">{lastRequestStatus || 'in attesa'}</span><br/>
+                <span className="text-sm text-gray-400 block mt-2">La pagina si aggiorna automaticamente quando il DJ decide.</span>
+              </div>
             </div>
             
             {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'cancelled') && (
@@ -329,9 +350,9 @@ function RichiesteLibereContent() {
                   sessionStorage.removeItem('libere_last_request_status');
                   sessionStorage.removeItem('libere_last_track');
                 }}
-                className="mt-2 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-sm"
+                className="mt-3 bg-blue-500 hover:bg-blue-600 text-white py-3 px-6 rounded-lg text-lg font-bold shadow-lg transition-all"
               >
-                Nuova richiesta
+                🎵 Nuova richiesta
               </button>
             )}
           </div>
@@ -339,14 +360,14 @@ function RichiesteLibereContent() {
 
         {/* Messaggi di errore/successo */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+          <div className="bg-red-500/20 border-2 border-red-400 text-red-100 px-6 py-4 rounded-lg backdrop-blur text-lg font-medium text-center shadow-lg">
+            ❌ {error}
           </div>
         )}
         
         {message && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            {message}
+          <div className="bg-green-500/20 border-2 border-green-400 text-green-100 px-6 py-4 rounded-lg backdrop-blur text-lg font-medium text-center shadow-lg">
+            ✅ {message}
           </div>
         )}
       </div>
@@ -357,8 +378,8 @@ function RichiesteLibereContent() {
 export default function RichiesteLibere() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-white text-xl">Caricamento...</div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white text-2xl font-medium">🔄 Caricamento...</div>
       </div>
     }>
       <RichiesteLibereContent />
