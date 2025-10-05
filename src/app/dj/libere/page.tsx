@@ -593,12 +593,12 @@ export default function LibereAdminPanel() {
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
                 <button
                   onClick={() => adminAction('toggle_status')}
-                  className={`py-2 px-4 rounded-lg text-white transition-colors ${
+                  className={`py-3 px-4 rounded-lg text-white font-medium transition-colors shadow-lg ${
                     currentSession.status === 'active' 
-                      ? 'bg-yellow-600 hover:bg-yellow-700' 
+                      ? 'bg-orange-600 hover:bg-orange-700' 
                       : 'bg-green-600 hover:bg-green-700'
                   }`}
                 >
@@ -607,7 +607,7 @@ export default function LibereAdminPanel() {
                 
                 <button
                   onClick={() => adminAction('soft_reset')}
-                  className="py-2 px-4 bg-orange-600 hover:bg-orange-700 text-white rounded-lg"
+                  className="py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg transition-colors"
                 >
                   🗂️ Reset Morbido
                 </button>
@@ -618,25 +618,25 @@ export default function LibereAdminPanel() {
                       adminAction('hard_reset');
                     }
                   }}
-                  className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                  className="py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium shadow-lg transition-colors"
                 >
                   🗑️ Reset Duro
                 </button>
                 
                 <button
                   onClick={() => adminAction('regenerate_token')}
-                  className="py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg"
+                  className="py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow-lg transition-colors"
                 >
                   🔄 Rigenera Token
                 </button>
               </div>
               
               {/* Rate Limiting Controls */}
-              <div className="border border-white/20 rounded-lg p-4 mb-6 bg-white/5">
-                <h3 className="text-lg font-semibold mb-3 text-white">⏱️ Controllo Rate Limiting</h3>
+              <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">⏱️ Controllo Rate Limiting</h3>
                 <div className="space-y-4">
                   <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-2 text-white">
+                    <label className="flex items-center gap-2 text-gray-800 font-medium">
                       <input
                         type="checkbox"
                         checked={currentSession?.rate_limit_enabled !== false}
@@ -646,15 +646,15 @@ export default function LibereAdminPanel() {
                             rate_limit_seconds: currentSession?.rate_limit_seconds || 60
                           });
                         }}
-                        className="w-4 h-4 rounded"
+                        className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
                       />
                       Abilita rate limiting
                     </label>
                   </div>
                   
                   {currentSession?.rate_limit_enabled !== false && (
-                    <div className="flex items-center gap-4">
-                      <label className="text-white">Secondi tra richieste:</label>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+                      <label className="text-gray-800 font-medium whitespace-nowrap">Secondi tra richieste:</label>
                       <select
                         value={currentSession?.rate_limit_seconds || 60}
                         onChange={(e) => {
@@ -663,22 +663,22 @@ export default function LibereAdminPanel() {
                             rate_limit_seconds: parseInt(e.target.value)
                           });
                         }}
-                        className="px-3 py-1 rounded bg-zinc-800 text-white border border-white/30"
+                        className="px-3 py-2 rounded-lg bg-white text-gray-900 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
                       >
-                        <option value={5}>5 secondi</option>
-                        <option value={10}>10 secondi</option>
-                        <option value={30}>30 secondi</option>
-                        <option value={60}>60 secondi (default)</option>
-                        <option value={120}>2 minuti</option>
-                        <option value={300}>5 minuti</option>
+                        <option value={5} className="text-gray-900">5 secondi</option>
+                        <option value={10} className="text-gray-900">10 secondi</option>
+                        <option value={30} className="text-gray-900">30 secondi</option>
+                        <option value={60} className="text-gray-900">60 secondi (default)</option>
+                        <option value={120} className="text-gray-900">2 minuti</option>
+                        <option value={300} className="text-gray-900">5 minuti</option>
                       </select>
                     </div>
                   )}
                   
-                  <div className="text-sm text-gray-300">
+                  <div className="text-sm font-medium p-3 rounded-lg border-l-4 bg-white">
                     {currentSession?.rate_limit_enabled === false 
-                      ? "⚠️ Gli utenti possono inviare richieste senza limitazioni"
-                      : `✅ Gli utenti devono attendere ${currentSession?.rate_limit_seconds || 60} secondi tra le richieste`
+                      ? <span className="text-orange-700 border-orange-400">⚠️ Gli utenti possono inviare richieste senza limitazioni</span>
+                      : <span className="text-green-700 border-green-400">✅ Gli utenti devono attendere <strong>{currentSession?.rate_limit_seconds || 60} secondi</strong> tra le richieste</span>
                     }
                   </div>
                 </div>
@@ -686,22 +686,22 @@ export default function LibereAdminPanel() {
               
               {/* Link & QR */}
               <div className="space-y-3">
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={publicUrl}
                     readOnly
-                    className="flex-1 px-3 py-2 bg-gray-100 border rounded-lg"
+                    className="flex-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                   />
                   <button
                     onClick={() => copyToClipboard(publicUrl)}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-lg transition-colors"
                   >
                     📋 Copia Link
                   </button>
                   <button
                     onClick={() => setShowQR(!showQR)}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg"
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium shadow-lg transition-colors"
                   >
                     📱 {showQR ? 'Nascondi' : 'Mostra'} QR
                   </button>
@@ -723,31 +723,31 @@ export default function LibereAdminPanel() {
             
             {/* Stats */}
             {stats && (
-              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h2 className="text-xl font-bold mb-4">📊 Statistiche</h2>
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6 border border-gray-200">
+                <h2 className="text-xl font-bold mb-4 text-gray-800">📊 Statistiche</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{stats.total}</div>
-                    <div className="text-gray-600">Totali</div>
+                  <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="text-3xl font-bold text-blue-600 mb-1">{stats.total}</div>
+                    <div className="text-gray-700 font-medium">Totali</div>
                   </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">{stats.lastHour}</div>
-                    <div className="text-gray-600">Ultima ora</div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="text-3xl font-bold text-green-600 mb-1">{stats.lastHour}</div>
+                    <div className="text-gray-700 font-medium">Ultima ora</div>
                   </div>
-                  <div>
-                    <div className="font-medium mb-2">Top 3 richieste:</div>
+                  <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="font-semibold mb-3 text-gray-800">Top 3 richieste:</div>
                     {stats.topRequests.length > 0 ? (
-                      <div className="space-y-1">
+                      <div className="space-y-2">
                         {stats.topRequests.map((req, i) => (
-                          <div key={i} className="text-sm">
-                            <span className="font-medium">{req.title}</span>
+                          <div key={i} className="text-sm bg-white p-2 rounded border">
+                            <span className="font-medium text-gray-900">{req.title}</span>
                             {req.artists && <span className="text-gray-600"> - {req.artists}</span>}
-                            <span className="text-blue-600"> ({req.count}x)</span>
+                            <span className="text-blue-600 font-semibold"> ({req.count}x)</span>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-gray-500 text-sm">Nessuna richiesta</div>
+                      <div className="text-gray-500 text-sm italic">Nessuna richiesta</div>
                     )}
                   </div>
                 </div>
@@ -755,114 +755,118 @@ export default function LibereAdminPanel() {
             )}
             
             {/* Requests List */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold mb-4">📝 Richieste ({requests.length})</h2>
+            <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+              <h2 className="text-xl font-bold mb-4 text-gray-800">📝 Richieste ({requests.length})</h2>
               
               {requests.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  Nessuna richiesta presente
+                <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-4xl mb-2">🎵</div>
+                  <div className="font-medium">Nessuna richiesta presente</div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
+                    <div key={request.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <div className="font-bold text-lg">{request.title}</div>
+                          <div className="font-bold text-lg text-gray-900 mb-1">{request.title}</div>
                           {request.artists && (
-                            <div className="text-gray-600">{request.artists}</div>
+                            <div className="text-gray-700 font-medium">{request.artists}</div>
                           )}
                           {request.album && (
-                            <div className="text-gray-500 text-sm">{request.album}</div>
+                            <div className="text-gray-600 text-sm">{request.album}</div>
                           )}
                         </div>
                         
                         <div className="text-right">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${STATUS_COLORS[request.status]}`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[request.status]}`}>
                             {STATUS_LABELS[request.status]}
                           </span>
                           {request.duration_ms && (
-                            <div className="text-gray-500 text-sm mt-1">
-                              {formatDuration(request.duration_ms)}
+                            <div className="text-gray-600 text-sm mt-1 font-medium">
+                              ⏱️ {formatDuration(request.duration_ms)}
                             </div>
                           )}
                         </div>
                       </div>
                       
-                      <div className="text-sm text-gray-500 mb-3">
-                        <div>📅 {formatDateTime(request.created_at)}</div>
-                        {request.requester_name && (
-                          <div>👤 {request.requester_name}</div>
-                        )}
-                        <div>🔍 {request.source === 'spotify' ? 'Spotify' : 'Manuale'}</div>
-                        <div>🌐 {request.client_ip}</div>
+                      <div className="text-sm text-gray-600 mb-3 bg-white p-3 rounded border border-gray-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div><strong>📅 Data:</strong> {formatDateTime(request.created_at)}</div>
+                          {request.requester_name && (
+                            <div><strong>👤 Richiedente:</strong> {request.requester_name}</div>
+                          )}
+                          <div><strong>🔍 Fonte:</strong> {request.source === 'spotify' ? 'Spotify' : 'Manuale'}</div>
+                          <div><strong>🌐 IP:</strong> {request.client_ip}</div>
+                        </div>
                       </div>
                       
                       {request.status === 'new' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
+                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Accetta
+                            ✅ Accetta
                           </button>
                           <button
                             onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
+                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Scarta
+                            ❌ Scarta
                           </button>
                         </div>
                       )}
                       
                       {request.status === 'accepted' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
+                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Rifiuta
+                            ❌ Rifiuta
                           </button>
                           <button
                             onClick={() => act(request.id, 'cancelled')}
-                            className="bg-orange-700 px-2 py-1 rounded text-white hover:bg-orange-600 transition"
+                            className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Cancella
+                            🚫 Cancella
                           </button>
                         </div>
                       )}
                       
                       {request.status === 'rejected' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
+                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Accetta
+                            ✅ Accetta
                           </button>
                         </div>
                       )}
                       
                       {request.status === 'cancelled' && (
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                           <button
                             onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
+                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Accetta
+                            ✅ Accetta
                           </button>
                           <button
                             onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
+                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
-                            Rifiuta
+                            ❌ Rifiuta
                           </button>
                         </div>
                       )}
                       
                       {request.note && (
-                        <div className="mt-2 text-sm text-gray-600 bg-gray-100 p-2 rounded">
-                          💬 {request.note}
+                        <div className="mt-3 text-sm text-gray-700 bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                          <div className="font-medium text-blue-800">💬 Nota:</div>
+                          <div className="mt-1">{request.note}</div>
                         </div>
                       )}
                     </div>
