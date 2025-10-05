@@ -25,6 +25,39 @@ export default function LibereAdminPanel() {
   const [showCreateSession, setShowCreateSession] = useState(false);
   const [schemaError, setSchemaError] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
+  const [migrationLoading, setMigrationLoading] = useState(false);
+  
+  const checkMigration = async () => {
+    setMigrationLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const response = await fetch('/api/libere/migrate', {
+        method: 'POST',
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess(data.message);
+      } else {
+        if (data.sql) {
+          setError(`${data.error}\n\nSQL da eseguire:\n${data.sql}`);
+        } else {
+          setError(data.error || 'Errore durante il controllo migrazione');
+        }
+      }
+    } catch {
+      setError('Errore connessione durante il controllo migrazione');
+    } finally {
+      setMigrationLoading(false);
+    }
+  };
   
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -395,6 +428,13 @@ export default function LibereAdminPanel() {
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
                   >
                     {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
+                  </button>
+                  <button
+                    onClick={checkMigration}
+                    disabled={migrationLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                  >
+                    {migrationLoading ? '⏳ Controllo...' : '⚡ Controlla Migrazione Rate Limiting'}
                   </button>
                   <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
                     <strong>Setup Manuale:</strong><br/>

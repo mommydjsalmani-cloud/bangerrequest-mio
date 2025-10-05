@@ -208,7 +208,9 @@ export async function POST(req: Request) {
         name: session_name || 'Nuova Sessione Richieste Libere',
         status: 'active',
         reset_count: 0,
-        archived: false
+        archived: false,
+        rate_limit_enabled: true,
+        rate_limit_seconds: 60
       };
       
       const { data: newSession, error } = await supabase

@@ -40,6 +40,31 @@ export async function POST(request: NextRequest) {
     }
 
     // Se arriviamo qui, le tabelle esistono già
+    // Verifica e aggiungi le colonne del rate limiting se non esistono
+    try {
+      // Tenta di selezionare le nuove colonne per vedere se esistono
+      const { error: checkError } = await supabase
+        .from('sessioni_libere')
+        .select('rate_limit_enabled, rate_limit_seconds')
+        .limit(1);
+      
+      if (checkError && checkError.message.includes('rate_limit_enabled')) {
+        return NextResponse.json({ 
+          ok: false, 
+          error: 'Database non aggiornato',
+          instruction: 'Vai su Supabase Dashboard → SQL Editor e esegui: scripts/migrate_add_rate_limit_control.sql',
+          migrationNeeded: true
+        }, { status: 400 });
+      }
+    } catch (migrationError) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Errore verifica migrazione database',
+        instruction: 'Vai su Supabase Dashboard → SQL Editor e esegui: scripts/migrate_add_rate_limit_control.sql',
+        migrationNeeded: true
+      }, { status: 400 });
+    }
+    
     // Aggiungiamo una sessione demo se non esiste
     const { error: insertError } = await supabase
       .from('sessioni_libere')
