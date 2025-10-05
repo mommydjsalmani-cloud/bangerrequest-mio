@@ -182,7 +182,7 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Dati richiesta non validi' }, { status: 400 });
   }
   
-  const { title, requester_name, track_id, uri, artists, album, cover_url, isrc, explicit, preview_url, duration_ms, source = 'manual' } = body;
+  const { title, requester_name, note, track_id, uri, artists, album, cover_url, isrc, explicit, preview_url, duration_ms, source = 'manual' } = body;
   
   if (!title?.trim()) {
     return withVersion({ ok: false, error: 'Titolo brano obbligatorio' }, { status: 400 });
@@ -218,6 +218,7 @@ export async function POST(req: Request) {
     preview_url: preview_url || null,
     duration_ms: duration_ms || null,
     requester_name: requester_name?.trim() || null,
+    note: note?.trim() || null, // Aggiungo il campo note
     client_ip: clientIP,
     user_agent: userAgent,
     source: source,

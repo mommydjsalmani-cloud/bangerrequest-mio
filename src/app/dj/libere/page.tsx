@@ -776,6 +776,12 @@ export default function LibereAdminPanel() {
                           {request.album && (
                             <div className="text-gray-600 text-sm">{request.album}</div>
                           )}
+                          {/* Anteprima nota/dedica */}
+                          {request.note && (
+                            <div className="mt-2 text-sm text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded-md inline-block">
+                              💌 {request.note.length > 50 ? `${request.note.substring(0, 50)}...` : request.note}
+                            </div>
+                          )}
                         </div>
                         
                         <div className="text-right">
@@ -864,9 +870,18 @@ export default function LibereAdminPanel() {
                       )}
                       
                       {request.note && (
-                        <div className="mt-3 text-sm text-gray-700 bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                          <div className="font-medium text-blue-800">💬 Nota:</div>
-                          <div className="mt-1">{request.note}</div>
+                        <div className="mt-3 text-sm bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 p-4 rounded-lg shadow-sm">
+                          <div className="flex items-center gap-2 font-semibold text-purple-800 mb-2">
+                            💌 Messaggio dal richiedente
+                            {request.requester_name && (
+                              <span className="text-xs bg-purple-100 px-2 py-1 rounded-full">
+                                da {request.requester_name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-800 italic leading-relaxed">
+                            "{request.note}"
+                          </div>
                         </div>
                       )}
                     </div>
