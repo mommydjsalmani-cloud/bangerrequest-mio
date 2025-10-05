@@ -496,31 +496,33 @@ export default function LibereAdminPanel() {
           
           {/* Create Session Form */}
           {showCreateSession && (
-            <div className="border rounded-lg p-4 bg-gray-50 mb-4">
-              <div className="flex gap-2">
+            <div className="border border-white/20 rounded-lg p-4 bg-white/10 backdrop-blur-sm mb-4 shadow-lg">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   placeholder="Nome sessione..."
                   value={newSessionName}
                   onChange={(e) => setNewSessionName(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded-lg"
+                  className="flex-1 px-3 py-2 border border-white/30 rounded-lg bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
                 />
-                <button
-                  onClick={() => adminAction('create_session', { session_name: newSessionName })}
-                  disabled={!newSessionName.trim()}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg"
-                >
-                  Crea
-                </button>
-                <button
-                  onClick={() => {
-                    setShowCreateSession(false);
-                    setNewSessionName('');
-                  }}
-                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
-                >
-                  Annulla
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => adminAction('create_session', { session_name: newSessionName })}
+                    disabled={!newSessionName.trim() || loading}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg shadow-lg transition-colors text-sm sm:text-base"
+                  >
+                    {loading ? '⏳ Creando...' : 'Crea'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateSession(false);
+                      setNewSessionName('');
+                    }}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg shadow-lg transition-colors text-sm sm:text-base"
+                  >
+                    Annulla
+                  </button>
+                </div>
               </div>
             </div>
           )}
