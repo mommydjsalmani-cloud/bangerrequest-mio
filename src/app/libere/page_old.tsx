@@ -1,0 +1,526 @@
+"use client";
+
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
+import Image from 'next/image';
+
+type SpotifyTrack = {
+  id: string;
+  uri?: string;
+  title?: string;
+  artists?: string;
+  album?: string;
+  cover_url?: string | null;
+  duration_ms?: number;
+  preview_url?: string | null;
+  explicit?: boolean;
+  isrc?: string | null;
+};
+
+function RichiesteLibereContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams?.get('s');
+  
+  const [session, setSession] = useState<LibereSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [lastRequestTime, setLastRequestTime] = useState<number | undefined>();
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
+  const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | null>(null);
+  const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
+  
+  // Form state semplificato
+  const [requesterName, setRequesterName] = useState('');
+  const [note, setNote] = useState('');
+  
+  // Spotify search
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SpotifyTrack[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<SpotifyTrack | null>(null);
+  
+  const submitted = !!lastRequestId;
+  
+  useEffect(() => {
+    if (!token) {
+      setError('Token sessione mancante nell\'URL');
+      setLoading(false);
+      return;
+    }
+    
+    const loadSession = async () => {
+      try {
+        const response = await fetch(`/api/libere?s=${token}`);
+        const data = await response.json();
+        
+        if (!data.ok) {
+          setError(data.error || 'Errore caricamento sessione');
+          return;
+        }
+        
+        setSession(data.session);
+      } catch {
+        setError('Errore connessione');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadSession();
+  }, [token]);
+
+  // Carica ultima richiesta e stato
+  useEffect(() => {
+    const savedRequestId = sessionStorage.getItem('libere_last_request_id');
+    const savedStatus = sessionStorage.getItem('libere_last_request_status');
+    const savedTrack = sessionStorage.getItem('libere_last_track');
+    
+    if (savedRequestId) {
+      setLastRequestId(savedRequestId);
+      if (savedStatus === 'new' || savedStatus === 'accepted' || savedStatus === 'rejected' || savedStatus === 'cancelled') {
+        setLastRequestStatus(savedStatus);
+      }
+      if (savedTrack) {
+        try {
+          setSubmittedTrack(JSON.parse(savedTrack));
+        } catch {}
+      }
+    }
+  }, []);
+
+  // Controlla stato richiesta (come negli eventi)
+  useEffect(() => {
+    if (!lastRequestId || !token) return;
+
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/libere?s=${token}&request_id=${lastRequestId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.status !== lastRequestStatus) {
+            setLastRequestStatus(data.status);
+            sessionStorage.setItem('libere_last_request_status', data.status);
+            
+            if (data.status === 'cancelled' && lastRequestStatus === 'accepted') {
+              setMessage('⚠️ La tua richiesta accettata è stata cancellata dal DJ');
+              setTimeout(() => setMessage(null), 3500);
+            }
+          }
+        }
+      } catch {}
+    };
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 10000);
+    return () => clearInterval(interval);
+  }, [lastRequestId, token, lastRequestStatus]);
+  
+  // Ricerca Spotify con debounce (come negli eventi)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!query.trim()) {
+        setResults([]);
+        return;
+      }
+      setSearching(true);
+      fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`)
+        .then((r) => r.json())
+        .then((data) => {
+          setResults(data.tracks || []);
+        })
+        .catch(() => setResults([]))
+        .finally(() => setSearching(false));
+    }, 400);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  const confirmTrack = () => {
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Conferma brano selezionato (come negli eventi)
+  const confirmTrack = async () => {
+    if (!selected) return;
+    
+    if (!requesterName.trim()) {
+      setError('Nome obbligatorio');
+      return;
+    }
+    
+    // Rate limiting check
+    const rateLimitCheck = canMakeRequest(lastRequestTime);
+    if (!rateLimitCheck.allowed) {
+      setError(`Devi attendere ${rateLimitCheck.remainingSeconds} secondi prima di inviare un'altra richiesta`);
+      return;
+    }
+    
+    setSubmitting(true);
+    setError(null);
+    setMessage(null);
+    
+    try {
+      const payload = {
+        title: sanitizeInput(selected.title || ''),
+        requester_name: requesterName.trim(),
+        artists: selected.artists || '',
+        track_id: selected.id,
+        uri: selected.uri,
+        album: selected.album || '',
+        cover_url: selected.cover_url || '',
+        duration_ms: selected.duration_ms,
+        source: 'spotify',
+        note: note.trim() || undefined
+      };
+      
+      const response = await fetch(`/api/libere?s=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await response.json();
+      
+      if (!data.ok) {
+        setError(data.error || 'Errore invio richiesta');
+        setSubmitting(false);
+        return;
+      }
+      
+      // Successo - salva info
+      setLastRequestTime(Date.now());
+      setLastRequestId(data.request_id);
+      setLastRequestStatus('new');
+      setSubmittedTrack({ title: selected.title, artists: selected.artists });
+      
+      sessionStorage.setItem('libere_last_request_id', data.request_id);
+      sessionStorage.setItem('libere_last_request_status', 'new');
+      sessionStorage.setItem('libere_last_track', JSON.stringify({ title: selected.title, artists: selected.artists }));
+      
+      // Reset
+      setSelected(null);
+      setNote('');
+      setRequesterName('');
+      setQuery('');
+      setResults([]);
+      setMessage(data.message || 'Richiesta inviata 🎶');
+      setTimeout(() => setMessage(null), 3500);
+      
+    } catch {
+      setError('Errore connessione');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  
+  if (error && !session) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
+        <div className="bg-zinc-900 rounded-xl p-8 text-center max-w-md">
+          <div className="text-red-400 text-xl mb-4">❌ {error}</div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+          >
+            Riprova
+          </button>
+        </div>
+      </main>
+    );
+  }
+  
+  return (
+    <main className="flex min-h-dvh flex-col items-center justify-start bg-black text-white p-4 sm:p-6">
+      <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
+        <h2 className="text-2xl font-bold mb-2">
+          🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
+        </h2>
+
+        {/* Status ultima richiesta */}
+        {lastRequestId && lastRequestStatus && (
+          <div className={`rounded-lg p-3 text-sm ${
+            lastRequestStatus === 'new' ? 'bg-blue-500/20 border border-blue-500 text-blue-200' :
+            lastRequestStatus === 'accepted' ? 'bg-green-500/20 border border-green-500 text-green-200' :
+            lastRequestStatus === 'rejected' ? 'bg-red-500/20 border border-red-500 text-red-200' :
+            lastRequestStatus === 'cancelled' ? 'bg-orange-500/20 border border-orange-500 text-orange-200' :
+            'bg-gray-500/20 border border-gray-500 text-gray-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span>
+                🎵 La tua ultima richiesta: <strong>{
+                  lastRequestStatus === 'new' ? '⏳ In attesa' :
+                  lastRequestStatus === 'accepted' ? '✅ Accettata' :
+                  lastRequestStatus === 'rejected' ? '❌ Rifiutata' :
+                  lastRequestStatus === 'cancelled' ? '🚫 Cancellata dal DJ' :
+                  'Sconosciuto'
+                }</strong>
+              </span>
+              <button
+                onClick={() => {
+                  setLastRequestId(null);
+                  setLastRequestStatus(null);
+                  sessionStorage.removeItem('libere_last_request_id');
+                  sessionStorage.removeItem('libere_last_request_status');
+                }}
+                className="text-xs opacity-70 hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {session?.status === 'paused' && (
+          <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-200">
+            <p>⏸️ Le richieste libere sono chiuse al momento</p>
+          </div>
+        )}
+
+        {session?.status === 'active' && (
+          <>
+            {/* Nome utente */}
+            <div className="flex flex-col gap-3">
+              <input
+                value={formData.requester_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                type="text"
+                placeholder="Il tuo nome"
+                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+              />
+            </div>
+
+            {/* Ricerca Spotify */}
+            <div className="flex flex-col gap-3">
+              <input
+                value={searchQuery}
+                onChange={(e) => {
+                  console.log('Input cambiato:', e.target.value);
+                  setSearchQuery(e.target.value);
+                }}
+                type="text"
+                placeholder="Cerca titolo o artista su Spotify"
+                className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+              />
+            </div>
+
+            {searching && <div className="text-sm text-gray-300">Ricerca in corso... ({searchQuery})</div>}
+
+            {/* Debug info */}
+            {searchQuery && !searching && searchResults.length === 0 && (
+              <div className="text-sm text-yellow-300">
+                Nessun risultato per &quot;{searchQuery}&quot;. Controlla la console per errori.
+              </div>
+            )}
+
+            {/* Risultati ricerca */}
+            <div className="grid grid-cols-1 gap-2">
+              {searchResults.map((track) => (
+                <div 
+                  key={track.id} 
+                  className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === track.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}
+                >
+                  <Image 
+                    src={track.cover_url || '/file.svg'} 
+                    alt={track.title || 'cover'} 
+                    width={56} 
+                    height={56} 
+                    className="w-12 h-12 sm:w-14 sm:h-14 rounded object-cover flex-shrink-0" 
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm sm:text-base truncate">
+                      {track.title} 
+                      {track.explicit && (
+                        <span className="text-[10px] bg-red-600 px-1 rounded ml-1 align-middle">E</span>
+                      )}
+                    </div>
+                    <div className="text-[11px] sm:text-xs text-gray-400 truncate">
+                      {track.artists} — {track.album}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {formatDuration(track.duration_ms || 0)}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    {track.preview_url ? (
+                      <audio controls src={track.preview_url} className="w-28 sm:w-36 h-8" preload="none" />
+                    ) : (
+                      <div className="text-[10px] text-gray-500">No preview</div>
+                    )}
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => setSelected(track)} 
+                        className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
+                      >
+                        Sel.
+                      </button>
+                      <a 
+                        href={`https://open.spotify.com/track/${track.id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
+                      >
+                        Apri
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Form di conferma per canzone selezionata */}
+            {selected && (
+              <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
+                <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
+                <input
+                  type="text"
+                  value={formData.requester_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                  placeholder="Il tuo nome (obbligatorio)"
+                  className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm placeholder-gray-400 focus:outline-none"
+                />
+                <div className="flex gap-2 mt-3">
+                  <button 
+                    onClick={confirmTrack} 
+                    className="flex-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm"
+                  >
+                    Conferma
+                  </button>
+                  <button 
+                    onClick={() => setSelected(null)} 
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Form con canzone confermata */}
+            {formData.source === 'spotify' && formData.title && !selected && (
+              <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4">
+                <h3 className="text-lg font-semibold text-green-400">🎵 Canzone Selezionata</h3>
+                <div className="flex items-center gap-4">
+                  {formData.cover_url && (
+                    <Image 
+                      src={formData.cover_url} 
+                      alt={formData.title} 
+                      width={64} 
+                      height={64} 
+                      className="w-16 h-16 rounded object-cover" 
+                    />
+                  )}
+                  <div>
+                    <div className="font-semibold">{formData.title}</div>
+                    <div className="text-sm text-gray-400">{formData.artists}</div>
+                    {formData.album && (
+                      <div className="text-xs text-gray-500">{formData.album}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <input
+                  type="text"
+                  value={formData.requester_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                  placeholder="Il tuo nome"
+                  className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+                />
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitRequest}
+                    disabled={submitting || !formData.requester_name.trim()}
+                    className="flex-1 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {submitting ? '⏳ Invio...' : '🎶 Invia Richiesta'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setFormData({
+                        title: '',
+                        requester_name: formData.requester_name,
+                        artists: '',
+                        source: 'manual'
+                      });
+                    }}
+                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
+                  >
+                    ↺
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Messaggi e form fallback */}
+            {searchResults.length === 0 && searchQuery.trim() && !searching && (
+              <div className="text-center text-gray-400 py-4">
+                <p>Nessun risultato trovato. Inserisci i dati manualmente:</p>
+                <div className="mt-4 space-y-3">
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Titolo brano"
+                    className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={formData.artists}
+                    onChange={(e) => setFormData(prev => ({ ...prev, artists: e.target.value }))}
+                    placeholder="Artista"
+                    className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
+                  />
+                  <button
+                    onClick={submitRequest}
+                    disabled={submitting || !formData.title.trim()}
+                    className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {submitting ? '⏳ Invio...' : '🎶 Invia Richiesta'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Messaggi di errore/successo */}
+            {error && (
+              <div className="bg-red-500/20 border border-red-500 rounded-lg p-3 text-red-200">
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="bg-green-500/20 border border-green-500 rounded-lg p-3 text-green-200">
+                {success}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+export default function RichiesteLibere() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-white text-xl">Caricamento...</div>
+      </div>
+    }>
+      <RichiesteLibereContent />
+    </Suspense>
+  );
+}
