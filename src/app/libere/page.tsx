@@ -260,14 +260,14 @@ function RichiesteLibereContent() {
                 onChange={(e) => setRequesterName(e.target.value)}
                 type="text"
                 placeholder="Il tuo nome"
-                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
+                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-cyan-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 type="text"
                 placeholder="Cerca titolo o artista su Spotify"
-                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
+                className="w-full p-4 rounded-lg bg-white/10 backdrop-blur text-white placeholder-cyan-200 focus:outline-none focus:ring-2 focus:ring-blue-400 text-lg border border-white/20"
               />
             </div>
             {searching && <div className="text-base text-blue-300 font-medium text-center">🔍 Ricerca in corso...</div>}
@@ -277,14 +277,14 @@ function RichiesteLibereContent() {
                   <Image src={t.cover_url || '/file.svg'} alt={t.title || 'cover'} width={64} height={64} className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0 shadow-lg" />
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-base sm:text-lg truncate text-white">{t.title} {t.explicit ? <span className="text-xs bg-red-500 px-1.5 py-0.5 rounded ml-2 align-middle">E</span> : null}</div>
-                    <div className="text-sm sm:text-base text-gray-200 truncate font-medium">{t.artists} — {t.album}</div>
-                    <div className="text-sm text-gray-300">{formatDuration(t.duration_ms || 0)}</div>
+                    <div className="text-sm sm:text-base text-yellow-200 truncate font-semibold">{t.artists} — {t.album}</div>
+                    <div className="text-sm text-blue-200 font-medium">{formatDuration(t.duration_ms || 0)}</div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">
                     {t.preview_url ? (
                       <audio controls src={t.preview_url} className="w-32 sm:w-40 h-8" preload="none" />
                     ) : (
-                      <div className="text-sm text-gray-400">No preview</div>
+                      <div className="text-sm text-orange-200 font-medium">No preview</div>
                     )}
                     <div className="flex gap-2">
                       <button onClick={() => setSelected(t)} className="bg-green-500 hover:bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-medium shadow-lg transition-all">Seleziona</button>
@@ -305,7 +305,7 @@ function RichiesteLibereContent() {
               value={note} 
               onChange={(e)=>setNote(e.target.value)} 
               placeholder="Nota o dedica (opzionale)" 
-              className="w-full mt-2 p-4 rounded-lg bg-white/10 backdrop-blur text-white text-base placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-white/20" 
+              className="w-full mt-2 p-4 rounded-lg bg-white/10 backdrop-blur text-white text-base placeholder-cyan-200 focus:outline-none focus:ring-2 focus:ring-blue-400 border border-white/20" 
               rows={3} 
             />
             <div className="flex gap-3 mt-4">
@@ -329,14 +329,14 @@ function RichiesteLibereContent() {
         {submitted && (
           <div className="p-6 bg-white/15 backdrop-blur rounded-lg border border-white/30 text-base sm:text-lg flex flex-col gap-4">
             <div className="font-bold text-2xl text-green-400 text-center">🎶 Richiesta inviata!</div>
-            <div className="text-gray-200 text-lg text-center">
+            <div className="text-yellow-200 text-lg text-center">
               <span className="text-white font-bold text-xl">{submittedTrack?.title || '—'}</span>
-              {submittedTrack?.artists ? <span className="text-gray-300 block text-base"> di {submittedTrack.artists}</span> : null}
+              {submittedTrack?.artists ? <span className="text-cyan-200 block text-base font-medium"> di {submittedTrack.artists}</span> : null}
             </div>
-            <div className="text-base text-gray-300 bg-white/10 rounded-lg p-4 border border-white/20">
+            <div className="text-base text-blue-200 bg-white/10 rounded-lg p-4 border border-white/20">
               <div className="text-center">
                 Stato attuale: <span className="font-bold text-white text-lg uppercase">{lastRequestStatus || 'in attesa'}</span><br/>
-                <span className="text-sm text-gray-400 block mt-2">La pagina si aggiorna automaticamente quando il DJ decide.</span>
+                <span className="text-sm text-orange-200 block mt-2 font-medium">La pagina si aggiorna automaticamente quando il DJ decide.</span>
               </div>
             </div>
             
