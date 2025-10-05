@@ -30,11 +30,12 @@ export type LibereRequest = {
   client_ip: string;
   user_agent?: string;
   source: 'spotify' | 'manual';
-  status: 'new' | 'accepted' | 'rejected' | 'archived';
+  status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived';
   note?: string;
   archived: boolean;
   accepted_at?: string;
   rejected_at?: string;
+  cancelled_at?: string;
   archived_at?: string;
 };
 
@@ -126,6 +127,7 @@ export const STATUS_LABELS = {
   'new': 'Nuova',
   'accepted': 'Accettata',
   'rejected': 'Rifiutata',
+  'cancelled': 'Cancellata',
   'archived': 'Archiviata'
 } as const;
 
@@ -133,6 +135,7 @@ export const STATUS_COLORS = {
   'new': 'bg-blue-100 text-blue-800',
   'accepted': 'bg-green-100 text-green-800',
   'rejected': 'bg-red-100 text-red-800',
+  'cancelled': 'bg-orange-100 text-orange-800',
   'archived': 'bg-gray-100 text-gray-800'
 } as const;
 

@@ -40,6 +40,8 @@ function RichiesteLibereContent() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [lastRequestTime, setLastRequestTime] = useState<number | undefined>();
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
+  const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | null>(null);
   
   // Form state
   const [formData, setFormData] = useState<RequestFormData>({
@@ -82,6 +84,57 @@ function RichiesteLibereContent() {
     
     loadSession();
   }, [token]);
+
+  // Carica l'ultima richiesta dalla sessione
+  useEffect(() => {
+    const savedRequestId = sessionStorage.getItem('libere_last_request_id');
+    const savedStatus = sessionStorage.getItem('libere_last_request_status');
+    
+    if (savedRequestId) {
+      setLastRequestId(savedRequestId);
+      if (savedStatus === 'new' || savedStatus === 'accepted' || savedStatus === 'rejected' || savedStatus === 'cancelled') {
+        setLastRequestStatus(savedStatus);
+      }
+    }
+  }, []);
+
+  // Controlla periodicamente lo stato dell'ultima richiesta
+  useEffect(() => {
+    if (!lastRequestId || !token) return;
+
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(`/api/libere/admin?action=request_status&request_id=${lastRequestId}`, {
+          headers: {
+            'x-session-token': token
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.status !== lastRequestStatus) {
+            setLastRequestStatus(data.status);
+            sessionStorage.setItem('libere_last_request_status', data.status);
+            
+            // Mostra notifica se è stata cancellata
+            if (data.status === 'cancelled' && lastRequestStatus === 'accepted') {
+              setSuccess('⚠️ La tua richiesta accettata è stata cancellata dal DJ');
+            }
+          }
+        }
+      } catch {
+        // Ignora errori di rete
+      }
+    };
+
+    // Controllo iniziale
+    checkStatus();
+    
+    // Controllo ogni 10 secondi
+    const interval = setInterval(checkStatus, 10000);
+    
+    return () => clearInterval(interval);
+  }, [lastRequestId, token, lastRequestStatus]);
   
   // Ricerca automatica Spotify con debounce (come pagina events)
   useEffect(() => {
@@ -186,6 +239,14 @@ function RichiesteLibereContent() {
       setSuccess(data.message || 'Richiesta ricevuta 🎶');
       setLastRequestTime(Date.now());
       
+      // Salva l'ID della richiesta per il tracking
+      if (data.request_id) {
+        setLastRequestId(data.request_id);
+        setLastRequestStatus('new');
+        sessionStorage.setItem('libere_last_request_id', data.request_id);
+        sessionStorage.setItem('libere_last_request_status', 'new');
+      }
+      
       // Reset form
       setFormData({
         title: '',
@@ -231,6 +292,40 @@ function RichiesteLibereContent() {
         <h2 className="text-2xl font-bold mb-2">
           🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
         </h2>
+
+        {/* Status ultima richiesta */}
+        {lastRequestId && lastRequestStatus && (
+          <div className={`rounded-lg p-3 text-sm ${
+            lastRequestStatus === 'new' ? 'bg-blue-500/20 border border-blue-500 text-blue-200' :
+            lastRequestStatus === 'accepted' ? 'bg-green-500/20 border border-green-500 text-green-200' :
+            lastRequestStatus === 'rejected' ? 'bg-red-500/20 border border-red-500 text-red-200' :
+            lastRequestStatus === 'cancelled' ? 'bg-orange-500/20 border border-orange-500 text-orange-200' :
+            'bg-gray-500/20 border border-gray-500 text-gray-200'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span>
+                🎵 La tua ultima richiesta: <strong>{
+                  lastRequestStatus === 'new' ? '⏳ In attesa' :
+                  lastRequestStatus === 'accepted' ? '✅ Accettata' :
+                  lastRequestStatus === 'rejected' ? '❌ Rifiutata' :
+                  lastRequestStatus === 'cancelled' ? '🚫 Cancellata dal DJ' :
+                  'Sconosciuto'
+                }</strong>
+              </span>
+              <button
+                onClick={() => {
+                  setLastRequestId(null);
+                  setLastRequestStatus(null);
+                  sessionStorage.removeItem('libere_last_request_id');
+                  sessionStorage.removeItem('libere_last_request_status');
+                }}
+                className="text-xs opacity-70 hover:opacity-100"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {session?.status === 'paused' && (
           <div className="bg-yellow-500/20 border border-yellow-500 rounded-lg p-4 text-yellow-200">

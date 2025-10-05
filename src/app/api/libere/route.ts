@@ -214,6 +214,7 @@ export async function POST(req: Request) {
   return withVersion({ 
     ok: true, 
     message: 'Richiesta ricevuta 🎶',
+    request_id: newRequest.id,
     request: newRequest 
   }, { status: 201 });
 }

@@ -161,7 +161,7 @@ export default function LibereAdminPanel() {
     }
   };
   
-  const updateRequestStatus = async (requestId: string, status: 'accepted' | 'rejected', note?: string) => {
+  const updateRequestStatus = async (requestId: string, status: 'accepted' | 'rejected' | 'cancelled', note?: string) => {
     if (!authed) return;
     
     try {
@@ -566,6 +566,17 @@ export default function LibereAdminPanel() {
                             className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
                           >
                             ❌ Rifiuta
+                          </button>
+                        </div>
+                      )}
+                      
+                      {request.status === 'accepted' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => updateRequestStatus(request.id, 'cancelled', 'Cambiato idea - richiesta cancellata dal DJ')}
+                            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm"
+                          >
+                            🚫 Cancella
                           </button>
                         </div>
                       )}

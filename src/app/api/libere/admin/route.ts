@@ -99,6 +99,43 @@ export async function GET(req: Request) {
     
     return withVersion({ ok: true, sessions: sessions || [] });
   }
+
+  if (action === 'request_status') {
+    // Controllo stato di una richiesta specifica (per utenti)
+    const requestId = url.searchParams.get('request_id');
+    const sessionToken = req.headers.get('x-session-token');
+    
+    if (!requestId) {
+      return withVersion({ ok: false, error: 'request_id richiesto' }, { status: 400 });
+    }
+
+    // Se c'è un session token, verifica che la richiesta appartenga a quella sessione
+    if (sessionToken) {
+      const { data: session } = await supabase
+        .from('sessioni_libere')
+        .select('id')
+        .eq('token', sessionToken)
+        .eq('archived', false)
+        .single();
+
+      if (!session) {
+        return withVersion({ ok: false, error: 'Sessione non valida' }, { status: 401 });
+      }
+
+      const { data: request, error } = await supabase
+        .from('richieste_libere')
+        .select('status')
+        .eq('id', requestId)
+        .eq('session_id', session.id)
+        .single();
+
+      if (error || !request) {
+        return withVersion({ ok: false, error: 'Richiesta non trovata' }, { status: 404 });
+      }
+
+      return withVersion({ ok: true, status: request.status });
+    }
+  }
   
   if (!sessionId) {
     return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
@@ -347,20 +384,20 @@ export async function PATCH(req: Request) {
   if (!request_id || !status) {
     return withVersion({ ok: false, error: 'request_id e status richiesti' }, { status: 400 });
   }
-  
-  if (!['accepted', 'rejected'].includes(status)) {
+
+  if (!['accepted', 'rejected', 'cancelled'].includes(status)) {
     return withVersion({ ok: false, error: 'Status non valido' }, { status: 400 });
   }
-  
-  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string } = { status, note: note || null };
-  
+
+  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string } = { status, note: note || null };
+
   if (status === 'accepted') {
     updateData.accepted_at = new Date().toISOString();
   } else if (status === 'rejected') {
     updateData.rejected_at = new Date().toISOString();
-  }
-  
-  const { error } = await supabase
+  } else if (status === 'cancelled') {
+    updateData.cancelled_at = new Date().toISOString();
+  }  const { error } = await supabase
     .from('richieste_libere')
     .update(updateData)
     .eq('id', request_id);
@@ -369,5 +406,8 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: error.message }, { status: 500 });
   }
   
-  return withVersion({ ok: true, message: `Richiesta ${status === 'accepted' ? 'accettata' : 'rifiutata'} ✓` });
+  return withVersion({ 
+    ok: true, 
+    message: `Richiesta ${status === 'accepted' ? 'accettata' : status === 'rejected' ? 'rifiutata' : 'cancellata'} ✓` 
+  });
 }
