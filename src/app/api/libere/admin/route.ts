@@ -357,6 +357,40 @@ export async function POST(req: Request) {
       });
     }
 
+    case 'update_rate_limit': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { rate_limit_enabled, rate_limit_seconds } = body;
+      
+      if (typeof rate_limit_enabled !== 'boolean') {
+        return withVersion({ ok: false, error: 'rate_limit_enabled deve essere boolean' }, { status: 400 });
+      }
+      
+      const seconds = parseInt(rate_limit_seconds);
+      if (isNaN(seconds) || seconds < 5 || seconds > 300) {
+        return withVersion({ ok: false, error: 'rate_limit_seconds deve essere tra 5 e 300' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ 
+          rate_limit_enabled,
+          rate_limit_seconds: seconds
+        })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: `Rate limiting ${rate_limit_enabled ? 'abilitato' : 'disabilitato'} ✓` 
+      });
+    }
+
     case 'delete_session': {
       if (!session_id) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });

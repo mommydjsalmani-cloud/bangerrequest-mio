@@ -26,9 +26,14 @@ function getClientIP(req: Request): string {
   return 'unknown';
 }
 
-async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string): Promise<boolean> {
+async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, rateLimitEnabled: boolean = true, rateLimitSeconds: number = 60): Promise<boolean> {
+  // Se il rate limiting è disabilitato, consenti sempre
+  if (!rateLimitEnabled) {
+    return true;
+  }
+
   const now = new Date();
-  const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
+  const rateLimitInterval = new Date(now.getTime() - rateLimitSeconds * 1000);
   
   // Controlla rate limit esistente
   const { data: rateLimitData } = await supabase
@@ -41,8 +46,8 @@ async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabas
   if (rateLimitData) {
     const lastRequest = new Date(rateLimitData.last_request_at);
     
-    // Se ultimo request < 60s fa, blocca
-    if (lastRequest > oneMinuteAgo) {
+    // Se ultimo request è più recente dell'intervallo consentito, blocca
+    if (lastRequest > rateLimitInterval) {
       return false; // rate limited
     }
     
@@ -133,7 +138,9 @@ export async function GET(req: Request) {
     session: {
       id: session.id,
       status: session.status,
-      name: session.name
+      name: session.name,
+      rate_limit_enabled: session.rate_limit_enabled,
+      rate_limit_seconds: session.rate_limit_seconds
     }
   });
 }
@@ -185,9 +192,10 @@ export async function POST(req: Request) {
   const userAgent = req.headers.get('user-agent') || '';
   
   // Rate limiting check
-  const rateLimitOk = await checkRateLimit(supabase, session.id, clientIP);
+  const rateLimitOk = await checkRateLimit(supabase, session.id, clientIP, session.rate_limit_enabled, session.rate_limit_seconds);
   if (!rateLimitOk) {
-    return withVersion({ ok: false, error: 'Troppe richieste. Riprova tra 60 secondi.' }, { status: 429 });
+    const seconds = session.rate_limit_seconds || 60;
+    return withVersion({ ok: false, error: `Troppe richieste. Riprova tra ${seconds} secondi.` }, { status: 429 });
   }
   
   // Duplicate check

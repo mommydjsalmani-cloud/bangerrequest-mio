@@ -153,11 +153,14 @@ function RichiesteLibereContent() {
       return;
     }
     
-    // Rate limiting check
-    const rateLimitCheck = canMakeRequest(lastRequestTime);
-    if (!rateLimitCheck.allowed) {
-      setError(`Devi attendere ${rateLimitCheck.remainingSeconds} secondi prima di inviare un'altra richiesta`);
-      return;
+    // Rate limiting check (solo se abilitato dalla sessione)
+    if (session?.rate_limit_enabled !== false) {
+      const rateLimitSeconds = session?.rate_limit_seconds || 60;
+      const rateLimitCheck = canMakeRequest(lastRequestTime, rateLimitSeconds);
+      if (!rateLimitCheck.allowed) {
+        setError(`Devi attendere ${rateLimitCheck.remainingSeconds} secondi prima di inviare un'altra richiesta`);
+        return;
+      }
     }
     
     setSubmitting(true);

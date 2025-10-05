@@ -10,6 +10,8 @@ export type LibereSession = {
   reset_count: number;
   last_reset_at?: string;
   archived: boolean;
+  rate_limit_enabled?: boolean;
+  rate_limit_seconds?: number;
 };
 
 export type LibereRequest = {
@@ -86,14 +88,14 @@ export function isValidToken(token: string): boolean {
 }
 
 // Rate limiting client-side check
-export function canMakeRequest(lastRequestTime?: number): { allowed: boolean; remainingSeconds?: number } {
+export function canMakeRequest(lastRequestTime?: number, intervalSeconds: number = 60): { allowed: boolean; remainingSeconds?: number } {
   if (!lastRequestTime) {
     return { allowed: true };
   }
   
   const now = Date.now();
   const timeDiff = now - lastRequestTime;
-  const minInterval = 60 * 1000; // 60 secondi
+  const minInterval = intervalSeconds * 1000; // converti in millisecondi
   
   if (timeDiff < minInterval) {
     const remainingMs = minInterval - timeDiff;

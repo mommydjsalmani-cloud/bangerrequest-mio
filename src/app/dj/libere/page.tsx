@@ -26,10 +26,6 @@ export default function LibereAdminPanel() {
   const [schemaError, setSchemaError] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   
-  // Filtri
-  const [maxDurationSeconds, setMaxDurationSeconds] = useState<number | null>(null);
-  const [showDurationFilter, setShowDurationFilter] = useState(false);
-  
   const login = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) return;
@@ -342,27 +338,6 @@ export default function LibereAdminPanel() {
       setError('Errore copia link');
     }
   };
-
-  // Funzione per filtrare richieste per durata
-  const getFilteredRequests = () => {
-    if (!maxDurationSeconds) return requests;
-    
-    return requests.filter(request => {
-      if (!request.duration_ms) return true; // Include brani senza durata
-      const durationSeconds = Math.floor(request.duration_ms / 1000);
-      return durationSeconds <= maxDurationSeconds;
-    });
-  };
-
-  // Presets comuni per durata
-  const durationPresets = [
-    { label: 'Nessun filtro', value: null },
-    { label: '≤ 3 min', value: 180 },
-    { label: '≤ 4 min', value: 240 },
-    { label: '≤ 5 min', value: 300 },
-    { label: '≤ 6 min', value: 360 },
-    { label: '≤ 8 min', value: 480 }
-  ];
   
   const setupDatabase = async () => {
     setSetupLoading(true);
@@ -616,6 +591,59 @@ export default function LibereAdminPanel() {
                 </button>
               </div>
               
+              {/* Rate Limiting Controls */}
+              <div className="border border-white/20 rounded-lg p-4 mb-6 bg-white/5">
+                <h3 className="text-lg font-semibold mb-3 text-white">⏱️ Controllo Rate Limiting</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-white">
+                      <input
+                        type="checkbox"
+                        checked={currentSession?.rate_limit_enabled !== false}
+                        onChange={(e) => {
+                          adminAction('update_rate_limit', {
+                            rate_limit_enabled: e.target.checked,
+                            rate_limit_seconds: currentSession?.rate_limit_seconds || 60
+                          });
+                        }}
+                        className="w-4 h-4 rounded"
+                      />
+                      Abilita rate limiting
+                    </label>
+                  </div>
+                  
+                  {currentSession?.rate_limit_enabled !== false && (
+                    <div className="flex items-center gap-4">
+                      <label className="text-white">Secondi tra richieste:</label>
+                      <select
+                        value={currentSession?.rate_limit_seconds || 60}
+                        onChange={(e) => {
+                          adminAction('update_rate_limit', {
+                            rate_limit_enabled: currentSession?.rate_limit_enabled !== false,
+                            rate_limit_seconds: parseInt(e.target.value)
+                          });
+                        }}
+                        className="px-3 py-1 rounded bg-zinc-800 text-white border border-white/30"
+                      >
+                        <option value={5}>5 secondi</option>
+                        <option value={10}>10 secondi</option>
+                        <option value={30}>30 secondi</option>
+                        <option value={60}>60 secondi (default)</option>
+                        <option value={120}>2 minuti</option>
+                        <option value={300}>5 minuti</option>
+                      </select>
+                    </div>
+                  )}
+                  
+                  <div className="text-sm text-gray-300">
+                    {currentSession?.rate_limit_enabled === false 
+                      ? "⚠️ Gli utenti possono inviare richieste senza limitazioni"
+                      : `✅ Gli utenti devono attendere ${currentSession?.rate_limit_seconds || 60} secondi tra le richieste`
+                    }
+                  </div>
+                </div>
+              </div>
+              
               {/* Link & QR */}
               <div className="space-y-3">
                 <div className="flex gap-2">
@@ -688,68 +716,15 @@ export default function LibereAdminPanel() {
             
             {/* Requests List */}
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                <div>
-                  <h2 className="text-xl font-bold">📝 Richieste ({getFilteredRequests().length}/{requests.length})</h2>
-                  {maxDurationSeconds && (
-                    <div className="text-sm text-gray-600 mt-1">
-                      Filtrate per durata ≤ {Math.floor(maxDurationSeconds / 60)}:{(maxDurationSeconds % 60).toString().padStart(2, '0')}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Filtro Durata */}
-                <div className="flex flex-col sm:flex-row gap-2 items-start sm:items-center">
-                  <button
-                    onClick={() => setShowDurationFilter(!showDurationFilter)}
-                    className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    ⏱️ Filtro Durata
-                  </button>
-                  
-                  {showDurationFilter && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex flex-wrap gap-1">
-                        {durationPresets.map((preset) => (
-                          <button
-                            key={preset.label}
-                            onClick={() => setMaxDurationSeconds(preset.value)}
-                            className={`px-2 py-1 text-xs rounded transition-colors ${
-                              maxDurationSeconds === preset.value
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                            }`}
-                          >
-                            {preset.label}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex gap-1 items-center">
-                        <input
-                          type="number"
-                          placeholder="sec"
-                          min="1"
-                          max="3600"
-                          className="w-16 px-1 py-1 text-xs border rounded"
-                          onChange={(e) => {
-                            const value = parseInt(e.target.value);
-                            if (value > 0) setMaxDurationSeconds(value);
-                          }}
-                        />
-                        <span className="text-xs text-gray-600">secondi</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <h2 className="text-xl font-bold mb-4">📝 Richieste ({requests.length})</h2>
               
-              {getFilteredRequests().length === 0 ? (
+              {requests.length === 0 ? (
                 <div className="text-center text-gray-500 py-8">
-                  {requests.length === 0 ? 'Nessuna richiesta presente' : 'Nessuna richiesta corrisponde al filtro durata'}
+                  Nessuna richiesta presente
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {getFilteredRequests().map((request) => (
+                  {requests.map((request) => (
                     <div key={request.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
@@ -767,14 +742,8 @@ export default function LibereAdminPanel() {
                             {STATUS_LABELS[request.status]}
                           </span>
                           {request.duration_ms && (
-                            <div className={`text-sm mt-1 font-medium ${
-                              maxDurationSeconds && Math.floor(request.duration_ms / 1000) <= maxDurationSeconds
-                                ? 'text-green-600'
-                                : maxDurationSeconds 
-                                ? 'text-red-500'
-                                : 'text-gray-500'
-                            }`}>
-                              ⏱️ {formatDuration(request.duration_ms)}
+                            <div className="text-gray-500 text-sm mt-1">
+                              {formatDuration(request.duration_ms)}
                             </div>
                           )}
                         </div>
