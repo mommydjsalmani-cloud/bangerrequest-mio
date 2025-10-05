@@ -53,6 +53,7 @@ function RichiesteLibereContent() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [searching, setSearching] = useState(false);
+  const [selected, setSelected] = useState<SpotifyTrack | null>(null);
   
   useEffect(() => {
     if (!token) {
@@ -115,22 +116,26 @@ function RichiesteLibereContent() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
   
-  const selectSpotifyTrack = (track: SpotifyTrack) => {
-    console.log('🎵 Selecting track:', track);
+  const confirmTrack = () => {
+    if (!selected) return;
+    console.log('🎵 Confirming track:', selected);
+    
     setFormData({
-      title: track.title || '',
-      artists: track.artists || '',
+      title: selected.title || '',
+      artists: selected.artists || '',
       requester_name: formData.requester_name,
-      track_id: track.id,
-      uri: track.uri,
-      album: track.album || '',
-      cover_url: track.cover_url || '',
-      duration_ms: track.duration_ms,
+      track_id: selected.id,
+      uri: selected.uri,
+      album: selected.album || '',
+      cover_url: selected.cover_url || '',
+      duration_ms: selected.duration_ms,
       source: 'spotify'
     });
+    
     setSearchResults([]);
     setSearchQuery('');
-    console.log('✅ Track selected, form updated');
+    setSelected(null);
+    console.log('✅ Track confirmed, form updated');
   };
   
   const submitRequest = async (e: React.FormEvent) => {
@@ -271,14 +276,10 @@ function RichiesteLibereContent() {
 
             {/* Risultati ricerca */}
             <div className="grid grid-cols-1 gap-2">
-              {/* Debug: {searchResults.length} risultati */}
-              {searchResults.map((track) => {
-                console.log('Rendering track:', track);
-                return (
+              {searchResults.map((track) => (
                 <div 
                   key={track.id} 
-                  className="p-2 rounded flex items-center gap-3 sm:gap-4 cursor-pointer transition bg-zinc-800/40 hover:bg-zinc-800"
-                  onClick={() => selectSpotifyTrack(track)}
+                  className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === track.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}
                 >
                   <Image 
                     src={track.cover_url || '/file.svg'} 
@@ -301,13 +302,63 @@ function RichiesteLibereContent() {
                       {formatDuration(track.duration_ms || 0)}
                     </div>
                   </div>
+                  <div className="flex flex-col gap-1 items-end">
+                    {track.preview_url ? (
+                      <audio controls src={track.preview_url} className="w-28 sm:w-36 h-8" preload="none" />
+                    ) : (
+                      <div className="text-[10px] text-gray-500">No preview</div>
+                    )}
+                    <div className="flex gap-1">
+                      <button 
+                        onClick={() => setSelected(track)} 
+                        className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
+                      >
+                        Sel.
+                      </button>
+                      <a 
+                        href={`https://open.spotify.com/track/${track.id}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
+                      >
+                        Apri
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                );
-              })}
+              ))}
             </div>
 
-            {/* Form con canzone selezionata */}
-            {formData.source === 'spotify' && formData.title && (
+            {/* Form di conferma per canzone selezionata */}
+            {selected && (
+              <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
+                <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
+                <input
+                  type="text"
+                  value={formData.requester_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, requester_name: e.target.value }))}
+                  placeholder="Il tuo nome (obbligatorio)"
+                  className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm placeholder-gray-400 focus:outline-none"
+                />
+                <div className="flex gap-2 mt-3">
+                  <button 
+                    onClick={confirmTrack} 
+                    className="flex-1 bg-green-600 hover:bg-green-700 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm"
+                  >
+                    Conferma
+                  </button>
+                  <button 
+                    onClick={() => setSelected(null)} 
+                    className="flex-1 bg-gray-700 hover:bg-gray-600 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Form con canzone confermata */}
+            {formData.source === 'spotify' && formData.title && !selected && (
               <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4">
                 <h3 className="text-lg font-semibold text-green-400">🎵 Canzone Selezionata</h3>
                 <div className="flex items-center gap-4">
