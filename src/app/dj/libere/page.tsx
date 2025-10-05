@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
@@ -101,6 +101,72 @@ export default function LibereAdminPanel() {
       setLoading(false);
     }
   };
+
+  // Polling automatico come negli eventi
+  useEffect(() => {
+    if (!authed || !selectedSessionId) return;
+    
+    let mounted = true;
+    let interval: ReturnType<typeof setTimeout> | undefined;
+    let backoff = 4000;
+
+    const controllerRef: { current?: AbortController } = { current: undefined };
+
+    async function load() {
+      const controller = new AbortController();
+      controllerRef.current?.abort();
+      controllerRef.current = controller;
+      
+      try {
+        const response = await fetch(`/api/libere/admin?session_id=${selectedSessionId}`, {
+          headers: {
+            'x-dj-user': username,
+            'x-dj-secret': password
+          },
+          signal: controller.signal
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            if (mounted) setError('Non autorizzato: verifica credenziali DJ.');
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        if (!mounted) return;
+        
+        if (data.ok) {
+          setCurrentSession(data.session);
+          setRequests(data.requests || []);
+          setStats(data.stats || null);
+          setError(null);
+          backoff = 4000; // reset backoff su successo
+        }
+      } catch (error: unknown) {
+        if (!mounted || (error instanceof Error && error.name === 'AbortError')) return;
+        // Non svuotare i dati su errore di rete
+        setError('Problema rete, ritento...');
+        backoff = Math.min(backoff * 1.5, 15000);
+      }
+    }
+
+    function schedule() {
+      interval = setTimeout(async () => {
+        await load();
+        if (mounted) schedule();
+      }, backoff);
+    }
+
+    load();
+    schedule();
+
+    return () => {
+      mounted = false;
+      if (interval) clearTimeout(interval);
+      controllerRef.current?.abort();
+    };
+  }, [authed, selectedSessionId, password, username]);
   
   const adminAction = async (action: string, extraData: Record<string, unknown> = {}) => {
     if (!authed || !selectedSessionId) return;
@@ -568,10 +634,44 @@ export default function LibereAdminPanel() {
                       {request.status === 'accepted' && (
                         <div className="flex gap-2">
                           <button
+                            onClick={() => act(request.id, 'rejected')}
+                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
+                          >
+                            Rifiuta
+                          </button>
+                          <button
                             onClick={() => act(request.id, 'cancelled')}
                             className="bg-orange-700 px-2 py-1 rounded text-white hover:bg-orange-600 transition"
                           >
                             Cancella
+                          </button>
+                        </div>
+                      )}
+                      
+                      {request.status === 'rejected' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => act(request.id, 'accepted')}
+                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
+                          >
+                            Accetta
+                          </button>
+                        </div>
+                      )}
+                      
+                      {request.status === 'cancelled' && (
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => act(request.id, 'accepted')}
+                            className="bg-green-700 px-2 py-1 rounded text-white hover:bg-green-600 transition"
+                          >
+                            Accetta
+                          </button>
+                          <button
+                            onClick={() => act(request.id, 'rejected')}
+                            className="bg-red-700 px-2 py-1 rounded text-white hover:bg-red-600 transition"
+                          >
+                            Rifiuta
                           </button>
                         </div>
                       )}

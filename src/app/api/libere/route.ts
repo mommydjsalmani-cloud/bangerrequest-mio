@@ -88,6 +88,7 @@ async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof get
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get('s'); // token sessione
+  const requestId = url.searchParams.get('request_id'); // per controllare status
   
   if (!token) {
     return withVersion({ ok: false, error: 'Token sessione richiesto' }, { status: 400 });
@@ -108,6 +109,22 @@ export async function GET(req: Request) {
   
   if (!session) {
     return withVersion({ ok: false, error: 'Sessione non trovata o scaduta' }, { status: 404 });
+  }
+
+  // Se richiesto il controllo dello stato di una richiesta specifica
+  if (requestId) {
+    const { data: request, error } = await supabase
+      .from('richieste_libere')
+      .select('status')
+      .eq('id', requestId)
+      .eq('session_id', session.id)
+      .single();
+
+    if (error || !request) {
+      return withVersion({ ok: false, error: 'Richiesta non trovata' }, { status: 404 });
+    }
+
+    return withVersion({ ok: true, status: request.status });
   }
   
   // Ritorna info sessione per la pagina pubblica

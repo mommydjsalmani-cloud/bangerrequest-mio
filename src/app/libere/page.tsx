@@ -104,11 +104,7 @@ function RichiesteLibereContent() {
 
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/libere/admin?action=request_status&request_id=${lastRequestId}`, {
-          headers: {
-            'x-session-token': token
-          }
-        });
+        const response = await fetch(`/api/libere?s=${token}&request_id=${lastRequestId}`);
         
         if (response.ok) {
           const data = await response.json();
