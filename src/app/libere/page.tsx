@@ -84,8 +84,10 @@ function RichiesteLibereContent() {
   
   // Ricerca automatica Spotify con debounce (come pagina events)
   useEffect(() => {
+    console.log('useEffect chiamato, searchQuery:', searchQuery);
     const t = setTimeout(() => {
       if (!searchQuery.trim()) {
+        console.log('Query vuota, resetto risultati');
         setSearchResults([]);
         return;
       }
@@ -246,7 +248,10 @@ function RichiesteLibereContent() {
             <div className="flex flex-col gap-3">
               <input
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  console.log('Input cambiato:', e.target.value);
+                  setSearchQuery(e.target.value);
+                }}
                 type="text"
                 placeholder="Cerca titolo o artista su Spotify"
                 className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
@@ -264,7 +269,10 @@ function RichiesteLibereContent() {
 
             {/* Risultati ricerca */}
             <div className="grid grid-cols-1 gap-2">
-              {searchResults.map((track) => (
+              {/* Debug: {searchResults.length} risultati */}
+              {searchResults.map((track) => {
+                console.log('Rendering track:', track);
+                return (
                 <div 
                   key={track.id} 
                   className="p-2 rounded flex items-center gap-3 sm:gap-4 cursor-pointer transition bg-zinc-800/40 hover:bg-zinc-800"
@@ -292,7 +300,8 @@ function RichiesteLibereContent() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Messaggi e form fallback */}
