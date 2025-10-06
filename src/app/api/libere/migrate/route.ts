@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   try {
     let migrationNeeded = false;
-    let sqlCommands = [];
+    const sqlCommands: string[] = [];
 
     // Verifica se esiste la colonna rate_limit_enabled
     const { error: rateLimitError } = await supabase
