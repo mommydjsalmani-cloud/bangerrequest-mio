@@ -400,6 +400,7 @@ export async function POST(req: Request) {
       }
       
       const { notes_enabled } = body;
+      console.log('update_notes_control called with:', { session_id, notes_enabled }); // Debug
       
       if (typeof notes_enabled !== 'boolean') {
         return withVersion({ ok: false, error: 'notes_enabled deve essere boolean' }, { status: 400 });
@@ -411,6 +412,7 @@ export async function POST(req: Request) {
         .eq('id', session_id);
       
       if (error) {
+        console.log('Database error:', error); // Debug
         return withVersion({ ok: false, error: error.message }, { status: 500 });
       }
       
