@@ -776,12 +776,6 @@ export default function LibereAdminPanel() {
                           {request.album && (
                             <div className="text-gray-600 text-sm">{request.album}</div>
                           )}
-                          {/* Anteprima nota/dedica */}
-                          {request.note && (
-                            <div className="mt-2 text-sm text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded-md inline-block">
-                              💌 {request.note.length > 50 ? `${request.note.substring(0, 50)}...` : request.note}
-                            </div>
-                          )}
                         </div>
                         
                         <div className="text-right">
