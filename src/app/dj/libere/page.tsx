@@ -694,7 +694,6 @@ export default function LibereAdminPanel() {
                         type="checkbox"
                         checked={currentSession?.notes_enabled !== false}
                         onChange={(e) => {
-                          console.log('Note checkbox changed:', e.target.checked); // Debug
                           adminAction('update_notes_control', {
                             notes_enabled: e.target.checked
                           });
