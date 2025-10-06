@@ -807,6 +807,23 @@ export default function LibereAdminPanel() {
                         </div>
                       </div>
                       
+                      {/* Messaggio/nota del richiedente - SEMPRE VISIBILE */}
+                      {request.note && (
+                        <div className="mb-3 text-sm bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 p-4 rounded-lg shadow-sm">
+                          <div className="flex items-center gap-2 font-semibold text-purple-800 mb-2">
+                            💌 Messaggio dal richiedente
+                            {request.requester_name && (
+                              <span className="text-xs bg-purple-100 px-2 py-1 rounded-full">
+                                da {request.requester_name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-gray-800 italic leading-relaxed">
+                            &ldquo;{request.note}&rdquo;
+                          </div>
+                        </div>
+                      )}
+                      
                       {request.status === 'new' && (
                         <div className="flex gap-2 flex-wrap">
                           <button
@@ -831,12 +848,6 @@ export default function LibereAdminPanel() {
                             className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                           >
                             ❌ Rifiuta
-                          </button>
-                          <button
-                            onClick={() => act(request.id, 'cancelled')}
-                            className="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            🚫 Cancella
                           </button>
                         </div>
                       )}
@@ -866,22 +877,6 @@ export default function LibereAdminPanel() {
                           >
                             ❌ Rifiuta
                           </button>
-                        </div>
-                      )}
-                      
-                      {request.note && (
-                        <div className="mt-3 text-sm bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 p-4 rounded-lg shadow-sm">
-                          <div className="flex items-center gap-2 font-semibold text-purple-800 mb-2">
-                            💌 Messaggio dal richiedente
-                            {request.requester_name && (
-                              <span className="text-xs bg-purple-100 px-2 py-1 rounded-full">
-                                da {request.requester_name}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-gray-800 italic leading-relaxed">
-                            &ldquo;{request.note}&rdquo;
-                          </div>
                         </div>
                       )}
                     </div>
