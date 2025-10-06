@@ -585,7 +585,7 @@ export default function LibereAdminPanel() {
             {/* Controls */}
             <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">{currentSession.name}</h2>
+                <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                   currentSession.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
                 }`}>
