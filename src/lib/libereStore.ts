@@ -12,6 +12,7 @@ export type LibereSession = {
   archived: boolean;
   rate_limit_enabled?: boolean;
   rate_limit_seconds?: number;
+  notes_enabled?: boolean;
 };
 
 export type LibereRequest = {

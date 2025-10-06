@@ -12,7 +12,12 @@ create table if not exists public.sessioni_libere (
   name text default 'Sessione Richieste Libere', -- nome personalizzabile
   reset_count integer not null default 0, -- numero di reset eseguiti
   last_reset_at timestamptz, -- ultimo reset
-  archived boolean not null default false -- per soft delete
+  archived boolean not null default false, -- per soft delete
+  -- Rate limiting controls (aggiunto successivamente)
+  rate_limit_enabled boolean not null default true, -- abilita rate limiting
+  rate_limit_seconds integer not null default 60, -- secondi tra richieste
+  -- Notes control (aggiunto successivamente)
+  notes_enabled boolean not null default true -- abilita note/commenti degli utenti
 );
 
 create index if not exists idx_sessioni_libere_token on public.sessioni_libere(token);

@@ -210,7 +210,8 @@ export async function POST(req: Request) {
         reset_count: 0,
         archived: false,
         rate_limit_enabled: true,
-        rate_limit_seconds: 60
+        rate_limit_seconds: 60,
+        notes_enabled: true
       };
       
       const { data: newSession, error } = await supabase
@@ -390,6 +391,32 @@ export async function POST(req: Request) {
       return withVersion({ 
         ok: true, 
         message: `Rate limiting ${rate_limit_enabled ? 'abilitato' : 'disabilitato'} ✓` 
+      });
+    }
+
+    case 'update_notes_control': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { notes_enabled } = body;
+      
+      if (typeof notes_enabled !== 'boolean') {
+        return withVersion({ ok: false, error: 'notes_enabled deve essere boolean' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ notes_enabled })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: `Note/commenti ${notes_enabled ? 'abilitati' : 'disabilitati'} ✓` 
       });
     }
 

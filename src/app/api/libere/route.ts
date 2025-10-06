@@ -140,7 +140,8 @@ export async function GET(req: Request) {
       status: session.status,
       name: session.name,
       rate_limit_enabled: session.rate_limit_enabled,
-      rate_limit_seconds: session.rate_limit_seconds
+      rate_limit_seconds: session.rate_limit_seconds,
+      notes_enabled: session.notes_enabled
     }
   });
 }
@@ -188,6 +189,9 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Titolo brano obbligatorio' }, { status: 400 });
   }
   
+  // Controlla se le note sono abilitate per questa sessione
+  const finalNote = session.notes_enabled ? (note?.trim() || null) : null;
+  
   const clientIP = getClientIP(req);
   const userAgent = req.headers.get('user-agent') || '';
   
@@ -218,7 +222,7 @@ export async function POST(req: Request) {
     preview_url: preview_url || null,
     duration_ms: duration_ms || null,
     requester_name: requester_name?.trim() || null,
-    note: note?.trim() || null, // Aggiungo il campo note
+    note: finalNote, // Usa la nota filtrata in base alle impostazioni sessione
     client_ip: clientIP,
     user_agent: userAgent,
     source: source,

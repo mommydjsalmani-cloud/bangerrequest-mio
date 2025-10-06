@@ -684,6 +684,35 @@ export default function LibereAdminPanel() {
                 </div>
               </div>
               
+              {/* Notes Control */}
+              <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">💬 Controllo Note/Commenti</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-gray-800 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={currentSession?.notes_enabled !== false}
+                        onChange={(e) => {
+                          adminAction('update_notes_control', {
+                            notes_enabled: e.target.checked
+                          });
+                        }}
+                        className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
+                      />
+                      Abilita note/commenti degli utenti
+                    </label>
+                  </div>
+                  
+                  <div className="text-sm font-medium p-3 rounded-lg border-l-4 bg-white">
+                    {currentSession?.notes_enabled === false 
+                      ? <span className="text-orange-700 border-orange-400">⚠️ Gli utenti non possono lasciare note o dediche</span>
+                      : <span className="text-green-700 border-green-400">✅ Gli utenti possono lasciare note e dediche opzionali</span>
+                    }
+                  </div>
+                </div>
+              </div>
+              
               {/* Link & QR */}
               <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row gap-2">

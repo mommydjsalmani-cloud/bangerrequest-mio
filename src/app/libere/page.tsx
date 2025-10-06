@@ -300,7 +300,15 @@ function RichiesteLibereContent() {
         {selected && !submitted && (
           <div className="p-4 bg-zinc-800 rounded text-sm sm:text-base">
             <div className="font-semibold">Conferma richiesta: {selected.title} — {selected.artists}</div>
-            <textarea value={note} onChange={(e)=>setNote(e.target.value)} placeholder="Nota o dedica (opzionale)" className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" rows={3} />
+            {session?.notes_enabled && (
+              <textarea 
+                value={note} 
+                onChange={(e) => setNote(e.target.value)} 
+                placeholder="Nota o dedica (opzionale)" 
+                className="w-full mt-2 p-2 rounded bg-zinc-900 text-white text-sm" 
+                rows={3} 
+              />
+            )}
             <div className="flex gap-2 mt-3">
               <button onClick={confirmTrack} disabled={submitting || !requesterName.trim()} className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 active:scale-[0.98] transition text-white py-2 px-4 rounded text-sm">
                 {submitting ? '⏳ Invio...' : 'Conferma'}
