@@ -455,7 +455,12 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: 'Status non valido' }, { status: 400 });
   }
 
-  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string } = { status, note: note || null };
+  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string } = { status };
+
+  // Solo aggiorna la nota se viene fornita esplicitamente
+  if (note !== undefined) {
+    updateData.note = note || null;
+  }
 
   if (status === 'accepted') {
     updateData.accepted_at = new Date().toISOString();
