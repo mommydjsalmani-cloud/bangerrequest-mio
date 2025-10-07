@@ -45,24 +45,6 @@ export default function LibereAdminPanel() {
     sessionStorage.removeItem('dj_user');
     window.location.href = '/dj/home';
   };
-
-  // Se non ci sono credenziali, redirect alla home
-  if (!password || !username) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
-        <div className="text-center bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-2xl border border-white/20">
-          <h2 className="text-2xl font-bold text-white mb-4">Accesso Richiesto</h2>
-          <p className="text-gray-300 mb-4">Devi effettuare il login per accedere al pannello richieste libere.</p>
-          <button 
-            onClick={() => window.location.href = '/dj/home'}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Torna al Login
-          </button>
-        </div>
-      </div>
-    );
-  }
   
   const checkMigration = async () => {
     setMigrationLoading(true);
@@ -174,7 +156,96 @@ export default function LibereAdminPanel() {
     if (username && password) {
       loadData();
     }
-  }, [username, password]);
+  }, [username, password, loadData]);
+
+  // Polling automatico come negli eventi
+  useEffect(() => {
+    if (!username || !password || !selectedSessionId) return;
+    
+    let mounted = true;
+    let interval: ReturnType<typeof setTimeout> | undefined;
+    let backoff = 4000;
+
+    const controllerRef: { current?: AbortController } = { current: undefined };
+
+    async function load() {
+      const controller = new AbortController();
+      controllerRef.current?.abort();
+      controllerRef.current = controller;
+      
+      try {
+        const response = await fetch(`/api/libere/admin?session_id=${selectedSessionId}`, {
+          headers: {
+            'x-dj-user': username,
+            'x-dj-secret': password
+          },
+          signal: controller.signal
+        });
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            if (mounted) setError('Non autorizzato: verifica credenziali DJ.');
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        if (!mounted) return;
+        
+        if (data.ok) {
+          setCurrentSession(data.session);
+          setRequests(data.requests || []);
+          setStats(data.stats || null);
+          setError(null);
+          backoff = 4000; // reset backoff su successo
+        }
+      } catch (error: unknown) {
+        if (!mounted || (error instanceof Error && error.name === 'AbortError')) return;
+        backoff = Math.min(backoff * 1.5, 15000); // max 15 sec
+      }
+    }
+
+    function schedule() {
+      interval = setTimeout(async () => {
+        await load();
+        if (mounted) schedule();
+      }, backoff);
+    }
+
+    load();
+    schedule();
+
+    return () => {
+      mounted = false;
+      if (interval) clearTimeout(interval);
+      controllerRef.current?.abort();
+    };
+  }, [selectedSessionId, password, username]);
+
+  // Se non ci sono credenziali, redirect alla home
+  if (!password || !username) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="text-center bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-2xl border border-white/20">
+          <h2 className="text-2xl font-bold text-white mb-4">Accesso Richiesto</h2>
+          <p className="text-gray-300 mb-4">Devi effettuare il login per accedere al pannello richieste libere.</p>
+          <button 
+            onClick={() => window.location.href = '/dj/home'}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Torna al Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Carica dati quando le credenziali sono disponibili
+  useEffect(() => {
+    if (username && password) {
+      loadData();
+    }
+  }, [username, password, loadData]);
 
   // Polling automatico come negli eventi
   useEffect(() => {
@@ -397,7 +468,7 @@ export default function LibereAdminPanel() {
         setStats(null);
       }
       
-    } catch (err) {
+    } catch {
       setError('Errore durante l\'eliminazione della sessione');
     } finally {
       setLoading(false);
@@ -437,9 +508,9 @@ export default function LibereAdminPanel() {
       setSuccess('Database configurato con successo! ✓');
       setSchemaError(false);
       
-      // Riprova il login
+      // Riprova il caricamento dati
       setTimeout(() => {
-        login({ preventDefault: () => {} } as React.FormEvent);
+        loadData();
       }, 1000);
       
     } catch {
