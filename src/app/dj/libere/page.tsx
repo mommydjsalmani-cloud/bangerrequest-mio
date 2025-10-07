@@ -27,6 +27,52 @@ export default function LibereAdminPanel() {
   const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
   
+  // Carica credenziali e verifica autenticazione
+  useEffect(() => {
+    const loadCredentialsAndAuth = async () => {
+      try {
+        const savedUser = sessionStorage.getItem('dj_user');
+        const savedPassword = sessionStorage.getItem('dj_secret');
+        
+        if (savedUser && savedPassword) {
+          setUsername(savedUser);
+          setPassword(savedPassword);
+          
+          // Verifica credenziali caricando le sessioni
+          const response = await fetch('/api/libere/admin?action=sessions', {
+            headers: {
+              'x-dj-user': savedUser,
+              'x-dj-secret': savedPassword
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (data.ok) {
+            setAuthed(true);
+            setSessions(data.sessions || []);
+            
+            // Seleziona prima sessione se disponibile
+            if (data.sessions?.length > 0) {
+              setSelectedSessionId(data.sessions[0].id);
+              // loadSessionData sarà chiamata automaticamente dal useEffect che monitora selectedSessionId
+            }
+          } else {
+            // Credenziali non valide, gestisce errori di schema
+            if (data.error && data.error.includes('sessioni_libere')) {
+              setSchemaError(true);
+              setError('Database non configurato: le tabelle delle Richieste Libere non sono state create.');
+            }
+          }
+        }
+      } catch {
+        // Errore nel caricamento, l'utente dovrà fare login manualmente
+      }
+    };
+    
+    loadCredentialsAndAuth();
+  }, []);
+  
   const checkMigration = async () => {
     setMigrationLoading(true);
     setError(null);
@@ -56,50 +102,6 @@ export default function LibereAdminPanel() {
       setError('Errore connessione durante il controllo migrazione');
     } finally {
       setMigrationLoading(false);
-    }
-  };
-  
-  const login = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('/api/libere/admin?action=sessions', {
-        headers: {
-          'x-dj-user': username.trim(),
-          'x-dj-secret': password.trim()
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        // Controlla se è un errore di schema database
-        if (data.error && data.error.includes('sessioni_libere')) {
-          setSchemaError(true);
-          setError('Database non configurato: le tabelle delle Richieste Libere non sono state create.');
-        } else {
-          setError(data.error || 'Errore autenticazione');
-        }
-        return;
-      }
-      
-      setAuthed(true);
-      setSessions(data.sessions || []);
-      
-      // Seleziona prima sessione se disponibile
-      if (data.sessions?.length > 0) {
-        setSelectedSessionId(data.sessions[0].id);
-        loadSessionData(data.sessions[0].id);
-      }
-      
-    } catch {
-      setError('Errore connessione');
-    } finally {
-      setLoading(false);
     }
   };
   
@@ -396,9 +398,35 @@ export default function LibereAdminPanel() {
       setSuccess('Database configurato con successo! ✓');
       setSchemaError(false);
       
-      // Riprova il login
-      setTimeout(() => {
-        login({ preventDefault: () => {} } as React.FormEvent);
+      // Riprova il caricamento delle sessioni
+      setTimeout(async () => {
+        try {
+          const savedUser = sessionStorage.getItem('dj_user');
+          const savedPassword = sessionStorage.getItem('dj_secret');
+          
+          if (savedUser && savedPassword) {
+            const response = await fetch('/api/libere/admin?action=sessions', {
+              headers: {
+                'x-dj-user': savedUser,
+                'x-dj-secret': savedPassword
+              }
+            });
+            
+            const data = await response.json();
+            
+            if (data.ok) {
+              setAuthed(true);
+              setSessions(data.sessions || []);
+              setError(null);
+              
+              if (data.sessions?.length > 0) {
+                setSelectedSessionId(data.sessions[0].id);
+              }
+            }
+          }
+        } catch {
+          // Errore silenzioso
+        }
       }, 1000);
       
     } catch {
@@ -413,14 +441,14 @@ export default function LibereAdminPanel() {
   if (!authed) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
-        <form onSubmit={login} className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20">
-          <h1 className="text-2xl font-bold mb-6 text-center text-white">🎵 Pannello Richieste Libere</h1>
+        <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
+          <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
           
           {error && (
             <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
               {error}
               {schemaError && (
-                <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm">
+                <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm text-left">
                   <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
                   <button
                     onClick={setupDatabase}
@@ -448,32 +476,17 @@ export default function LibereAdminPanel() {
             </div>
           )}
           
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
-              disabled={loading}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !username.trim() || !password.trim()}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors shadow-lg"
+          <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm">
+            <p className="font-medium">Accesso richiesto</p>
+            <p className="text-sm mt-1">Effettua il login per accedere al pannello richieste libere</p>
+            <a 
+              href="/dj/login" 
+              className="inline-block mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
             >
-              {loading ? 'Accesso...' : 'Accedi'}
-            </button>
+              Vai al Login
+            </a>
           </div>
-        </form>
+        </div>
       </div>
     );
   }

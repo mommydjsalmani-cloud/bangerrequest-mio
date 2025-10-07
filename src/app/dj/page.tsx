@@ -7,8 +7,8 @@ export default function DJRedirect() {
   const router = useRouter();
   
   useEffect(() => {
-    // Redirect immediato alla pagina di selezione
-    router.replace('/dj/home');
+    // Redirect al login, che gestirà se l'utente è già autenticato
+    router.replace('/dj/login');
   }, [router]);
   
   return (

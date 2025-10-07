@@ -81,12 +81,16 @@ export default function DJPanel() {
   }, []);
 
   useEffect(() => {
-  // Rimosso caricamento codice evento: non più richiesto al login
+    // Carica credenziali e verifica autenticazione
     try {
       const savedPwd = sessionStorage.getItem('dj_secret');
-      if (savedPwd) setPassword(savedPwd);
       const savedUser = sessionStorage.getItem('dj_user');
-      if (savedUser) setUsername(savedUser);
+      
+      if (savedPwd && savedUser) {
+        setPassword(savedPwd);
+        setUsername(savedUser);
+        setAuthed(true);
+      }
     } catch {}
   }, []);
 
@@ -247,44 +251,6 @@ export default function DJPanel() {
     return map;
   }, [list]);
 
-  const [loginLoading, setLoginLoading] = useState(false);
-  async function login(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!username.trim()) {
-      setError('Inserisci username DJ');
-      return;
-    }
-    if (!password.trim()) {
-      setError('Inserisci password DJ');
-      return;
-    }
-    setLoginLoading(true);
-    try {
-      // Effettuiamo una chiamata protetta per validare la password (es: lista eventi)
-  const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
-      if (!res.ok) {
-        if (res.status === 401) setError('Password DJ errata. Accesso negato.');
-        else if (res.status === 500) setError('Server non configurato: contatta admin (mancano credenziali).');
-        else setError('Errore di validazione password.');
-        return;
-      }
-      const j = await res.json();
-      if (!j.events) {
-        setError('Risposta inattesa dal server.');
-        return;
-      }
-  // Non salviamo più codice evento al login
-  sessionStorage.setItem('dj_secret', password.trim());
-  sessionStorage.setItem('dj_user', username.trim());
-      setAuthed(true);
-    } catch {
-      setError('Errore di rete durante il login.');
-    } finally {
-      setLoginLoading(false);
-    }
-  }
-
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white p-6">
       <div className="w-full max-w-5xl p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
@@ -310,24 +276,17 @@ export default function DJPanel() {
         )}
 
         {!authed ? (
-          <div className="flex flex-col gap-2 mb-4 w-full max-w-xl">
-          <form className="flex gap-2 flex-col sm:flex-row" onSubmit={login}>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username DJ"
-              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-            />
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password DJ (se impostata)"
-              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-            />
-            <button disabled={loginLoading} className="bg-green-600 disabled:opacity-50 hover:bg-green-700 text-white font-bold py-2 px-4 rounded min-w-[90px]">{loginLoading ? 'Verifico…' : 'Entra'}</button>
-          </form>
-          {error && <div className="text-xs text-red-400">{error}</div>}
+          <div className="flex flex-col gap-4 mb-4 w-full max-w-xl">
+            <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm text-center">
+              <p className="font-medium">Accesso richiesto</p>
+              <p className="text-sm mt-1">Effettua il login per accedere al pannello eventi</p>
+              <a 
+                href="/dj/login" 
+                className="inline-block mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+              >
+                Vai al Login
+              </a>
+            </div>
           </div>
         ) : null}
 
