@@ -414,6 +414,52 @@ export default function LibereAdminPanel() {
     }
   };
   
+  // Funzione per esportare richieste in CSV
+  const exportToCSV = () => {
+    if (requests.length === 0) {
+      setError('Nessuna richiesta da esportare');
+      return;
+    }
+    
+    // Header CSV
+    const headers = ['Titolo', 'Artista', 'Album', 'Data Richiesta', 'Stato', 'Richiedente', 'Note', 'Fonte', 'Durata'];
+    
+    // Converti richieste in righe CSV
+    const csvRows = requests.map(request => [
+      `"${(request.title || '').replace(/"/g, '""')}"`, // Escape delle virgolette
+      `"${(request.artists || '').replace(/"/g, '""')}"`,
+      `"${(request.album || '').replace(/"/g, '""')}"`,
+      `"${formatDateTime(request.created_at)}"`,
+      `"${STATUS_LABELS[request.status]}"`,
+      `"${(request.requester_name || '').replace(/"/g, '""')}"`,
+      `"${(request.note || '').replace(/"/g, '""')}"`,
+      `"${request.source === 'spotify' ? 'Spotify' : 'Manuale'}"`,
+      `"${request.duration_ms ? formatDuration(request.duration_ms) : ''}"`
+    ]);
+    
+    // Combina header e righe
+    const csvContent = [headers.join(','), ...csvRows.map(row => row.join(','))].join('\n');
+    
+    // Crea e scarica il file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    
+    // Nome file con timestamp
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const viewType = showArchive ? 'archiviate' : 'attive';
+    const fileName = `richieste_libere_${viewType}_${timestamp}.csv`;
+    
+    link.href = URL.createObjectURL(blob);
+    link.download = fileName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    setSuccess(`File ${fileName} scaricato ✓`);
+  };
+  
   const setupDatabase = async () => {
     setSetupLoading(true);
     setError(null);
@@ -661,7 +707,7 @@ export default function LibereAdminPanel() {
                 </span>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
                 <button
                   onClick={() => adminAction('toggle_status')}
                   className={`py-3 px-4 rounded-lg text-white font-medium transition-colors shadow-lg ${
@@ -690,6 +736,19 @@ export default function LibereAdminPanel() {
                   }`}
                 >
                   {showArchive ? '📋 Vista Normale' : '📁 Visualizza Archivio'}
+                </button>
+                
+                <button
+                  onClick={exportToCSV}
+                  disabled={requests.length === 0}
+                  className={`py-3 px-4 rounded-lg text-white font-medium shadow-lg transition-colors ${
+                    requests.length === 0
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-teal-600 hover:bg-teal-700'
+                  }`}
+                  title={`Esporta ${requests.length} richieste ${showArchive ? 'archiviate' : 'attive'} in CSV`}
+                >
+                  📥 Esporta CSV
                 </button>
                 
                 <button
