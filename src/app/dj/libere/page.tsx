@@ -27,6 +27,7 @@ export default function LibereAdminPanel() {
   const [schemaError, setSchemaError] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
+  const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   
   // Carica credenziali e verifica autenticazione
   useEffect(() => {
@@ -206,7 +207,43 @@ export default function LibereAdminPanel() {
     };
   }, [authed, selectedSessionId, password, username]);
   
-  const adminAction = async (action: string, extraData: Record<string, unknown> = {}) => {
+  // Funzione per caricare richieste archiviate
+  const loadArchivedRequests = async (sessionId: string) => {
+    if (!sessionId || !authed) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(`/api/libere/admin?session_id=${sessionId}&archived=true`, {
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Non autorizzato: verifica credenziali DJ.');
+        }
+        return;
+      }
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setRequests(data.requests || []);
+        setStats(null); // Le statistiche non hanno senso per l'archivio
+        setError(null);
+      }
+    } catch {
+      setError('Errore caricamento archivio');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const adminAction = async (action: string, extraData = {}) => {
     // Per la creazione di sessioni non serve selectedSessionId
     if (!authed || (!selectedSessionId && action !== 'create_session')) return;
     
@@ -624,7 +661,7 @@ export default function LibereAdminPanel() {
                 </span>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
                 <button
                   onClick={() => adminAction('toggle_status')}
                   className={`py-3 px-4 rounded-lg text-white font-medium transition-colors shadow-lg ${
@@ -634,6 +671,25 @@ export default function LibereAdminPanel() {
                   }`}
                 >
                   {currentSession.status === 'active' ? '⏸️ Pausa' : '▶️ Attiva'}
+                </button>
+                
+                <button
+                  onClick={() => {
+                    if (showArchive) {
+                      setShowArchive(false);
+                      loadSessionData(selectedSessionId); // Ricarica richieste normali
+                    } else {
+                      setShowArchive(true);
+                      loadArchivedRequests(selectedSessionId); // Carica archivio
+                    }
+                  }}
+                  className={`py-3 px-4 rounded-lg text-white font-medium shadow-lg transition-colors ${
+                    showArchive 
+                      ? 'bg-gray-600 hover:bg-gray-700' 
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {showArchive ? '📋 Vista Normale' : '📁 Visualizza Archivio'}
                 </button>
                 
                 <button

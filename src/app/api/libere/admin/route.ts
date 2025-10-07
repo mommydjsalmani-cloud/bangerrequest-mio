@@ -79,6 +79,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
   const sessionId = url.searchParams.get('session_id');
+  const archived = url.searchParams.get('archived') === 'true'; // Nuovo parametro
   
   const supabase = getSupabase();
   if (!supabase) {
@@ -153,12 +154,12 @@ export async function GET(req: Request) {
     return withVersion({ ok: false, error: 'Sessione non trovata' }, { status: 404 });
   }
   
-  // Richieste della sessione
+  // Richieste della sessione (con filtro archivio)
   const { data: requests, error: requestsError } = await supabase
     .from('richieste_libere')
     .select('*')
     .eq('session_id', sessionId)
-    .eq('archived', false)
+    .eq('archived', archived) // Usa il parametro per filtrare
     .order('created_at', { ascending: false });
   
   if (requestsError) {
