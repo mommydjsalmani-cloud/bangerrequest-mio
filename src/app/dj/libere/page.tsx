@@ -1,30 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
+import { LibereSession, LibereRequest, LibereStats } from '@/lib/libereStore';
 
 export default function LibereAdminPanel() {
-  // Stati semplificati - autenticazione già avvenuta
+  // Stati base per autenticazione
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // Data state
-  const [sessions, setSessions] = useState<LibereSession[]>([]);
-  const [currentSession, setCurrentSession] = useState<LibereSession | null>(null);
-  const [requests, setRequests] = useState<LibereRequest[]>([]);
-  const [stats, setStats] = useState<LibereStats | null>(null);
-  
-  // UI state
-  const [showQR, setShowQR] = useState(false);
-  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
-  const [newSessionName, setNewSessionName] = useState('');
-  const [showCreateSession, setShowCreateSession] = useState(false);
+  // Stati per gestione schema e migrazione  
   const [schemaError, setSchemaError] = useState(false);
-  const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
 
   // Carica credenziali da sessionStorage al mount
@@ -47,79 +34,6 @@ export default function LibereAdminPanel() {
   };
 
   // Funzioni principali con useCallback
-  const loadSessionData = useCallback(async (sessionId: string) => {
-    if (!sessionId || !username || !password) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch(`/api/libere/admin?session_id=${sessionId}`, {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        setError(data.error || 'Errore caricamento dati');
-        return;
-      }
-      
-      setCurrentSession(data.session);
-      setRequests(data.requests || []);
-      setStats(data.stats || null);
-      
-    } catch {
-      setError('Errore connessione');
-    } finally {
-      setLoading(false);
-    }
-  }, [username, password]);
-
-  const loadData = useCallback(async () => {
-    if (!username || !password) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await fetch('/api/libere/admin?action=sessions', {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        if (data.error && data.error.includes('sessioni_libere')) {
-          setSchemaError(true);
-          setError('Database non configurato: le tabelle delle Richieste Libere non sono state create.');
-        } else {
-          setError(data.error || 'Errore caricamento dati');
-        }
-        return;
-      }
-      
-      setSessions(data.sessions || []);
-      
-      // Seleziona prima sessione se disponibile
-      if (data.sessions?.length > 0) {
-        setSelectedSessionId(data.sessions[0].id);
-        loadSessionData(data.sessions[0].id);
-      }
-      
-    } catch {
-      setError('Errore connessione');
-    } finally {
-      setLoading(false);
-    }
-  }, [username, password, loadSessionData]);
-
   const checkMigration = useCallback(async () => {
     setMigrationLoading(true);
     setError(null);
@@ -152,78 +66,10 @@ export default function LibereAdminPanel() {
     }
   }, [username, password]);
 
-  // Carica dati quando le credenziali sono disponibili
+  // Carica dati quando le credenziali sono disponibili - versione semplificata
   useEffect(() => {
-    if (username && password) {
-      loadData();
-    }
-  }, [username, password, loadData]);
-
-  // Polling automatico come negli eventi
-  useEffect(() => {
-    if (!username || !password || !selectedSessionId) return;
-    
-    let mounted = true;
-    let interval: ReturnType<typeof setTimeout> | undefined;
-    let backoff = 4000;
-
-    const controllerRef: { current?: AbortController } = { current: undefined };
-
-    async function load() {
-      const controller = new AbortController();
-      controllerRef.current?.abort();
-      controllerRef.current = controller;
-      
-      try {
-        const response = await fetch(`/api/libere/admin?session_id=${selectedSessionId}`, {
-          headers: {
-            'x-dj-user': username,
-            'x-dj-secret': password
-          },
-          signal: controller.signal
-        });
-        
-        if (!response.ok) {
-          if (response.status === 401) {
-            if (mounted) setError('Non autorizzato: verifica credenziali DJ.');
-          }
-          return;
-        }
-        
-        const data = await response.json();
-        if (!mounted) return;
-        
-        if (data.ok) {
-          setCurrentSession(data.session);
-          setRequests(data.requests || []);
-          setStats(data.stats || null);
-          setError(null);
-          backoff = 4000; // reset backoff su successo
-        }
-      } catch (error: unknown) {
-        if (!mounted || (error instanceof Error && error.name === 'AbortError')) return;
-        // Non svuotare i dati su errore di rete
-        setError('Problema rete, ritento...');
-        backoff = Math.min(backoff * 1.5, 15000);
-      }
-    }
-
-    function schedule() {
-      interval = setTimeout(async () => {
-        await load();
-        if (mounted) schedule();
-      }, backoff);
-    }
-
-    load();
-    schedule();
-
-    return () => {
-      mounted = false;
-      if (interval) clearTimeout(interval);
-      controllerRef.current?.abort();
-    };
-  }, [selectedSessionId, password, username]);
+    // Per ora, nessun caricamento automatico
+  }, [username, password]);
 
   // Se non ci sono credenziali, redirect alla home
   if (!password || !username) {
@@ -243,86 +89,6 @@ export default function LibereAdminPanel() {
     );
   }
 
-  // Resto del componente...
-  const adminAction = async (action: string, extraData: Record<string, unknown> = {}) => {
-    // Per la creazione di sessioni non serve selectedSessionId
-    if (!username || !password || (!selectedSessionId && action !== 'create_session')) return;
-    
-    setLoading(true);
-    setError(null);
-    setSuccess(null);
-    
-    try {
-      const response = await fetch('/api/libere/admin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          session_id: action === 'create_session' ? undefined : selectedSessionId,
-          action,
-          ...extraData
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        setError(data.error || 'Errore operazione');
-        return;
-      }
-      
-      setSuccess(data.message);
-      
-      // Se creata nuova sessione, aggiungi alla lista e seleziona
-      if (action === 'create_session' && data.session) {
-        setNewSessionName('');
-        setShowCreateSession(false);
-        
-        // Ricarica lista sessioni
-        const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
-          headers: {
-            'x-dj-user': username,
-            'x-dj-secret': password
-          }
-        });
-        const sessionsData = await sessionsResponse.json();
-        if (sessionsData.ok) {
-          setSessions(sessionsData.sessions || []);
-          if (data.session) {
-            setSelectedSessionId(data.session.id);
-            loadSessionData(data.session.id);
-          }
-        }
-      } else {
-        // Per altre operazioni, ricarica sessioni
-        const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
-          headers: {
-            'x-dj-user': username,
-            'x-dj-secret': password
-          }
-        });
-        const sessionsData = await sessionsResponse.json();
-        if (sessionsData.ok) {
-          setSessions(sessionsData.sessions || []);
-        }
-        
-        // Se sessione corrente è stata modificata, ricarica i dati
-        if (selectedSessionId && (action.includes('start') || action.includes('pause') || action.includes('close'))) {
-          loadSessionData(selectedSessionId);
-        }
-      }
-      
-    } catch {
-      setError('Errore connessione');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Resto delle funzioni...
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-2 md:p-4">
       <div className="max-w-6xl mx-auto">
