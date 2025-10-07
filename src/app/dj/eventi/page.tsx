@@ -41,7 +41,8 @@ export default function DJPanel() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Stati semplificati - autenticazione già avvenuta
+  // Codice evento rimosso: la selezione avviene creando/selezionando eventi dopo login
+  const [authed, setAuthed] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [list, setList] = useState<RequestItem[]>([]);
@@ -80,7 +81,7 @@ export default function DJPanel() {
   }, []);
 
   useEffect(() => {
-    // Carica credenziali da sessionStorage (già verificate dal login)
+  // Rimosso caricamento codice evento: non più richiesto al login
     try {
       const savedPwd = sessionStorage.getItem('dj_secret');
       if (savedPwd) setPassword(savedPwd);
@@ -89,9 +90,9 @@ export default function DJPanel() {
     } catch {}
   }, []);
 
-  // load events when credentials are loaded
+  // load events when authed/password changes
   useEffect(() => {
-    if (!password || !username) return;
+    if (!authed) return;
     let active = true;
     async function loadEvents() {
       try {
@@ -113,10 +114,17 @@ export default function DJPanel() {
     return () => {
       active = false;
     };
-  }, [password, username]);
+  }, [authed, password, username]);
 
   useEffect(() => {
-    if (!password || !username) return;
+    try {
+      if (password) sessionStorage.setItem('dj_secret', password);
+      else sessionStorage.removeItem('dj_secret');
+    } catch {}
+  }, [password]);
+
+  useEffect(() => {
+    if (!authed) return;
     let mounted = true;
   let interval: ReturnType<typeof setTimeout> | undefined;
   let backoff = 4000;
@@ -175,7 +183,7 @@ export default function DJPanel() {
       if (interval) clearTimeout(interval);
       controllerRef.current?.abort();
     };
-  }, [selectedEvent, password, username]);
+  }, [authed, selectedEvent, password, username]);
 
   async function act(id: string, action: 'accept' | 'reject' | 'mute' | 'merge', mergeWithId?: string) {
     const res = await fetch('/api/requests', {
@@ -239,43 +247,48 @@ export default function DJPanel() {
     return map;
   }, [list]);
 
-  // Funzione di logout per tornare alla home
-  const logout = () => {
-    sessionStorage.removeItem('dj_secret');
-    sessionStorage.removeItem('dj_user');
-    window.location.href = '/dj/home';
-  };
-
-  // Se non ci sono credenziali, redirect alla home
-  if (!password || !username) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white p-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Accesso Richiesto</h2>
-          <p className="text-gray-300 mb-4">Devi effettuare il login per accedere al pannello eventi.</p>
-          <button 
-            onClick={() => window.location.href = '/dj/home'}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-          >
-            Torna al Login
-          </button>
-        </div>
-      </main>
-    );
+  const [loginLoading, setLoginLoading] = useState(false);
+  async function login(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!username.trim()) {
+      setError('Inserisci username DJ');
+      return;
+    }
+    if (!password.trim()) {
+      setError('Inserisci password DJ');
+      return;
+    }
+    setLoginLoading(true);
+    try {
+      // Effettuiamo una chiamata protetta per validare la password (es: lista eventi)
+  const res = await fetch('/api/events', { headers: { 'x-dj-secret': password.trim(), 'x-dj-user': username.trim() } });
+      if (!res.ok) {
+        if (res.status === 401) setError('Password DJ errata. Accesso negato.');
+        else if (res.status === 500) setError('Server non configurato: contatta admin (mancano credenziali).');
+        else setError('Errore di validazione password.');
+        return;
+      }
+      const j = await res.json();
+      if (!j.events) {
+        setError('Risposta inattesa dal server.');
+        return;
+      }
+  // Non salviamo più codice evento al login
+  sessionStorage.setItem('dj_secret', password.trim());
+  sessionStorage.setItem('dj_user', username.trim());
+      setAuthed(true);
+    } catch {
+      setError('Errore di rete durante il login.');
+    } finally {
+      setLoginLoading(false);
+    }
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-black text-white p-6">
       <div className="w-full max-w-5xl p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold">Pannello DJ - Eventi</h2>
-          <button 
-            onClick={logout}
-            className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded text-sm"
-          >
-            Logout
-          </button>
-        </div>
+        <h2 className="text-2xl font-bold mb-2">Pannello DJ</h2>
         {persistenceMode !== 'supabase' && (
           <div className="text-xs bg-yellow-800/40 border border-yellow-700 rounded p-2 leading-snug">
             {persistenceMode === 'in-memory' ? (
@@ -296,10 +309,33 @@ export default function DJPanel() {
           </div>
         )}
 
-        <>
-          <div className="text-sm text-gray-300 flex justify-between items-center">
-            <div>
-              Evento: <span className="font-mono">{selectedEvent || '-'}</span>
+        {!authed ? (
+          <div className="flex flex-col gap-2 mb-4 w-full max-w-xl">
+          <form className="flex gap-2 flex-col sm:flex-row" onSubmit={login}>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username DJ"
+              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password DJ (se impostata)"
+              className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
+            />
+            <button disabled={loginLoading} className="bg-green-600 disabled:opacity-50 hover:bg-green-700 text-white font-bold py-2 px-4 rounded min-w-[90px]">{loginLoading ? 'Verifico…' : 'Entra'}</button>
+          </form>
+          {error && <div className="text-xs text-red-400">{error}</div>}
+          </div>
+        ) : null}
+
+        {authed && (
+          <>
+            <div className="text-sm text-gray-300 flex justify-between items-center">
+              <div>
+                Evento: <span className="font-mono">{selectedEvent || '-'}</span>
               </div>
               <div className="text-xs">
                 {password ? 'Protezione DJ: attiva' : 'Protezione DJ: non attiva'}
@@ -645,7 +681,8 @@ export default function DJPanel() {
               <span>Totali: {stats.total}</span>
               <span>Ultima ora: {stats.lastHour}</span>
             </div>
-        </>
+          </>
+        )}
       </div>
     </main>
   );
