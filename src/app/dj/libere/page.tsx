@@ -6,6 +6,7 @@ import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereSta
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
+  const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -67,6 +68,8 @@ export default function LibereAdminPanel() {
         }
       } catch {
         // Errore nel caricamento, l'utente dovrà fare login manualmente
+      } finally {
+        setInitializing(false); // Inizializzazione completata
       }
     };
     
@@ -437,6 +440,21 @@ export default function LibereAdminPanel() {
   };
   
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
+  
+  // Mostra loading durante l'inizializzazione per evitare il flash della pagina di login
+  if (initializing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
+          <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
+          <div className="text-white/80">
+            <div className="text-3xl mb-4">⏳</div>
+            <p>Verifica autenticazione...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   if (!authed) {
     return (

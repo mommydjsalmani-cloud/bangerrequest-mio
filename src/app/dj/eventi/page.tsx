@@ -43,6 +43,7 @@ export default function DJPanel() {
 
   // Codice evento rimosso: la selezione avviene creando/selezionando eventi dopo login
   const [authed, setAuthed] = useState(false);
+  const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [list, setList] = useState<RequestItem[]>([]);
@@ -92,6 +93,9 @@ export default function DJPanel() {
         setAuthed(true);
       }
     } catch {}
+    finally {
+      setInitializing(false); // Inizializzazione completata
+    }
   }, []);
 
   // load events when authed/password changes
@@ -275,7 +279,14 @@ export default function DJPanel() {
           </div>
         )}
 
-        {!authed ? (
+        {initializing ? (
+          <div className="flex flex-col gap-4 mb-4 w-full max-w-xl">
+            <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm text-center">
+              <div className="text-2xl mb-2">⏳</div>
+              <p className="font-medium">Verifica autenticazione...</p>
+            </div>
+          </div>
+        ) : !authed ? (
           <div className="flex flex-col gap-4 mb-4 w-full max-w-xl">
             <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm text-center">
               <p className="font-medium">Accesso richiesto</p>
