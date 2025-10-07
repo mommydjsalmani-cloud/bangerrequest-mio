@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
 export default function LibereAdminPanel() {
-  const [authed, setAuthed] = useState(false);
+  // Stati semplificati - autenticazione già avvenuta
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,43 @@ export default function LibereAdminPanel() {
   const [schemaError, setSchemaError] = useState(false);
   const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
+
+  // Carica credenziali da sessionStorage al mount
+  useEffect(() => {
+    try {
+      const savedPwd = sessionStorage.getItem('dj_secret');
+      const savedUser = sessionStorage.getItem('dj_user');
+      if (savedPwd && savedUser) {
+        setPassword(savedPwd);
+        setUsername(savedUser);
+      }
+    } catch {}
+  }, []);
+
+  // Funzione di logout
+  const logout = () => {
+    sessionStorage.removeItem('dj_secret');
+    sessionStorage.removeItem('dj_user');
+    window.location.href = '/dj/home';
+  };
+
+  // Se non ci sono credenziali, redirect alla home
+  if (!password || !username) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center p-4">
+        <div className="text-center bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-2xl border border-white/20">
+          <h2 className="text-2xl font-bold text-white mb-4">Accesso Richiesto</h2>
+          <p className="text-gray-300 mb-4">Devi effettuare il login per accedere al pannello richieste libere.</p>
+          <button 
+            onClick={() => window.location.href = '/dj/home'}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Torna al Login
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   const checkMigration = async () => {
     setMigrationLoading(true);
@@ -59,9 +96,8 @@ export default function LibereAdminPanel() {
     }
   };
   
-  const login = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!username.trim() || !password.trim()) return;
+  const loadData = async () => {
+    if (!username || !password) return;
     
     setLoading(true);
     setError(null);
@@ -69,25 +105,23 @@ export default function LibereAdminPanel() {
     try {
       const response = await fetch('/api/libere/admin?action=sessions', {
         headers: {
-          'x-dj-user': username.trim(),
-          'x-dj-secret': password.trim()
+          'x-dj-user': username,
+          'x-dj-secret': password
         }
       });
       
       const data = await response.json();
       
       if (!data.ok) {
-        // Controlla se è un errore di schema database
         if (data.error && data.error.includes('sessioni_libere')) {
           setSchemaError(true);
           setError('Database non configurato: le tabelle delle Richieste Libere non sono state create.');
         } else {
-          setError(data.error || 'Errore autenticazione');
+          setError(data.error || 'Errore caricamento dati');
         }
         return;
       }
       
-      setAuthed(true);
       setSessions(data.sessions || []);
       
       // Seleziona prima sessione se disponibile
@@ -104,7 +138,7 @@ export default function LibereAdminPanel() {
   };
   
   const loadSessionData = async (sessionId: string) => {
-    if (!sessionId || !authed) return;
+    if (!sessionId || !username || !password) return;
     
     setLoading(true);
     setError(null);
@@ -135,9 +169,16 @@ export default function LibereAdminPanel() {
     }
   };
 
+  // Carica dati quando le credenziali sono disponibili
+  useEffect(() => {
+    if (username && password) {
+      loadData();
+    }
+  }, [username, password]);
+
   // Polling automatico come negli eventi
   useEffect(() => {
-    if (!authed || !selectedSessionId) return;
+    if (!username || !password || !selectedSessionId) return;
     
     let mounted = true;
     let interval: ReturnType<typeof setTimeout> | undefined;
@@ -199,11 +240,11 @@ export default function LibereAdminPanel() {
       if (interval) clearTimeout(interval);
       controllerRef.current?.abort();
     };
-  }, [authed, selectedSessionId, password, username]);
+  }, [selectedSessionId, password, username]);
   
   const adminAction = async (action: string, extraData: Record<string, unknown> = {}) => {
     // Per la creazione di sessioni non serve selectedSessionId
-    if (!authed || (!selectedSessionId && action !== 'create_session')) return;
+    if (!username || !password || (!selectedSessionId && action !== 'create_session')) return;
     
     setLoading(true);
     setError(null);
@@ -283,7 +324,7 @@ export default function LibereAdminPanel() {
   
   // Funzione veloce stile eventi
   const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled') => {
-    if (!authed) return;
+    if (!username || !password) return;
     
     const response = await fetch('/api/libere/admin', {
       method: 'PATCH',
@@ -410,12 +451,26 @@ export default function LibereAdminPanel() {
   
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
   
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
-        <form onSubmit={login} className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20">
-          <h1 className="text-2xl font-bold mb-6 text-center text-white">🎵 Pannello Richieste Libere</h1>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-2 md:p-4">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* Header */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-lg shadow-xl p-4 md:p-6 mb-4 md:mb-6 border border-white/20">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-white">🎵 Pannello Richieste Libere</h1>
+              <p className="text-gray-300">Benvenuto {username}</p>
+            </div>
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
+            >
+              Logout
+            </button>
+          </div>
           
+          {/* Error e Schema Handling */}
           {error && (
             <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
               {error}
@@ -448,51 +503,11 @@ export default function LibereAdminPanel() {
             </div>
           )}
           
-          <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
-              disabled={loading}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-white placeholder-gray-300"
-              disabled={loading}
-            />
-            <button
-              type="submit"
-              disabled={loading || !username.trim() || !password.trim()}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg transition-colors shadow-lg"
-            >
-              {loading ? 'Accesso...' : 'Accedi'}
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-2 md:p-4">
-      <div className="max-w-6xl mx-auto">
-        
-        {/* Header */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-lg shadow-xl p-4 md:p-6 mb-4 md:mb-6 border border-white/20">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <h1 className="text-xl md:text-2xl font-bold text-white">🎵 Pannello Richieste Libere</h1>
-            <button
-              onClick={() => setAuthed(false)}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
-            >
-              Logout
-            </button>
-          </div>
+          {success && (
+            <div className="bg-green-500/20 border border-green-400 text-green-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
+              {success}
+            </div>
+          )}
           
           {/* Session Selection */}
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4 items-stretch sm:items-center mb-4">
