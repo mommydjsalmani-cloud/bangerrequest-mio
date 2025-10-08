@@ -28,6 +28,7 @@ export default function LibereAdminPanel() {
   const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
+  const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   
   // Carica credenziali e verifica autenticazione
   useEffect(() => {
@@ -613,13 +614,28 @@ export default function LibereAdminPanel() {
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg rounded-lg shadow-xl p-4 md:p-6 mb-4 md:mb-6 border border-white/20">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-            <h1 className="text-xl md:text-2xl font-bold text-white">🎵 Pannello Richieste Libere</h1>
-            <button
-              onClick={() => setAuthed(false)}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
-            >
-              Logout
-            </button>
+            <h1 className="text-xl md:text-2xl font-bold text-white">
+              🎵 Pannello Richieste Libere
+              {eventMode && <span className="text-lg font-normal text-blue-200 ml-2">- Modalità Evento</span>}
+            </h1>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setEventMode(!eventMode)}
+                className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
+                  eventMode
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500'
+                    : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
+                }`}
+              >
+                {eventMode ? '⚙️ Vista Completa' : '🎧 Modalità Evento'}
+              </button>
+              <button
+                onClick={() => setAuthed(false)}
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
+              >
+                Logout
+              </button>
+            </div>
           </div>
           
           {/* Session Selection */}
@@ -640,30 +656,34 @@ export default function LibereAdminPanel() {
               ))}
             </select>
             
-            <button
-              onClick={() => setShowCreateSession(!showCreateSession)}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
-            >
-              + Nuova
-            </button>
-            
-            {selectedSessionId && (
-              <button
-                onClick={() => handleDeleteSession(selectedSessionId)}
-                disabled={loading}
-                className={`px-4 py-2 text-white rounded-lg transition-colors shadow-lg ${
-                  loading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-red-600 hover:bg-red-700'
-                }`}
-              >
-                {loading ? '⏳ Eliminando...' : '🗑️ Elimina'}
-              </button>
+            {!eventMode && (
+              <>
+                <button
+                  onClick={() => setShowCreateSession(!showCreateSession)}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
+                >
+                  + Nuova
+                </button>
+                
+                {selectedSessionId && (
+                  <button
+                    onClick={() => handleDeleteSession(selectedSessionId)}
+                    disabled={loading}
+                    className={`px-4 py-2 text-white rounded-lg transition-colors shadow-lg ${
+                      loading 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-red-600 hover:bg-red-700'
+                    }`}
+                  >
+                    {loading ? '⏳ Eliminando...' : '🗑️ Elimina'}
+                  </button>
+                )}
+              </>
             )}
           </div>
           
-          {/* Create Session Form */}
-          {showCreateSession && (
+          {/* Create Session Form - Solo se NON in modalità evento */}
+          {!eventMode && showCreateSession && (
             <div className="border border-white/20 rounded-lg p-4 bg-white/10 backdrop-blur-sm mb-4 shadow-lg">
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -710,16 +730,58 @@ export default function LibereAdminPanel() {
         
         {currentSession && (
           <>
-            {/* Controls */}
-            <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  currentSession.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {SESSION_STATUS_LABELS[currentSession.status]}
-                </span>
+            {/* Header Modalità Evento - Semplificato */}
+            {eventMode && (
+              <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        currentSession.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {SESSION_STATUS_LABELS[currentSession.status]}
+                      </span>
+                      <button
+                        onClick={() => adminAction('toggle_status')}
+                        className={`py-2 px-4 rounded-lg text-white font-medium transition-colors shadow-sm ${
+                          currentSession.status === 'active' 
+                            ? 'bg-orange-600 hover:bg-orange-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {currentSession.status === 'active' ? '⏸️ Pausa' : '▶️ Attiva'}
+                      </button>
+                    </div>
+                  </div>
+                  {showArchive && (
+                    <div className="text-right">
+                      <button
+                        onClick={() => {
+                          setShowArchive(false);
+                          loadSessionData(selectedSessionId);
+                        }}
+                        className="py-2 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                      >
+                        📋 Vista Normale
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
+            
+            {/* Controls - Solo se NON in modalità evento */}
+            {!eventMode && (
+              <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    currentSession.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {SESSION_STATUS_LABELS[currentSession.status]}
+                  </span>
+                </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
                 <button
@@ -917,9 +979,10 @@ export default function LibereAdminPanel() {
                 )}
               </div>
             </div>
+            )}
             
-            {/* Stats */}
-            {stats && (
+            {/* Stats - Solo se NON in modalità evento */}
+            {!eventMode && stats && (
               <div className="bg-white rounded-lg shadow-lg p-6 mb-6 border border-gray-200">
                 <h2 className="text-xl font-bold mb-4 text-gray-800">📊 Statistiche</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
