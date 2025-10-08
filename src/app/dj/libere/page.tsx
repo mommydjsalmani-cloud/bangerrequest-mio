@@ -141,9 +141,9 @@ export default function LibereAdminPanel() {
     }
   };
 
-  // Polling automatico come negli eventi
+  // Polling automatico come negli eventi - MA SOLO se non stiamo visualizzando l'archivio
   useEffect(() => {
-    if (!authed || !selectedSessionId) return;
+    if (!authed || !selectedSessionId || showArchive) return; // Non fare polling se stiamo visualizzando l'archivio
     
     let mounted = true;
     let interval: ReturnType<typeof setTimeout> | undefined;
@@ -205,7 +205,7 @@ export default function LibereAdminPanel() {
       if (interval) clearTimeout(interval);
       controllerRef.current?.abort();
     };
-  }, [authed, selectedSessionId, password, username]);
+  }, [authed, selectedSessionId, password, username, showArchive]); // Aggiunto showArchive alle dipendenze
   
   // Funzione per caricare richieste archiviate
   const loadArchivedRequests = async (sessionId: string) => {
