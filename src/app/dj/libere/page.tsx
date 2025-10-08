@@ -123,6 +123,14 @@ export default function LibereAdminPanel() {
         }
       });
       
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Non autorizzato: verifica credenziali DJ.');
+          return;
+        }
+        throw new Error(`Errore ${response.status}`);
+      }
+      
       const data = await response.json();
       
       if (!data.ok) {
@@ -133,8 +141,10 @@ export default function LibereAdminPanel() {
       setCurrentSession(data.session);
       setRequests(data.requests || []);
       setStats(data.stats || null);
+      setError(null);
       
-    } catch {
+    } catch (err) {
+      console.error('Errore caricamento sessione:', err);
       setError('Errore connessione');
     } finally {
       setLoading(false);
@@ -225,8 +235,9 @@ export default function LibereAdminPanel() {
       if (!response.ok) {
         if (response.status === 401) {
           setError('Non autorizzato: verifica credenziali DJ.');
+          return;
         }
-        return;
+        throw new Error(`Errore ${response.status}`);
       }
       
       const data = await response.json();
@@ -235,8 +246,11 @@ export default function LibereAdminPanel() {
         setRequests(data.requests || []);
         setStats(null); // Le statistiche non hanno senso per l'archivio
         setError(null);
+      } else {
+        setError(data.error || 'Errore caricamento archivio');
       }
-    } catch {
+    } catch (err) {
+      console.error('Errore caricamento archivio:', err);
       setError('Errore caricamento archivio');
     } finally {
       setLoading(false);
@@ -729,13 +743,21 @@ export default function LibereAdminPanel() {
                       loadArchivedRequests(selectedSessionId); // Carica archivio
                     }
                   }}
+                  disabled={loading}
                   className={`py-3 px-4 rounded-lg text-white font-medium shadow-lg transition-colors ${
-                    showArchive 
-                      ? 'bg-gray-600 hover:bg-gray-700' 
-                      : 'bg-indigo-600 hover:bg-indigo-700'
+                    loading
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : showArchive 
+                        ? 'bg-gray-600 hover:bg-gray-700' 
+                        : 'bg-indigo-600 hover:bg-indigo-700'
                   }`}
                 >
-                  {showArchive ? '📋 Vista Normale' : '📁 Visualizza Archivio'}
+                  {loading 
+                    ? '⏳ Caricando...' 
+                    : showArchive 
+                      ? '📋 Vista Normale' 
+                      : '📁 Visualizza Archivio'
+                  }
                 </button>
                 
                 <button
@@ -931,17 +953,33 @@ export default function LibereAdminPanel() {
             
             {/* Requests List */}
             <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-              <h2 className="text-xl font-bold mb-4 text-gray-800">📝 Richieste ({requests.length})</h2>
+              <h2 className="text-xl font-bold mb-4 text-gray-800">
+                📝 {showArchive ? 'Archivio Richieste' : 'Richieste'} ({requests.length})
+                {showArchive && (
+                  <span className="text-sm font-normal text-gray-600 ml-2">
+                    (Visualizzazione sola lettura)
+                  </span>
+                )}
+              </h2>
               
               {requests.length === 0 ? (
                 <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="text-4xl mb-2">🎵</div>
-                  <div className="font-medium">Nessuna richiesta presente</div>
+                  <div className="font-medium">
+                    {showArchive ? 'Nessuna richiesta archiviata' : 'Nessuna richiesta presente'}
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {requests.map((request) => (
-                    <div key={request.id} className="border border-gray-200 rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                    <div 
+                      key={request.id} 
+                      className={`border rounded-lg p-4 transition-colors ${
+                        showArchive 
+                          ? 'border-amber-200 bg-amber-50 hover:bg-amber-100' // Colore diverso per archivio
+                          : 'border-gray-200 bg-gray-50 hover:bg-gray-100'     // Colore normale
+                      }`}
+                    >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
                           <div className="font-bold text-lg text-gray-900 mb-1">{request.title}</div>
@@ -962,10 +1000,17 @@ export default function LibereAdminPanel() {
                               ⏱️ {formatDuration(request.duration_ms)}
                             </div>
                           )}
+                          {showArchive && (
+                            <div className="text-amber-600 text-xs mt-1 font-medium">
+                              📁 Archiviata
+                            </div>
+                          )}
                         </div>
                       </div>
                       
-                      <div className="text-sm text-gray-600 mb-3 bg-white p-3 rounded border border-gray-200">
+                      <div className={`text-sm text-gray-600 mb-3 p-3 rounded border ${
+                        showArchive ? 'bg-amber-25 border-amber-200' : 'bg-white border-gray-200'
+                      }`}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div><strong>📅 Data:</strong> {formatDateTime(request.created_at)}</div>
                           {request.requester_name && (
@@ -978,11 +1023,19 @@ export default function LibereAdminPanel() {
                       
                       {/* Messaggio/nota del richiedente - SEMPRE VISIBILE */}
                       {request.note && (
-                        <div className="mb-3 text-sm bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 p-4 rounded-lg shadow-sm">
-                          <div className="flex items-center gap-2 font-semibold text-purple-800 mb-2">
+                        <div className={`mb-3 text-sm border p-4 rounded-lg shadow-sm ${
+                          showArchive 
+                            ? 'bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200'
+                            : 'bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200'
+                        }`}>
+                          <div className={`flex items-center gap-2 font-semibold mb-2 ${
+                            showArchive ? 'text-amber-800' : 'text-purple-800'
+                          }`}>
                             💌 Messaggio dal richiedente
                             {request.requester_name && (
-                              <span className="text-xs bg-purple-100 px-2 py-1 rounded-full">
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                showArchive ? 'bg-amber-100' : 'bg-purple-100'
+                              }`}>
                                 da {request.requester_name}
                               </span>
                             )}
@@ -993,60 +1046,65 @@ export default function LibereAdminPanel() {
                         </div>
                       )}
                       
-                      {request.status === 'new' && (
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ✅ Accetta
-                          </button>
-                          <button
-                            onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ❌ Scarta
-                          </button>
-                        </div>
-                      )}
-                      
-                      {request.status === 'accepted' && (
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ❌ Rifiuta
-                          </button>
-                        </div>
-                      )}
-                      
-                      {request.status === 'rejected' && (
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ✅ Accetta
-                          </button>
-                        </div>
-                      )}
-                      
-                      {request.status === 'cancelled' && (
-                        <div className="flex gap-2 flex-wrap">
-                          <button
-                            onClick={() => act(request.id, 'accepted')}
-                            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ✅ Accetta
-                          </button>
-                          <button
-                            onClick={() => act(request.id, 'rejected')}
-                            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                          >
-                            ❌ Rifiuta
-                          </button>
-                        </div>
+                      {/* Pulsanti azione - SOLO se NON stiamo visualizzando l'archivio */}
+                      {!showArchive && (
+                        <>
+                          {request.status === 'new' && (
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'accepted')}
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ✅ Accetta
+                              </button>
+                              <button
+                                onClick={() => act(request.id, 'rejected')}
+                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ❌ Scarta
+                              </button>
+                            </div>
+                          )}
+                          
+                          {request.status === 'accepted' && (
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'rejected')}
+                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ❌ Rifiuta
+                              </button>
+                            </div>
+                          )}
+                          
+                          {request.status === 'rejected' && (
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'accepted')}
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ✅ Accetta
+                              </button>
+                            </div>
+                          )}
+                          
+                          {request.status === 'cancelled' && (
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'accepted')}
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ✅ Accetta
+                              </button>
+                              <button
+                                onClick={() => act(request.id, 'rejected')}
+                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ❌ Rifiuta
+                              </button>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   ))}
