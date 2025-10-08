@@ -228,10 +228,9 @@ function RichiesteLibereContent() {
       sessionStorage.setItem('libere_last_request_status', 'new');
       sessionStorage.setItem('libere_last_track', JSON.stringify({ title: selected.title, artists: selected.artists }));
       
-      // Reset
+      // Reset form (ma mantieni il nome!)
       setSelected(null);
       setNote('');
-      setRequesterName('');
       setQuery('');
       setResults([]);
       setMessage(data.message || 'Richiesta inviata 🎶');
