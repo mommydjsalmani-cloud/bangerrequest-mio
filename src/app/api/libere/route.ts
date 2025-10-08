@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { getClientIP as getIPFromRequest, isIPBlocked } from '@/lib/ipBlocking';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -194,6 +195,17 @@ export async function POST(req: Request) {
   
   const clientIP = getClientIP(req);
   const userAgent = req.headers.get('user-agent') || '';
+  
+  // Controllo IP bloccati
+  const ipBlockStatus = await isIPBlocked(clientIP);
+  if (ipBlockStatus.blocked) {
+    return withVersion({ 
+      ok: false, 
+      error: 'Il tuo IP è stato bloccato dal DJ', 
+      reason: ipBlockStatus.reason,
+      blocked_by: ipBlockStatus.blockedBy 
+    }, { status: 403 });
+  }
   
   // Rate limiting check
   const rateLimitOk = await checkRateLimit(supabase, session.id, clientIP, session.rate_limit_enabled, session.rate_limit_seconds);

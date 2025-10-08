@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
+import { getClientIP, isIPBlocked } from '@/lib/ipBlocking';
 
 type RequestItem = {
   id: string;
@@ -54,6 +55,19 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = (await req.json()) as Partial<RequestItem>;
+  
+  // Controllo IP bloccati
+  const clientIP = getClientIP(req);
+  const ipBlockStatus = await isIPBlocked(clientIP);
+  if (ipBlockStatus.blocked) {
+    return withVersion({ 
+      ok: false, 
+      error: 'Il tuo IP è stato bloccato dal DJ', 
+      reason: ipBlockStatus.reason,
+      blocked_by: ipBlockStatus.blockedBy 
+    }, { status: 403 });
+  }
+  
   const now = new Date().toISOString();
   const supabase = getSupabase();
   // Se il DB in produzione ha id UUID, usiamo randomUUID quando supabase è attivo
