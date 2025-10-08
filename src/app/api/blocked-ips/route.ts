@@ -5,8 +5,8 @@ import { isValidCredentials } from '@/lib/eventsStore';
 export async function GET(request: NextRequest) {
   try {
     // Autenticazione DJ
-    const username = request.headers.get('x-dj-username');
-    const password = request.headers.get('x-dj-password');
+    const username = request.headers.get('x-dj-user');
+    const password = request.headers.get('x-dj-secret');
     
     if (!username || !password || !isValidCredentials(username, password)) {
       return NextResponse.json(
@@ -41,8 +41,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Autenticazione DJ
-    const username = request.headers.get('x-dj-username');
-    const password = request.headers.get('x-dj-password');
+    const username = request.headers.get('x-dj-user');
+    const password = request.headers.get('x-dj-secret');
     
     if (!username || !password || !isValidCredentials(username, password)) {
       return NextResponse.json(
