@@ -593,7 +593,8 @@ export default function LibereAdminPanel() {
         setStats(null);
       }
       
-    } catch (err) {
+    } catch (error) {
+      console.error('Errore durante l\'eliminazione della sessione:', error);
       setError('Errore durante l\'eliminazione della sessione');
     } finally {
       setLoading(false);

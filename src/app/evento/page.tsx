@@ -112,7 +112,7 @@ export default function EventoPage() {
                   Controllo...
                 </span>
               ) : (
-                '🎉 Entra nell\'Evento'
+                '🎉 Entra nell&apos;Evento'
               )}
             </button>
           </form>
@@ -123,7 +123,7 @@ export default function EventoPage() {
               Non hai un codice evento?
             </p>
             <p className="text-xs text-gray-300">
-              Chiedi al DJ o all'organizzatore dell'evento
+              Chiedi al DJ o all&apos;organizzatore dell&apos;evento
             </p>
           </div>
         </div>
