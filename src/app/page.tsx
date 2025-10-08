@@ -1,95 +1,59 @@
-
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react"; // Import statement remains unchanged
 
 export default function Home() {
-  // Removed unused function: openInstagram
-
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
-  const nomeRef = useRef<HTMLInputElement>(null);
-  const codiceRef = useRef<HTMLInputElement>(null);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const nome = nomeRef.current?.value.trim();
-    const rawCode = codiceRef.current?.value.trim();
-    const codice = rawCode?.toUpperCase();
-    if (!nome || !codice) return;
-    setError(null);
-    setChecking(true);
-    try {
-      const res = await fetch(`/api/events/validate?code=${encodeURIComponent(codice)}`);
-      const j = await res.json();
-      if (!res.ok || !j.valid) {
-        setError('Codice evento non valido o evento non attivo.');
-        setChecking(false);
-        return;
-      }
-    } catch {
-      setError('Errore di rete nella validazione codice.');
-      setChecking(false);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      localStorage.setItem("banger_nome", nome);
-      localStorage.setItem("banger_codice", codice);
-    }
-    setChecking(false);
-    router.push("/requests");
-  }
-
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white px-4 py-6">
-      <div className="w-full max-w-md p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6">
-        <h1 className="text-3xl sm:text-4xl font-bold text-center mb-1 leading-tight">Banger Request</h1>
-        
-        {/* Pulsante Instagram per home page */}
-        <div className="p-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white px-4">
+      <div className="w-full max-w-lg text-center space-y-8">
+        {/* Logo/Brand */}
+        <div>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+            Banger Request
+          </h1>
+          <p className="text-lg md:text-xl text-gray-300">
+            🎵 Richiedi la tua musica al DJ
+          </p>
+        </div>
+
+        {/* Main Actions */}
+        <div className="space-y-6">
+          <Link 
+            href="/evento"
+            className="block w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            🎉 Entra in un Evento
+          </Link>
+          
+          <Link 
+            href="/dj"
+            className="block w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+          >
+            🎧 Zona DJ
+          </Link>
+        </div>
+
+        {/* Footer Links */}
+        <div className="pt-8 space-y-4">
           <a 
             href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="inline-block w-full text-center bg-white text-purple-700 font-bold py-2 px-4 rounded-lg hover:bg-gray-100 active:scale-[0.98] transition text-sm"
+            className="inline-block text-gray-400 hover:text-white transition-colors text-sm underline"
           >
-            🎵 Seguici su Instagram
+            📸 Seguici su Instagram
           </a>
-        </div>
-  <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <input
-            type="text"
-            placeholder="Il tuo nome"
-            required
-            ref={nomeRef}
-            className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-          />
-          <input
-            type="text"
-            placeholder="Codice evento"
-            required
-            ref={codiceRef}
-            className="p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={checking}
-            className="bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-green-700 active:scale-[0.98] transition text-white font-bold py-3 rounded mt-1"
-          >{checking ? 'Controllo...' : 'Entra'}</button>
-          {error && <div className="text-red-400 text-xs mt-1">{error}</div>}
-        </form>
-        <footer className="text-[11px] sm:text-xs text-gray-400 text-center mt-4">
-          <Link href="/privacy" className="underline mr-2">Privacy</Link>
-          <Link href="/termini" className="underline">Termini</Link>
-          <div className="mt-3">
-            <Link href="/dj" className="underline text-gray-300 hover:text-white">Sei il DJ? Apri il pannello</Link>
+          
+          <div className="flex justify-center gap-4 text-xs text-gray-500">
+            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
+              Privacy
+            </Link>
+            <Link href="/termini" className="hover:text-gray-300 transition-colors">
+              Termini
+            </Link>
           </div>
-        </footer>
+        </div>
       </div>
     </main>
   );
 }
-
