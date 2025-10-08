@@ -164,13 +164,17 @@ function RichiesteLibereContent() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
   
-  // Salva nome utente per la sessione
+  // Salva nome utente per la sessione con debounce
   const saveUserName = (name: string) => {
-    if (!token) return;
-    setRequesterName(name);
-    sessionStorage.setItem(`libere_user_name_${token}`, name);
-    setIsFirstTime(false);
-    setShowWelcome(true);
+    if (!token || !name.trim() || name.trim().length < 2) return;
+    
+    // Aggiungi un piccolo delay per evitare conflitti
+    setTimeout(() => {
+      setRequesterName(name);
+      sessionStorage.setItem(`libere_user_name_${token}`, name);
+      setIsFirstTime(false);
+      setShowWelcome(true);
+    }, 100);
   };
   
   // Chiude il welcome e imposta come visto
@@ -303,25 +307,34 @@ function RichiesteLibereContent() {
               className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  const currentValue = (e.target as HTMLInputElement).value.trim();
-                  if (currentValue) {
-                    saveUserName(currentValue);
+                  e.preventDefault();
+                  const value = requesterName.trim();
+                  if (value.length >= 2) {
+                    saveUserName(value);
                   }
                 }
               }}
+              minLength={2}
             />
             
             <button
               onClick={() => {
-                if (requesterName.trim()) {
-                  saveUserName(requesterName.trim());
+                const value = requesterName.trim();
+                if (value.length >= 2) {
+                  saveUserName(value);
                 }
               }}
-              disabled={!requesterName.trim()}
+              disabled={requesterName.trim().length < 2}
               className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
             >
               🚀 Iniziamo!
             </button>
+            
+            <div className="text-center text-xs text-gray-400">
+              {requesterName.trim().length > 0 && requesterName.trim().length < 2 && 
+                "Inserisci almeno 2 caratteri"
+              }
+            </div>
           </div>
           
           <div className="mt-6 text-center">
