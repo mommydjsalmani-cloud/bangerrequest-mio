@@ -30,6 +30,21 @@ export default function LibereAdminPanel() {
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   
+  // Auto-clear messaggi con debounce
+  useEffect(() => {
+    if (success) {
+      const timeoutId = setTimeout(() => setSuccess(null), 5000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [success]);
+  
+  useEffect(() => {
+    if (error) {
+      const timeoutId = setTimeout(() => setError(null), 10000); // Errori rimangono più a lungo
+      return () => clearTimeout(timeoutId);
+    }
+  }, [error]);
+  
   // Carica credenziali e verifica autenticazione
   useEffect(() => {
     const loadCredentialsAndAuth = async () => {
@@ -116,20 +131,31 @@ export default function LibereAdminPanel() {
     setLoading(true);
     setError(null);
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout di 10 secondi
+    
     try {
       const response = await fetch(`/api/libere/admin?session_id=${sessionId}`, {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         if (response.status === 401) {
           setError('Non autorizzato: verifica credenziali DJ.');
+          setAuthed(false); // Logout automatico
           return;
         }
-        throw new Error(`Errore ${response.status}`);
+        if (response.status === 404) {
+          setError('Sessione non trovata');
+          return;
+        }
+        throw new Error(`Errore HTTP ${response.status}`);
       }
       
       const data = await response.json();
@@ -145,8 +171,18 @@ export default function LibereAdminPanel() {
       setError(null);
       
     } catch (err) {
-      console.error('Errore caricamento sessione:', err);
-      setError('Errore connessione');
+      clearTimeout(timeoutId);
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Timeout caricamento - riprova');
+        } else {
+          console.error('Errore caricamento sessione:', err);
+          setError('Errore connessione');
+        }
+      } else {
+        setError('Errore sconosciuto');
+      }
     } finally {
       setLoading(false);
     }
@@ -163,8 +199,12 @@ export default function LibereAdminPanel() {
     const controllerRef: { current?: AbortController } = { current: undefined };
 
     async function load() {
+      // Cleanup precedente controller
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
+      
       const controller = new AbortController();
-      controllerRef.current?.abort();
       controllerRef.current = controller;
       
       try {
@@ -176,15 +216,22 @@ export default function LibereAdminPanel() {
           signal: controller.signal
         });
         
+        // Controllo se il componente è ancora montato e la richiesta non è stata abortita
+        if (!mounted || controller.signal.aborted) return;
+        
         if (!response.ok) {
           if (response.status === 401) {
-            if (mounted) setError('Non autorizzato: verifica credenziali DJ.');
+            setError('Non autorizzato: verifica credenziali DJ.');
+          } else if (response.status === 404) {
+            setError('Sessione non trovata');
+          } else {
+            setError(`Errore server: ${response.status}`);
           }
           return;
         }
         
         const data = await response.json();
-        if (!mounted) return;
+        if (!mounted || controller.signal.aborted) return;
         
         if (data.ok) {
           setCurrentSession(data.session);
@@ -192,9 +239,12 @@ export default function LibereAdminPanel() {
           setStats(data.stats || null);
           setError(null);
           backoff = 4000; // reset backoff su successo
+        } else {
+          setError(data.error || 'Errore risposta server');
         }
       } catch (error: unknown) {
         if (!mounted || (error instanceof Error && error.name === 'AbortError')) return;
+        console.error('Errore polling libere:', error);
         // Non svuotare i dati su errore di rete
         setError('Problema rete, ritento...');
         backoff = Math.min(backoff * 1.5, 15000);
@@ -202,6 +252,7 @@ export default function LibereAdminPanel() {
     }
 
     function schedule() {
+      if (!mounted) return;
       interval = setTimeout(async () => {
         await load();
         if (mounted) schedule();
@@ -214,7 +265,9 @@ export default function LibereAdminPanel() {
     return () => {
       mounted = false;
       if (interval) clearTimeout(interval);
-      controllerRef.current?.abort();
+      if (controllerRef.current) {
+        controllerRef.current.abort();
+      }
     };
   }, [authed, selectedSessionId, password, username, showArchive]); // Aggiunto showArchive alle dipendenze
   
@@ -225,20 +278,31 @@ export default function LibereAdminPanel() {
     setLoading(true);
     setError(null);
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout di 10 secondi
+    
     try {
       const response = await fetch(`/api/libere/admin?session_id=${sessionId}&archived=true`, {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
-        }
+        },
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
         if (response.status === 401) {
           setError('Non autorizzato: verifica credenziali DJ.');
+          setAuthed(false); // Logout automatico
           return;
         }
-        throw new Error(`Errore ${response.status}`);
+        if (response.status === 404) {
+          setError('Sessione non trovata');
+          return;
+        }
+        throw new Error(`Errore HTTP ${response.status}`);
       }
       
       const data = await response.json();
@@ -251,8 +315,18 @@ export default function LibereAdminPanel() {
         setError(data.error || 'Errore caricamento archivio');
       }
     } catch (err) {
-      console.error('Errore caricamento archivio:', err);
-      setError('Errore caricamento archivio');
+      clearTimeout(timeoutId);
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Timeout caricamento archivio - riprova');
+        } else {
+          console.error('Errore caricamento archivio:', err);
+          setError('Errore caricamento archivio');
+        }
+      } else {
+        setError('Errore sconosciuto archivio');
+      }
     } finally {
       setLoading(false);
     }
@@ -260,11 +334,17 @@ export default function LibereAdminPanel() {
   
   const adminAction = async (action: string, extraData = {}) => {
     // Per la creazione di sessioni non serve selectedSessionId
-    if (!authed || (!selectedSessionId && action !== 'create_session')) return;
+    if (!authed || (!selectedSessionId && action !== 'create_session')) {
+      setError('Azione non autorizzata o sessione non selezionata');
+      return;
+    }
     
     setLoading(true);
     setError(null);
     setSuccess(null);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout di 15 secondi per operazioni admin
     
     try {
       const response = await fetch('/api/libere/admin', {
@@ -274,12 +354,29 @@ export default function LibereAdminPanel() {
           'x-dj-user': username,
           'x-dj-secret': password
         },
+        signal: controller.signal,
         body: JSON.stringify({
           action,
           session_id: action === 'create_session' ? undefined : selectedSessionId,
           ...extraData
         })
       });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Non autorizzato: verifica credenziali DJ');
+          setAuthed(false); // Logout automatico
+          return;
+        }
+        if (response.status === 400) {
+          const errorData = await response.json().catch(() => ({}));
+          setError(errorData.error || 'Richiesta non valida');
+          return;
+        }
+        throw new Error(`Errore HTTP ${response.status}`);
+      }
       
       const data = await response.json();
       
@@ -290,80 +387,163 @@ export default function LibereAdminPanel() {
       
       setSuccess(data.message);
       
-      // Ricarica dati
-      if (action === 'create_session') {
-        // Pulisci il form e chiudi la creazione
-        setNewSessionName('');
-        setShowCreateSession(false);
-        
-        // Ricarica lista sessioni
-        const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
-          headers: {
-            'x-dj-user': username,
-            'x-dj-secret': password
+      // Auto-clear success message dopo 5 secondi
+      setTimeout(() => setSuccess(null), 5000);
+      
+      // Ricarica dati con gestione errori
+      try {
+        if (action === 'create_session') {
+          // Pulisci il form e chiudi la creazione
+          setNewSessionName('');
+          setShowCreateSession(false);
+          
+          // Ricarica lista sessioni
+          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+            headers: {
+              'x-dj-user': username,
+              'x-dj-secret': password
+            }
+          });
+          
+          if (sessionsResponse.ok) {
+            const sessionsData = await sessionsResponse.json();
+            if (sessionsData.ok) {
+              setSessions(sessionsData.sessions || []);
+              if (data.session) {
+                setSelectedSessionId(data.session.id);
+                await loadSessionData(data.session.id);
+              }
+            }
           }
-        });
-        const sessionsData = await sessionsResponse.json();
-        if (sessionsData.ok) {
-          setSessions(sessionsData.sessions || []);
-          if (data.session) {
-            setSelectedSessionId(data.session.id);
-            loadSessionData(data.session.id);
+        } else if (action === 'delete_session') {
+          // Ricarica lista sessioni e resetta selezione
+          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+            headers: {
+              'x-dj-user': username,
+              'x-dj-secret': password
+            }
+          });
+          
+          if (sessionsResponse.ok) {
+            const sessionsData = await sessionsResponse.json();
+            if (sessionsData.ok) {
+              setSessions(sessionsData.sessions || []);
+              setSelectedSessionId('');
+              setCurrentSession(null);
+              setRequests([]);
+              setStats(null);
+            }
+          }
+        } else {
+          // Per altre azioni, ricarica dati della sessione corrente
+          if (showArchive) {
+            await loadArchivedRequests(selectedSessionId);
+          } else {
+            await loadSessionData(selectedSessionId);
           }
         }
-      } else if (action === 'delete_session') {
-        // Ricarica lista sessioni e resetta selezione
-        const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
-          headers: {
-            'x-dj-user': username,
-            'x-dj-secret': password
-          }
-        });
-        const sessionsData = await sessionsResponse.json();
-        if (sessionsData.ok) {
-          setSessions(sessionsData.sessions || []);
-          setSelectedSessionId('');
-          setCurrentSession(null);
-          setRequests([]);
-          setStats(null);
-        }
-      } else {
-        loadSessionData(selectedSessionId);
+      } catch (reloadError) {
+        console.error('Errore ricaricamento dopo azione:', reloadError);
+        setError('Operazione completata ma errore nel ricaricamento dati');
       }
       
-    } catch {
-      setError('Errore connessione');
+    } catch (err) {
+      clearTimeout(timeoutId);
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Timeout operazione - riprova');
+        } else {
+          console.error('Errore admin action:', err);
+          setError('Errore connessione');
+        }
+      } else {
+        setError('Errore sconosciuto');
+      }
     } finally {
       setLoading(false);
     }
   };
   
-  // Funzione veloce stile eventi
-  const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled') => {
-    if (!authed) return;
-    
-    const response = await fetch('/api/libere/admin', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-dj-user': username,
-        'x-dj-secret': password
-      },
-      body: JSON.stringify({
-        request_id: requestId,
-        status: action,
-        note: action === 'cancelled' ? 'Cambiato idea - richiesta cancellata dal DJ' : undefined
-      })
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) setError('Non autorizzato: credenziali DJ errate.');
-      else if (response.status === 500) setError('Errore server.');
+  // Funzione veloce stile eventi con retry automatico
+  const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled', retryCount = 0) => {
+    if (!authed) {
+      setError('Non autenticato');
       return;
     }
     
-    // Refresh ottimistico immediato
-    loadSessionData(selectedSessionId);
+    const maxRetries = 2;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout di 8 secondi
+    
+    try {
+      const response = await fetch('/api/libere/admin', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          request_id: requestId,
+          status: action,
+          note: action === 'cancelled' ? 'Cambiato idea - richiesta cancellata dal DJ' : undefined
+        })
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          setError('Non autorizzato: credenziali DJ errate.');
+          setAuthed(false); // Logout automatico
+          return;
+        }
+        if (response.status === 404) {
+          setError('Richiesta non trovata');
+          return;
+        }
+        throw new Error(`Errore HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (!data.ok) {
+        throw new Error(data.error || 'Errore aggiornamento richiesta');
+      }
+      
+      // Refresh ottimistico immediato
+      if (showArchive) {
+        loadArchivedRequests(selectedSessionId);
+      } else {
+        loadSessionData(selectedSessionId);
+      }
+      
+    } catch (err) {
+      clearTimeout(timeoutId);
+      
+      // Retry automatico per errori di rete
+      if (retryCount < maxRetries && err instanceof Error && (
+        err.name === 'AbortError' || 
+        err.message.includes('fetch') || 
+        err.message.includes('network')
+      )) {
+        console.warn(`Tentativo ${retryCount + 1}/${maxRetries + 1} fallito, riprovo...`);
+        setTimeout(() => act(requestId, action, retryCount + 1), 1000 * (retryCount + 1));
+        return;
+      }
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          setError('Timeout aggiornamento richiesta');
+        } else {
+          console.error('Errore azione richiesta:', err);
+          setError('Errore server.');
+        }
+      } else {
+        setError('Errore sconosciuto');
+      }
+    }
   };
   
   // Gestione eliminazione sessione
