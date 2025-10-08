@@ -444,7 +444,7 @@ function RichiesteLibereContent() {
             {query && !searching && results.length === 0 && (
               <div className="text-center py-8">
                 <div className="text-4xl mb-2">🤔</div>
-                <p className="text-gray-300">Nessun risultato trovato per "{query}"</p>
+                <p className="text-gray-300">Nessun risultato trovato per &quot;{query}&quot;</p>
                 <p className="text-gray-400 text-sm mt-1">Prova con termini diversi</p>
               </div>
             )}
