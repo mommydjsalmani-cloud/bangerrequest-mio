@@ -302,8 +302,11 @@ function RichiesteLibereContent() {
               onChange={(e) => setRequesterName(e.target.value)}
               className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && requesterName.trim()) {
-                  saveUserName(requesterName.trim());
+                if (e.key === 'Enter') {
+                  const currentValue = (e.target as HTMLInputElement).value.trim();
+                  if (currentValue) {
+                    saveUserName(currentValue);
+                  }
                 }
               }}
             />
@@ -473,6 +476,20 @@ function RichiesteLibereContent() {
               className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded border border-gray-600 hover:border-gray-400 transition-colors"
             >
               💡 Aiuto
+            </button>
+            {/* Pulsante temporaneo per test */}
+            <button
+              onClick={() => {
+                if (token) {
+                  sessionStorage.removeItem(`libere_user_name_${token}`);
+                  sessionStorage.removeItem(`libere_welcome_seen_${token}`);
+                  window.location.reload();
+                }
+              }}
+              className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded border border-red-600 hover:border-red-400 transition-colors"
+              title="Reset test"
+            >
+              🔄
             </button>
           </div>
         </div>
