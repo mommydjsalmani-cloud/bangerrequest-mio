@@ -56,7 +56,7 @@ export default function EventoPage() {
             ← Torna alla home
           </Link>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-            Accedi all'Evento
+            Accedi all&apos;Evento
           </h1>
           <p className="text-gray-300">
             Inserisci i tuoi dati per iniziare a richiedere musica
