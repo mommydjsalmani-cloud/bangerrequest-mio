@@ -96,6 +96,7 @@ export default function LibereAdminPanel() {
     };
     
     loadCredentialsAndAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   const checkMigration = async () => {
@@ -673,7 +674,7 @@ export default function LibereAdminPanel() {
       
       const data = await response.json();
       if (data.ok && Array.isArray(data.blockedIPs)) {
-        setBlockedIPs(data.blockedIPs.map((item: any) => item.ip));
+        setBlockedIPs(data.blockedIPs.map((item: { ip: string }) => item.ip));
       }
     } catch (error) {
       console.error('Errore caricamento IP bloccati:', error);

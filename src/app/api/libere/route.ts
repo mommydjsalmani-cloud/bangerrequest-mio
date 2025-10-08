@@ -1,30 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { getClientIP as getIPFromRequest, isIPBlocked } from '@/lib/ipBlocking';
+import { getClientIP, isIPBlocked } from '@/lib/ipBlocking';
 
 const BUILD_TAG = 'libere-api-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
   return NextResponse.json(data, { status: init?.status, headers: { 'X-App-Version': BUILD_TAG } });
-}
-
-function getClientIP(req: Request): string {
-  // Estrae IP del client considerando proxy/load balancer
-  const forwarded = req.headers.get('x-forwarded-for');
-  const realIP = req.headers.get('x-real-ip');
-  const remoteAddr = req.headers.get('x-remote-addr');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  if (realIP) {
-    return realIP.trim();
-  }
-  if (remoteAddr) {
-    return remoteAddr.trim();
-  }
-  
-  return 'unknown';
 }
 
 async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, rateLimitEnabled: boolean = true, rateLimitSeconds: number = 60): Promise<boolean> {
