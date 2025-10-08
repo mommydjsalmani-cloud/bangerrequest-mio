@@ -32,9 +32,12 @@ function RichiesteLibereContent() {
   const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
   
-  // Form state semplificato
+  // Form state con onboarding
   const [requesterName, setRequesterName] = useState('');
   const [note, setNote] = useState('');
+  const [isFirstTime, setIsFirstTime] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   
   // Spotify search
   const [query, setQuery] = useState('');
@@ -62,6 +65,23 @@ function RichiesteLibereContent() {
         }
         
         setSession(data.session);
+        
+        // Controlla se è il primo accesso per questa sessione
+        const savedName = sessionStorage.getItem(`libere_user_name_${token}`);
+        const hasSeenWelcome = sessionStorage.getItem(`libere_welcome_seen_${token}`);
+        
+        if (savedName) {
+          setRequesterName(savedName);
+          setIsFirstTime(false);
+          
+          // Mostra welcome solo se non l'ha mai visto in questa sessione
+          if (!hasSeenWelcome) {
+            setShowWelcome(true);
+          }
+        } else {
+          setIsFirstTime(true);
+        }
+        
       } catch {
         setError('Errore connessione');
       } finally {
@@ -142,6 +162,22 @@ function RichiesteLibereContent() {
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+  
+  // Salva nome utente per la sessione
+  const saveUserName = (name: string) => {
+    if (!token) return;
+    setRequesterName(name);
+    sessionStorage.setItem(`libere_user_name_${token}`, name);
+    setIsFirstTime(false);
+    setShowWelcome(true);
+  };
+  
+  // Chiude il welcome e imposta come visto
+  const closeWelcome = () => {
+    if (!token) return;
+    setShowWelcome(false);
+    sessionStorage.setItem(`libere_welcome_seen_${token}`, 'true');
   };
   
   // Conferma brano selezionato (come negli eventi)
@@ -244,13 +280,202 @@ function RichiesteLibereContent() {
       </main>
     );
   }
+
+  // Onboarding per primo accesso
+  if (isFirstTime && !requesterName) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
+        <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 shadow-xl">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">🎵</div>
+            <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
+            <p className="text-gray-300 text-sm">
+              Per iniziare a richiedere musica, dimmi come ti chiami
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <input
+              type="text"
+              placeholder="Il tuo nome"
+              value={requesterName}
+              onChange={(e) => setRequesterName(e.target.value)}
+              className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && requesterName.trim()) {
+                  saveUserName(requesterName.trim());
+                }
+              }}
+            />
+            
+            <button
+              onClick={() => {
+                if (requesterName.trim()) {
+                  saveUserName(requesterName.trim());
+                }
+              }}
+              disabled={!requesterName.trim()}
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+            >
+              🚀 Iniziamo!
+            </button>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-400">
+              Il tuo nome verrà salvato solo per questa sessione
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Welcome screen personalizzato
+  if (showWelcome && requesterName) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
+        <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 shadow-xl">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">🎉</div>
+            <h1 className="text-2xl font-bold mb-2">
+              Ciao {requesterName}!
+            </h1>
+            <p className="text-gray-300 text-sm">
+              Sei pronto a richiedere la tua musica preferita al DJ?
+            </p>
+          </div>
+          
+          <div className="space-y-4">
+            <button
+              onClick={closeWelcome}
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+            >
+              🎵 Inizia a richiedere musica
+            </button>
+            
+            <button
+              onClick={() => {
+                setShowTutorial(true);
+                setShowWelcome(false);
+              }}
+              className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
+            >
+              📚 Come funziona?
+            </button>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-xs text-gray-400">
+              Puoi sempre cambiare il tuo nome dalle impostazioni
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Tutorial interattivo
+  if (showTutorial) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
+        <div className="w-full max-w-lg bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20 shadow-xl">
+          <div className="text-center mb-6">
+            <div className="text-4xl mb-4">📚</div>
+            <h1 className="text-2xl font-bold mb-2">Come funziona</h1>
+          </div>
+          
+          <div className="space-y-6">
+            <div className="flex gap-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">1</div>
+              <div>
+                <h3 className="font-semibold mb-1">🔍 Cerca la tua canzone</h3>
+                <p className="text-sm text-gray-300">Digita il titolo, artista o album nel campo di ricerca</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">2</div>
+              <div>
+                <h3 className="font-semibold mb-1">✅ Seleziona il brano</h3>
+                <p className="text-sm text-gray-300">Clicca sulla canzone che vuoi richiedere</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">3</div>
+              <div>
+                <h3 className="font-semibold mb-1">💌 Aggiungi una nota (opzionale)</h3>
+                <p className="text-sm text-gray-300">Scrivi una dedica o un messaggio per il DJ</p>
+              </div>
+            </div>
+            
+            <div className="flex gap-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold">4</div>
+              <div>
+                <h3 className="font-semibold mb-1">🎵 Conferma e aspetta</h3>
+                <p className="text-sm text-gray-300">Il DJ vedrà la tua richiesta e deciderà quando suonarla</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-8 space-y-3">
+            <button
+              onClick={() => {
+                setShowTutorial(false);
+                sessionStorage.setItem(`libere_welcome_seen_${token}`, 'true');
+              }}
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+            >
+              🎵 Perfetto, iniziamo!
+            </button>
+            
+            <button
+              onClick={() => setShowTutorial(false)}
+              className="w-full text-gray-400 hover:text-white text-sm transition-colors"
+            >
+              Salta tutorial
+            </button>
+          </div>
+        </div>
+      </main>
+    );
+  }
   
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start bg-black text-white p-4 sm:p-6">
       <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
-        <h2 className="text-2xl font-bold mb-2">
-          🎵 Richieste Libere - {session?.name || 'Sessione Demo'}
-        </h2>
+        {/* Header personalizzato */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-2xl font-bold mb-1">
+              🎵 Ciao {requesterName}!
+            </h2>
+            <p className="text-sm text-gray-400">
+              {session?.name || 'Sessione Demo'} • Richieste Libere
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                const newName = prompt('Come ti chiami?', requesterName);
+                if (newName && newName.trim()) {
+                  saveUserName(newName.trim());
+                }
+              }}
+              className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded border border-gray-600 hover:border-gray-400 transition-colors"
+              title="Cambia nome"
+            >
+              ✏️
+            </button>
+            <button
+              onClick={() => setShowTutorial(true)}
+              className="text-gray-400 hover:text-white text-xs px-2 py-1 rounded border border-gray-600 hover:border-gray-400 transition-colors"
+            >
+              💡 Aiuto
+            </button>
+          </div>
+        </div>
 
         {!submitted && (
           <>
@@ -320,12 +545,46 @@ function RichiesteLibereContent() {
 
         {submitted && (
           <div className="p-5 bg-zinc-800 rounded text-sm sm:text-base flex flex-col gap-3">
-            <div className="font-semibold text-lg">Richiesta inviata</div>
-            <div className="text-gray-300 text-sm">Brano: <span className="text-white font-medium">{submittedTrack?.title || '—'}</span>{submittedTrack?.artists ? <span className="text-gray-400"> — {submittedTrack.artists}</span> : null}</div>
-            <div className="text-xs text-gray-400">
-              Stato attuale: <span className="font-semibold text-white">{lastRequestStatus || 'in attesa'}</span><br/>
-              La pagina si aggiorna automaticamente quando il DJ decide.
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-lg">🎵 Richiesta inviata!</div>
+              <div className="text-xs text-gray-400">
+                {new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+              </div>
             </div>
+            <div className="bg-zinc-700 rounded p-3">
+              <div className="text-white font-medium text-sm">{submittedTrack?.title || '—'}</div>
+              {submittedTrack?.artists && <div className="text-gray-400 text-xs">{submittedTrack.artists}</div>}
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <div className={`w-2 h-2 rounded-full ${
+                lastRequestStatus === 'new' ? 'bg-yellow-500' : 
+                lastRequestStatus === 'accepted' ? 'bg-green-500' : 
+                lastRequestStatus === 'rejected' ? 'bg-red-500' : 
+                lastRequestStatus === 'cancelled' ? 'bg-gray-500' : 'bg-yellow-500'
+              }`}></div>
+              <span className="text-gray-400">
+                Stato: <span className="font-semibold text-white capitalize">{
+                  lastRequestStatus === 'new' ? 'In attesa' :
+                  lastRequestStatus === 'accepted' ? 'Accettata! 🎉' :
+                  lastRequestStatus === 'rejected' ? 'Non accettata' :
+                  lastRequestStatus === 'cancelled' ? 'Cancellata' : 'In attesa'
+                }</span>
+              </span>
+            </div>
+            
+            {lastRequestStatus === 'accepted' && (
+              <div className="bg-green-900/30 border border-green-600/50 rounded p-3 text-center">
+                <div className="text-green-400 font-semibold text-sm">🎉 Il DJ suonerà la tua canzone!</div>
+                <div className="text-green-300 text-xs mt-1">Resta sintonizzato!</div>
+              </div>
+            )}
+            
+            {lastRequestStatus === 'rejected' && (
+              <div className="bg-red-900/30 border border-red-600/50 rounded p-3 text-center">
+                <div className="text-red-400 text-sm">La richiesta non è stata accettata</div>
+                <div className="text-red-300 text-xs mt-1">Prova con un altro brano!</div>
+              </div>
+            )}
             
             {/* Pulsante Instagram */}
             <div className="mt-3 pt-3 border-t border-zinc-700">
