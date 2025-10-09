@@ -395,7 +395,7 @@ function RichiesteLibereContent() {
                         {/* Track Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-base text-white truncate">
+                            <h3 className="font-bold text-lg sm:text-base text-white truncate">
                               {track.title}
                             </h3>
                             {track.explicit && (
@@ -404,22 +404,23 @@ function RichiesteLibereContent() {
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-300 text-sm truncate mb-1">
+                          <p className="text-gray-300 text-base sm:text-sm truncate mb-1 font-medium">
                             {track.artists}
                           </p>
                           <div className="flex items-center justify-between">
-                            <p className="text-gray-400 text-xs truncate">
+                            <p className="text-gray-400 text-sm sm:text-xs truncate">
                               {track.album}
                             </p>
-                            <span className="text-gray-400 text-xs">
+                            <span className="text-gray-400 text-sm sm:text-xs">
                               {formatDuration(track.duration_ms || 0)}
                             </span>
                           </div>
                         </div>
 
-                        {/* Preview Audio */}
-                        <div className="flex-shrink-0">
-                          {track.preview_url ? (
+                        {/* Actions */}
+                        <div className="flex flex-col gap-2 items-end">
+                          {/* Preview Audio */}
+                          {track.preview_url && (
                             <audio 
                               controls 
                               src={track.preview_url} 
@@ -427,11 +428,19 @@ function RichiesteLibereContent() {
                               preload="none"
                               onClick={(e) => e.stopPropagation()}
                             />
-                          ) : (
-                            <div className="text-xs text-gray-500 text-center w-32">
-                              Anteprima non disponibile
-                            </div>
                           )}
+                          
+                          {/* Open in Spotify Button */}
+                          <a
+                            href={`https://open.spotify.com/track/${track.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center gap-1 shadow-lg"
+                          >
+                            <span>🎵</span>
+                            <span>Apri</span>
+                          </a>
                         </div>
                       </div>
                     </div>
