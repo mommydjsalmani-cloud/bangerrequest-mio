@@ -371,20 +371,27 @@ function RichiesteLibereContent() {
               <div className="space-y-3">
                 <label className="block text-lg font-semibold">🎶 Risultati da Spotify</label>
                 <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
-                  {results.map((track) => (
-                    <div 
-                      key={track.id} 
-                      className={`group relative bg-white/10 hover:bg-white/20 rounded-lg p-4 border transition-all duration-500 cursor-pointer overflow-hidden ${
-                        selected?.id === track.id 
-                          ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400' 
-                          : 'border-white/20 hover:border-white/40'
-                      } ${
-                        isCollapsed && selected?.id !== track.id
-                          ? 'opacity-0 max-h-0 p-0 m-0 pointer-events-none transform scale-y-0'
-                          : 'opacity-100 max-h-96 transform scale-y-100'
-                      }`}
-                      onClick={() => handleTrackSelection(track)}
-                    >
+                  {results.map((track) => {
+                    // Determina se questo track dovrebbe essere nascosto
+                    const shouldHide = isCollapsed && selected?.id !== track.id;
+                    
+                    return (
+                      <div 
+                        key={track.id} 
+                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg p-4 border transition-all duration-500 cursor-pointer ${
+                          selected?.id === track.id 
+                            ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400' 
+                            : 'border-white/20 hover:border-white/40'
+                        } ${
+                          shouldHide
+                            ? 'opacity-0 scale-95 pointer-events-none'
+                            : 'opacity-100 scale-100'
+                        }`}
+                        style={{
+                          display: shouldHide ? 'none' : 'block'
+                        }}
+                        onClick={() => handleTrackSelection(track)}
+                      >
                       <div className="flex items-center gap-4">
                         {/* Cover Art */}
                         <div className="relative flex-shrink-0">
@@ -456,7 +463,8 @@ function RichiesteLibereContent() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
                 
                 {/* Pulsante per espandere tutti i risultati se collassati */}
