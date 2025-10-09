@@ -371,104 +371,162 @@ function RichiesteLibereContent() {
             {results.length > 0 && (
               <div className="space-y-3">
                 <label className="block text-lg font-semibold">🎶 Risultati da Spotify</label>
-                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3">
                   {results.map((track) => {
                     // Fade logic: mostra solo selezionata se showOnlySelected
                     const isSelected = selected?.id === track.id;
                     const shouldShow = !showOnlySelected || isSelected;
                     return (
-                      <div
-                        key={track.id}
-                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg p-4 border transition-all duration-500 cursor-pointer ${
-                          isSelected
-                            ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400'
-                            : 'border-white/20 hover:border-white/40'
-                        } ${shouldShow ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} animate-fade`}
-                        style={{ transition: 'opacity 0.5s' }}
-                        onClick={() => {
-                          if (!isSelected) {
-                            setSelected(track);
-                            setShowOnlySelected(false); // Prima selezione: mostra tutte
-                          } else {
-                            // Se clicco sulla canzone già selezionata, toggle la vista
-                            if (showOnlySelected) {
-                              setShowOnlySelected(false);
+                      <div key={track.id} className={`${shouldShow ? 'opacity-100' : 'opacity-0 pointer-events-none'} transition-all duration-500`}>
+                        <div
+                          className={`group relative bg-white/10 hover:bg-white/20 rounded-lg p-4 border transition-all duration-300 cursor-pointer ${
+                            isSelected
+                              ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400'
+                              : 'border-white/20 hover:border-white/40'
+                          }`}
+                          onClick={() => {
+                            if (!isSelected) {
+                              setSelected(track);
+                              setShowOnlySelected(false); // Prima selezione: mostra tutte
                             } else {
-                              setShowOnlySelected(true); // Secondo click: collapse
+                              // Se clicco sulla canzone già selezionata, toggle la vista
+                              if (showOnlySelected) {
+                                setShowOnlySelected(false);
+                              } else {
+                                setShowOnlySelected(true); // Secondo click: collapse
+                              }
                             }
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* Cover Art */}
-                          <div className="relative flex-shrink-0">
-                            <Image
-                              src={track.cover_url || '/file.svg'}
-                              alt={track.title || 'cover'}
-                              width={64}
-                              height={64}
-                              className="w-16 h-16 rounded-lg object-cover shadow-lg"
-                            />
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-purple-500/30 rounded-lg flex items-center justify-center">
-                                <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                                  <span className="text-white text-sm">✓</span>
+                          }}
+                        >
+                          <div className="flex items-center gap-4">
+                            {/* Cover Art */}
+                            <div className="relative flex-shrink-0">
+                              <Image
+                                src={track.cover_url || '/file.svg'}
+                                alt={track.title || 'cover'}
+                                width={64}
+                                height={64}
+                                className="w-16 h-16 rounded-lg object-cover shadow-lg"
+                              />
+                              {isSelected && (
+                                <div className="absolute inset-0 bg-purple-500/30 rounded-lg flex items-center justify-center">
+                                  <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-sm">✓</span>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Track Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-bold text-lg sm:text-base text-white truncate">
-                                {track.title}
-                              </h3>
-                              {track.explicit && (
-                                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded uppercase font-bold">
-                                  E
-                                </span>
                               )}
                             </div>
-                            <p className="text-gray-300 text-base sm:text-sm truncate mb-1 font-medium">
-                              {track.artists}
-                            </p>
-                            <div className="flex items-center justify-between">
-                              <p className="text-gray-400 text-sm sm:text-xs truncate">
-                                {track.album}
+
+                            {/* Track Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-bold text-lg sm:text-base text-white truncate">
+                                  {track.title}
+                                </h3>
+                                {track.explicit && (
+                                  <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded uppercase font-bold">
+                                    E
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-gray-300 text-base sm:text-sm truncate mb-1 font-medium">
+                                {track.artists}
                               </p>
-                              <span className="text-gray-400 text-sm sm:text-xs">
-                                {formatDuration(track.duration_ms || 0)}
-                              </span>
+                              <div className="flex items-center justify-between">
+                                <p className="text-gray-400 text-sm sm:text-xs truncate">
+                                  {track.album}
+                                </p>
+                                <span className="text-gray-400 text-sm sm:text-xs">
+                                  {formatDuration(track.duration_ms || 0)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-col gap-2 items-end">
+                              {/* Preview Audio */}
+                              {track.preview_url && (
+                                <audio
+                                  controls
+                                  src={track.preview_url}
+                                  className="w-32 h-8"
+                                  preload="none"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              )}
+
+                              {/* Open in Spotify Button */}
+                              <a
+                                href={`https://open.spotify.com/track/${track.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center gap-1 shadow-lg"
+                              >
+                                <span>🎵</span>
+                                <span>{spotifyBtnLabel}</span>
+                              </a>
                             </div>
                           </div>
+                        </div>
 
-                          {/* Actions */}
-                          <div className="flex flex-col gap-2 items-end">
-                            {/* Preview Audio */}
-                            {track.preview_url && (
-                              <audio
-                                controls
-                                src={track.preview_url}
-                                className="w-32 h-8"
-                                preload="none"
-                                onClick={(e) => e.stopPropagation()}
+                        {/* Form di conferma direttamente sotto la canzone selezionata in modalità collapse */}
+                        {isSelected && showOnlySelected && (
+                          <div className="mt-3 bg-white/20 backdrop-blur-lg rounded-lg p-4 border border-purple-300/30 animate-fade" style={{ transition: 'opacity 0.5s' }}>
+                            <h3 className="text-lg font-semibold mb-3 text-purple-200">
+                              ✨ Conferma la tua richiesta
+                            </h3>
+                            <div className="flex items-center gap-4 mb-4">
+                              <Image
+                                src={selected.cover_url || '/file.svg'}
+                                alt={selected.title || 'cover'}
+                                width={48}
+                                height={48}
+                                className="w-12 h-12 rounded-lg object-cover shadow-lg"
+                              />
+                              <div>
+                                <div className="font-semibold text-white">{selected.title}</div>
+                                <div className="text-gray-300 text-sm">{selected.artists}</div>
+                              </div>
+                            </div>
+
+                            {session?.notes_enabled && (
+                              <textarea
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                placeholder="Aggiungi una nota o dedica (opzionale)..."
+                                className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-4"
+                                rows={3}
                               />
                             )}
 
-                            {/* Open in Spotify Button */}
-                            <a
-                              href={`https://open.spotify.com/track/${track.id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center gap-1 shadow-lg"
-                            >
-                              <span>🎵</span>
-                              <span>{spotifyBtnLabel}</span>
-                            </a>
+                            <div className="flex gap-3">
+                              <button
+                                onClick={confirmTrack}
+                                disabled={submitting}
+                                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+                              >
+                                {submitting ? (
+                                  <span className="flex items-center justify-center gap-2">
+                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    Invio...
+                                  </span>
+                                ) : (
+                                  '🎵 Invia Richiesta'
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowOnlySelected(false);
+                                  setSelected(null);
+                                }}
+                                className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
+                              >
+                                Annulla
+                              </button>
+                            </div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     );
                   })}
@@ -481,64 +539,6 @@ function RichiesteLibereContent() {
                 <div className="text-4xl mb-2">🤔</div>
                 <p className="text-gray-300">Nessun risultato trovato per &quot;{query}&quot;</p>
                 <p className="text-gray-400 text-sm mt-1">Prova con termini diversi</p>
-              </div>
-            )}
-
-            {/* Conferma Selezione */}
-            {selected && showOnlySelected && (
-              <div className="bg-white/20 backdrop-blur-lg rounded-lg p-4 border border-purple-300/30 animate-fade" style={{ transition: 'opacity 0.5s' }}>
-                <h3 className="text-lg font-semibold mb-3 text-purple-200">
-                  ✨ Conferma la tua richiesta
-                </h3>
-                <div className="flex items-center gap-4 mb-4">
-                  <Image
-                    src={selected.cover_url || '/file.svg'}
-                    alt={selected.title || 'cover'}
-                    width={48}
-                    height={48}
-                    className="w-12 h-12 rounded-lg object-cover shadow-lg"
-                  />
-                  <div>
-                    <div className="font-semibold text-white">{selected.title}</div>
-                    <div className="text-gray-300 text-sm">{selected.artists}</div>
-                  </div>
-                </div>
-
-                {session?.notes_enabled && (
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Aggiungi una nota o dedica (opzionale)..."
-                    className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-4"
-                    rows={3}
-                  />
-                )}
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={confirmTrack}
-                    disabled={submitting}
-                    className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
-                  >
-                    {submitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Invio...
-                      </span>
-                    ) : (
-                      '🎵 Invia Richiesta'
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowOnlySelected(false);
-                      setSelected(null);
-                    }}
-                    className="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95"
-                  >
-                    Annulla
-                  </button>
-                </div>
               </div>
             )}
           </div>
