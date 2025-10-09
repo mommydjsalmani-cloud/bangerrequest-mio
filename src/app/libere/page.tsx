@@ -172,8 +172,8 @@ function RichiesteLibereContent() {
   // Gestisce selezione con collapse
   const handleTrackSelection = (track: SpotifyTrack) => {
     if (selected?.id === track.id) {
-      // Se clicchi sulla stessa canzone, espandi tutti i risultati
-      setIsCollapsed(false);
+      // Se clicchi sulla stessa canzone, fai toggle del collapse
+      setIsCollapsed(!isCollapsed);
     } else {
       // Nuova selezione, attiva collapse
       setSelected(track);
