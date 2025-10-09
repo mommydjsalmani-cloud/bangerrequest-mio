@@ -29,8 +29,6 @@ export default function LibereAdminPanel() {
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
-  const [blockedUsers, setBlockedUsers] = useState<any[]>([]); // Lista utenti bloccati
-  const [blockingLoading, setBlockingLoading] = useState(false); // Loading per operazioni blocco
   
   // Auto-clear messaggi con debounce
   useEffect(() => {
@@ -241,9 +239,6 @@ export default function LibereAdminPanel() {
           setStats(data.stats || null);
           setError(null);
           backoff = 4000; // reset backoff su successo
-          
-          // Carica gli utenti bloccati in background
-          loadBlockedUsers(selectedSessionId);
         } else {
           setError(data.error || 'Errore risposta server');
         }
@@ -604,137 +599,6 @@ export default function LibereAdminPanel() {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Carica lista utenti bloccati
-  const loadBlockedUsers = async (sessionId: string) => {
-    if (!sessionId) return;
-    
-    try {
-      const response = await fetch(`/api/libere/blocking?session_id=${sessionId}`, {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      const data = await response.json();
-      
-      if (data.ok) {
-        setBlockedUsers(data.blocked_users || []);
-      }
-    } catch (error) {
-      console.error('Errore caricamento utenti bloccati:', error);
-    }
-  };
-
-  // Funzione helper per renderizzare i pulsanti di blocco utente
-  const renderBlockButtons = (request: any) => {
-    if (!request.requester_name) return null;
-    
-    return isUserBlocked(request.client_ip, request.requester_name) ? (
-      <button
-        onClick={() => {
-          const blocked = blockedUsers.find(b => 
-            b.ip === request.client_ip && 
-            b.requester_name?.toLowerCase() === request.requester_name?.toLowerCase()
-          );
-          if (blocked) {
-            unblockUser(blocked.id);
-          }
-        }}
-        disabled={blockingLoading}
-        className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors shadow-sm"
-      >
-        🔓 Sblocca utente
-      </button>
-    ) : (
-      <button
-        onClick={() => blockUser(request.client_ip, request.requester_name, 'Bloccato dal DJ')}
-        disabled={blockingLoading}
-        className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors shadow-sm"
-      >
-        🚫 Blocca utente
-      </button>
-    );
-  };
-
-  // Blocca un utente
-  const blockUser = async (clientIp: string, requesterName?: string, reason?: string) => {
-    if (!selectedSessionId) return;
-    
-    setBlockingLoading(true);
-    
-    try {
-      const response = await fetch('/api/libere/blocking', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          session_id: selectedSessionId,
-          client_ip: clientIp,
-          requester_name: requesterName,
-          reason: reason || 'Bloccato dal DJ'
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.ok) {
-        setSuccess(`Utente bloccato: ${requesterName || clientIp}`);
-        // Ricarica lista blocchi
-        await loadBlockedUsers(selectedSessionId);
-      } else {
-        setError(data.error || 'Errore durante il blocco');
-      }
-    } catch (error) {
-      console.error('Errore blocco utente:', error);
-      setError('Errore durante il blocco utente');
-    } finally {
-      setBlockingLoading(false);
-    }
-  };
-
-  // Sblocca un utente  
-  const unblockUser = async (blockId: string) => {
-    setBlockingLoading(true);
-    
-    try {
-      const response = await fetch(`/api/libere/blocking?id=${blockId}`, {
-        method: 'DELETE',
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.ok) {
-        setSuccess('Utente sbloccato con successo');
-        // Ricarica lista blocchi
-        if (selectedSessionId) {
-          await loadBlockedUsers(selectedSessionId);
-        }
-      } else {
-        setError(data.error || 'Errore durante lo sblocco');
-      }
-    } catch (error) {
-      console.error('Errore sblocco utente:', error);
-      setError('Errore durante lo sblocco utente');
-    } finally {
-      setBlockingLoading(false);
-    }
-  };
-
-  // Verifica se un utente è bloccato
-  const isUserBlocked = (clientIp: string, requesterName?: string): boolean => {
-    return blockedUsers.some(blocked => 
-      blocked.client_ip === clientIp || 
-      (requesterName && blocked.requester_name?.toLowerCase() === requesterName.toLowerCase())
-    );
   };
   
   const copyToClipboard = async (text: string) => {
@@ -1443,9 +1307,6 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Scarta
                               </button>
-                              
-                              {/* Pulsanti blocco utente */}
-                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1457,9 +1318,6 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Rifiuta
                               </button>
-                              
-                              {/* Pulsanti blocco utente */}
-                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1471,9 +1329,6 @@ export default function LibereAdminPanel() {
                               >
                                 ✅ Accetta
                               </button>
-                              
-                              {/* Pulsanti blocco utente */}
-                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1491,9 +1346,6 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Rifiuta
                               </button>
-                              
-                              {/* Pulsanti blocco utente */}
-                              {renderBlockButtons(request)}
                             </div>
                           )}
                         </>

@@ -26,36 +26,6 @@ function getClientIP(req: Request): string {
   return 'unknown';
 }
 
-async function checkUserBlocked(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, requesterName?: string): Promise<{ blocked: boolean; reason?: string }> {
-  // Controlla blocco per IP
-  const { data: ipBlock } = await supabase
-    .from('libere_blocked_users')
-    .select('reason')
-    .eq('session_id', sessionId)
-    .eq('client_ip', clientIP)
-    .single();
-  
-  if (ipBlock) {
-    return { blocked: true, reason: ipBlock.reason || 'Utente bloccato dal DJ' };
-  }
-  
-  // Controlla blocco per nome (case-insensitive)
-  if (requesterName?.trim()) {
-    const { data: nameBlock } = await supabase
-      .from('libere_blocked_users')
-      .select('reason')
-      .eq('session_id', sessionId)
-      .ilike('requester_name', requesterName.trim())
-      .single();
-    
-    if (nameBlock) {
-      return { blocked: true, reason: nameBlock.reason || 'Utente bloccato dal DJ' };
-    }
-  }
-  
-  return { blocked: false };
-}
-
 async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, rateLimitEnabled: boolean = true, rateLimitSeconds: number = 60): Promise<boolean> {
   // Se il rate limiting è disabilitato, consenti sempre
   if (!rateLimitEnabled) {
@@ -224,16 +194,6 @@ export async function POST(req: Request) {
   
   const clientIP = getClientIP(req);
   const userAgent = req.headers.get('user-agent') || '';
-  
-  // Controllo blocco utente (PRIMA del rate limiting)
-  const blockCheck = await checkUserBlocked(supabase, session.id, clientIP, requester_name);
-  if (blockCheck.blocked) {
-    return withVersion({ 
-      ok: false, 
-      error: blockCheck.reason || 'Non puoi inviare richieste in questo momento.',
-      blocked: true 
-    }, { status: 403 });
-  }
   
   // Rate limiting check
   const rateLimitOk = await checkRateLimit(supabase, session.id, clientIP, session.rate_limit_enabled, session.rate_limit_seconds);
