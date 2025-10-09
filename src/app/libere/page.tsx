@@ -390,8 +390,12 @@ function RichiesteLibereContent() {
                             setSelected(track);
                             setShowOnlySelected(true);
                           } else {
-                            setShowOnlySelected((prev) => !prev);
-                            if (showOnlySelected) setSelected(null);
+                            // Se clicco sulla canzone già selezionata, toggle la vista
+                            if (showOnlySelected) {
+                              setShowOnlySelected(false);
+                            } else {
+                              setSelected(null);
+                            }
                           }
                         }}
                       >
