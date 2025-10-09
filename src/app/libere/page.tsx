@@ -171,8 +171,14 @@ function RichiesteLibereContent() {
 
   // Gestisce selezione con collapse
   const handleTrackSelection = (track: SpotifyTrack) => {
-    setSelected(track);
-    setIsCollapsed(true);
+    if (selected?.id === track.id) {
+      // Se clicchi sulla stessa canzone, espandi tutti i risultati
+      setIsCollapsed(false);
+    } else {
+      // Nuova selezione, attiva collapse
+      setSelected(track);
+      setIsCollapsed(true);
+    }
   };
   
   // Conferma brano selezionato (come negli eventi)
@@ -466,18 +472,6 @@ function RichiesteLibereContent() {
                     );
                   })}
                 </div>
-                
-                {/* Pulsante per espandere tutti i risultati se collassati */}
-                {isCollapsed && (
-                  <div className="mt-4 text-center">
-                    <button
-                      onClick={() => setIsCollapsed(false)}
-                      className="bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all duration-200 border border-white/20 hover:border-white/40"
-                    >
-                      📋 Mostra tutti i risultati
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
