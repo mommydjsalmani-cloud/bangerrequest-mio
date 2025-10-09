@@ -388,13 +388,13 @@ function RichiesteLibereContent() {
                         onClick={() => {
                           if (!isSelected) {
                             setSelected(track);
-                            setShowOnlySelected(true);
+                            setShowOnlySelected(false); // Prima selezione: mostra tutte
                           } else {
                             // Se clicco sulla canzone già selezionata, toggle la vista
                             if (showOnlySelected) {
                               setShowOnlySelected(false);
                             } else {
-                              setSelected(null);
+                              setShowOnlySelected(true); // Secondo click: collapse
                             }
                           }
                         }}
