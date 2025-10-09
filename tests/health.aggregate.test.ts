@@ -10,7 +10,7 @@ describe('Aggregated health endpoint', () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL; // assicura missing supabase
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    const res = await healthGET(new Request('http://localhost/api/health')) as any;
+    const res = await healthGET() as any;
     expect(res.status).toBe(200);
     const j = await parseJSON(res as any);
     expect(j).toHaveProperty('supabase');
