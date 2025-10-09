@@ -1,11 +1,59 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { getClientIP, isIPBlocked } from '@/lib/ipBlocking';
 
 const BUILD_TAG = 'libere-api-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
   return NextResponse.json(data, { status: init?.status, headers: { 'X-App-Version': BUILD_TAG } });
+}
+
+function getClientIP(req: Request): string {
+  // Estrae IP del client considerando proxy/load balancer
+  const forwarded = req.headers.get('x-forwarded-for');
+  const realIP = req.headers.get('x-real-ip');
+  const remoteAddr = req.headers.get('x-remote-addr');
+  
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  if (realIP) {
+    return realIP.trim();
+  }
+  if (remoteAddr) {
+    return remoteAddr.trim();
+  }
+  
+  return 'unknown';
+}
+
+async function checkUserBlocked(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, requesterName?: string): Promise<{ blocked: boolean; reason?: string }> {
+  // Controlla blocco per IP
+  const { data: ipBlock } = await supabase
+    .from('libere_blocked_users')
+    .select('reason')
+    .eq('session_id', sessionId)
+    .eq('client_ip', clientIP)
+    .single();
+  
+  if (ipBlock) {
+    return { blocked: true, reason: ipBlock.reason || 'Utente bloccato dal DJ' };
+  }
+  
+  // Controlla blocco per nome (case-insensitive)
+  if (requesterName?.trim()) {
+    const { data: nameBlock } = await supabase
+      .from('libere_blocked_users')
+      .select('reason')
+      .eq('session_id', sessionId)
+      .ilike('requester_name', requesterName.trim())
+      .single();
+    
+    if (nameBlock) {
+      return { blocked: true, reason: nameBlock.reason || 'Utente bloccato dal DJ' };
+    }
+  }
+  
+  return { blocked: false };
 }
 
 async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, rateLimitEnabled: boolean = true, rateLimitSeconds: number = 60): Promise<boolean> {
@@ -177,14 +225,13 @@ export async function POST(req: Request) {
   const clientIP = getClientIP(req);
   const userAgent = req.headers.get('user-agent') || '';
   
-  // Controllo IP bloccati
-  const ipBlockStatus = await isIPBlocked(clientIP);
-  if (ipBlockStatus.blocked) {
+  // Controllo blocco utente (PRIMA del rate limiting)
+  const blockCheck = await checkUserBlocked(supabase, session.id, clientIP, requester_name);
+  if (blockCheck.blocked) {
     return withVersion({ 
       ok: false, 
-      error: 'Il tuo IP è stato bloccato dal DJ', 
-      reason: ipBlockStatus.reason,
-      blocked_by: ipBlockStatus.blockedBy 
+      error: blockCheck.reason || 'Non puoi inviare richieste in questo momento.',
+      blocked: true 
     }, { status: 403 });
   }
   

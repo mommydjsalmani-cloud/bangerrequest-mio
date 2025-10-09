@@ -29,8 +29,8 @@ export default function LibereAdminPanel() {
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
-  const [blockedIPs, setBlockedIPs] = useState<string[]>([]); // Lista IP bloccati
-  const [blockingIP, setBlockingIP] = useState<string | null>(null); // IP in corso di blocco/sblocco
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]); // Lista utenti bloccati
+  const [blockingLoading, setBlockingLoading] = useState(false); // Loading per operazioni blocco
   
   // Auto-clear messaggi con debounce
   useEffect(() => {
@@ -72,9 +72,6 @@ export default function LibereAdminPanel() {
             setAuthed(true);
             setSessions(data.sessions || []);
             
-            // Carica IP bloccati
-            loadBlockedIPs();
-            
             // Seleziona prima sessione se disponibile
             if (data.sessions?.length > 0) {
               setSelectedSessionId(data.sessions[0].id);
@@ -96,7 +93,6 @@ export default function LibereAdminPanel() {
     };
     
     loadCredentialsAndAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   const checkMigration = async () => {
@@ -245,6 +241,9 @@ export default function LibereAdminPanel() {
           setStats(data.stats || null);
           setError(null);
           backoff = 4000; // reset backoff su successo
+          
+          // Carica gli utenti bloccati in background
+          loadBlockedUsers(selectedSessionId);
         } else {
           setError(data.error || 'Errore risposta server');
         }
@@ -606,6 +605,137 @@ export default function LibereAdminPanel() {
       setLoading(false);
     }
   };
+
+  // Carica lista utenti bloccati
+  const loadBlockedUsers = async (sessionId: string) => {
+    if (!sessionId) return;
+    
+    try {
+      const response = await fetch(`/api/libere/blocking?session_id=${sessionId}`, {
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      const data = await response.json();
+      
+      if (data.ok) {
+        setBlockedUsers(data.blocked_users || []);
+      }
+    } catch (error) {
+      console.error('Errore caricamento utenti bloccati:', error);
+    }
+  };
+
+  // Funzione helper per renderizzare i pulsanti di blocco utente
+  const renderBlockButtons = (request: any) => {
+    if (!request.requester_name) return null;
+    
+    return isUserBlocked(request.client_ip, request.requester_name) ? (
+      <button
+        onClick={() => {
+          const blocked = blockedUsers.find(b => 
+            b.ip === request.client_ip && 
+            b.requester_name?.toLowerCase() === request.requester_name?.toLowerCase()
+          );
+          if (blocked) {
+            unblockUser(blocked.id);
+          }
+        }}
+        disabled={blockingLoading}
+        className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors shadow-sm"
+      >
+        🔓 Sblocca utente
+      </button>
+    ) : (
+      <button
+        onClick={() => blockUser(request.client_ip, request.requester_name, 'Bloccato dal DJ')}
+        disabled={blockingLoading}
+        className="bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 px-3 py-2 rounded-lg text-white text-sm font-medium transition-colors shadow-sm"
+      >
+        🚫 Blocca utente
+      </button>
+    );
+  };
+
+  // Blocca un utente
+  const blockUser = async (clientIp: string, requesterName?: string, reason?: string) => {
+    if (!selectedSessionId) return;
+    
+    setBlockingLoading(true);
+    
+    try {
+      const response = await fetch('/api/libere/blocking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          session_id: selectedSessionId,
+          client_ip: clientIp,
+          requester_name: requesterName,
+          reason: reason || 'Bloccato dal DJ'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess(`Utente bloccato: ${requesterName || clientIp}`);
+        // Ricarica lista blocchi
+        await loadBlockedUsers(selectedSessionId);
+      } else {
+        setError(data.error || 'Errore durante il blocco');
+      }
+    } catch (error) {
+      console.error('Errore blocco utente:', error);
+      setError('Errore durante il blocco utente');
+    } finally {
+      setBlockingLoading(false);
+    }
+  };
+
+  // Sblocca un utente  
+  const unblockUser = async (blockId: string) => {
+    setBlockingLoading(true);
+    
+    try {
+      const response = await fetch(`/api/libere/blocking?id=${blockId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess('Utente sbloccato con successo');
+        // Ricarica lista blocchi
+        if (selectedSessionId) {
+          await loadBlockedUsers(selectedSessionId);
+        }
+      } else {
+        setError(data.error || 'Errore durante lo sblocco');
+      }
+    } catch (error) {
+      console.error('Errore sblocco utente:', error);
+      setError('Errore durante lo sblocco utente');
+    } finally {
+      setBlockingLoading(false);
+    }
+  };
+
+  // Verifica se un utente è bloccato
+  const isUserBlocked = (clientIp: string, requesterName?: string): boolean => {
+    return blockedUsers.some(blocked => 
+      blocked.client_ip === clientIp || 
+      (requesterName && blocked.requester_name?.toLowerCase() === requesterName.toLowerCase())
+    );
+  };
   
   const copyToClipboard = async (text: string) => {
     try {
@@ -662,79 +792,6 @@ export default function LibereAdminPanel() {
     setSuccess(`File ${fileName} scaricato ✓`);
   };
   
-  // Funzioni per gestione blocco IP
-  const loadBlockedIPs = async () => {
-    try {
-      const response = await fetch('/api/blocked-ips', {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      
-      const data = await response.json();
-      if (data.ok && Array.isArray(data.blockedIPs)) {
-        setBlockedIPs(data.blockedIPs.map((item: { ip: string }) => item.ip));
-      }
-    } catch (error) {
-      console.error('Errore caricamento IP bloccati:', error);
-    }
-  };
-  
-  const toggleIPBlock = async (ip: string, reason?: string) => {
-    if (!authed || !ip) return;
-    
-    setBlockingIP(ip);
-    const isBlocked = blockedIPs.includes(ip);
-    
-    try {
-      const response = await fetch('/api/blocked-ips', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          action: isBlocked ? 'unblock' : 'block',
-          ip: ip,
-          reason: reason || (isBlocked ? undefined : 'Bloccato dal pannello DJ')
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (!data.ok) {
-        setError(data.error || `Errore ${isBlocked ? 'sblocco' : 'blocco'} IP`);
-        return;
-      }
-      
-      // Aggiorna stato locale
-      if (isBlocked) {
-        setBlockedIPs(prev => prev.filter(blockedIP => blockedIP !== ip));
-        setSuccess(`IP ${ip} sbloccato con successo ✓`);
-      } else {
-        setBlockedIPs(prev => [...prev, ip]);
-        setSuccess(`IP ${ip} bloccato con successo ✓`);
-      }
-      
-      // Ricarica richieste per aggiornare l'indicatore
-      if (selectedSessionId) {
-        if (showArchive) {
-          loadArchivedRequests(selectedSessionId);
-        } else {
-          loadSessionData(selectedSessionId);
-        }
-      }
-      
-    } catch (error) {
-      console.error('Errore gestione blocco IP:', error);
-      setError(`Errore ${isBlocked ? 'sblocco' : 'blocco'} IP`);
-    } finally {
-      setBlockingIP(null);
-    }
-  };
-  
   const setupDatabase = async () => {
     setSetupLoading(true);
     setError(null);
@@ -779,9 +836,6 @@ export default function LibereAdminPanel() {
               setAuthed(true);
               setSessions(data.sessions || []);
               setError(null);
-              
-              // Carica IP bloccati
-              loadBlockedIPs();
               
               if (data.sessions?.length > 0) {
                 setSelectedSessionId(data.sessions[0].id);
@@ -1343,14 +1397,7 @@ export default function LibereAdminPanel() {
                             <div><strong>👤 Richiedente:</strong> {request.requester_name}</div>
                           )}
                           <div><strong>🔍 Fonte:</strong> {request.source === 'spotify' ? 'Spotify' : 'Manuale'}</div>
-                          <div>
-                            <strong>🌐 IP:</strong> {request.client_ip}
-                            {blockedIPs.includes(request.client_ip) && (
-                              <span className="ml-2 px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold">
-                                🚫 BLOCCATO
-                              </span>
-                            )}
-                          </div>
+                          <div><strong>🌐 IP:</strong> {request.client_ip}</div>
                         </div>
                       </div>
                       
@@ -1396,23 +1443,9 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Scarta
                               </button>
-                              {/* Pulsante blocco IP */}
-                              <button
-                                onClick={() => toggleIPBlock(request.client_ip, `Bloccato dalla richiesta: ${request.title}`)}
-                                disabled={blockingIP === request.client_ip}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors shadow-sm ${
-                                  blockedIPs.includes(request.client_ip)
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-600 hover:bg-gray-700 text-white'
-                                } ${blockingIP === request.client_ip ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {blockingIP === request.client_ip 
-                                  ? '⏳' 
-                                  : blockedIPs.includes(request.client_ip) 
-                                    ? '🔓 Sblocca IP' 
-                                    : '🚫 Blocca IP'
-                                }
-                              </button>
+                              
+                              {/* Pulsanti blocco utente */}
+                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1424,23 +1457,9 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Rifiuta
                               </button>
-                              {/* Pulsante blocco IP */}
-                              <button
-                                onClick={() => toggleIPBlock(request.client_ip, `Bloccato dalla richiesta: ${request.title}`)}
-                                disabled={blockingIP === request.client_ip}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors shadow-sm ${
-                                  blockedIPs.includes(request.client_ip)
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-600 hover:bg-gray-700 text-white'
-                                } ${blockingIP === request.client_ip ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {blockingIP === request.client_ip 
-                                  ? '⏳' 
-                                  : blockedIPs.includes(request.client_ip) 
-                                    ? '🔓 Sblocca IP' 
-                                    : '🚫 Blocca IP'
-                                }
-                              </button>
+                              
+                              {/* Pulsanti blocco utente */}
+                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1452,23 +1471,9 @@ export default function LibereAdminPanel() {
                               >
                                 ✅ Accetta
                               </button>
-                              {/* Pulsante blocco IP */}
-                              <button
-                                onClick={() => toggleIPBlock(request.client_ip, `Bloccato dalla richiesta: ${request.title}`)}
-                                disabled={blockingIP === request.client_ip}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors shadow-sm ${
-                                  blockedIPs.includes(request.client_ip)
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-600 hover:bg-gray-700 text-white'
-                                } ${blockingIP === request.client_ip ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {blockingIP === request.client_ip 
-                                  ? '⏳' 
-                                  : blockedIPs.includes(request.client_ip) 
-                                    ? '🔓 Sblocca IP' 
-                                    : '🚫 Blocca IP'
-                                }
-                              </button>
+                              
+                              {/* Pulsanti blocco utente */}
+                              {renderBlockButtons(request)}
                             </div>
                           )}
                           
@@ -1486,23 +1491,9 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Rifiuta
                               </button>
-                              {/* Pulsante blocco IP */}
-                              <button
-                                onClick={() => toggleIPBlock(request.client_ip, `Bloccato dalla richiesta: ${request.title}`)}
-                                disabled={blockingIP === request.client_ip}
-                                className={`px-4 py-2 rounded-lg font-medium transition-colors shadow-sm ${
-                                  blockedIPs.includes(request.client_ip)
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                                    : 'bg-gray-600 hover:bg-gray-700 text-white'
-                                } ${blockingIP === request.client_ip ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                {blockingIP === request.client_ip 
-                                  ? '⏳' 
-                                  : blockedIPs.includes(request.client_ip) 
-                                    ? '🔓 Sblocca IP' 
-                                    : '🚫 Blocca IP'
-                                }
-                              </button>
+                              
+                              {/* Pulsanti blocco utente */}
+                              {renderBlockButtons(request)}
                             </div>
                           )}
                         </>

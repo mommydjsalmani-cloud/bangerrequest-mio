@@ -19,16 +19,3 @@ export function genCode(len = 5) {
   for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 }
-
-// Validazione credenziali DJ (dalla variabile ambiente)
-export function isValidCredentials(username: string, password: string): boolean {
-  const validUsername = process.env.DJ_USERNAME;
-  const validPassword = process.env.DJ_PASSWORD;
-  
-  if (!validUsername || !validPassword) {
-    // Fallback per sviluppo
-    return username === 'admin' && password === 'admin';
-  }
-  
-  return username === validUsername && password === validPassword;
-}
