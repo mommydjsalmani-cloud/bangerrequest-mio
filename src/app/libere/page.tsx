@@ -139,6 +139,7 @@ function RichiesteLibereContent() {
         return;
       }
       setSearching(true);
+      setIsCollapsed(false); // Reset collapse quando cerchi
       fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`)
         .then((r) => r.json())
         .then((data) => {
@@ -170,14 +171,8 @@ function RichiesteLibereContent() {
 
   // Gestisce selezione con collapse
   const handleTrackSelection = (track: SpotifyTrack) => {
-    if (selected?.id === track.id) {
-      // Se clicchi sulla stessa canzone, toggle collapse
-      setIsCollapsed(!isCollapsed);
-    } else {
-      // Nuova selezione
-      setSelected(track);
-      setIsCollapsed(true);
-    }
+    setSelected(track);
+    setIsCollapsed(true);
   };
   
   // Conferma brano selezionato (come negli eventi)
