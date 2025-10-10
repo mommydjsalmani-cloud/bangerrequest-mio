@@ -461,10 +461,13 @@ function RichiesteLibereContent() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center gap-1 shadow-lg"
+                            className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-2 rounded-lg transition-all duration-200 flex flex-col items-center gap-0.5 shadow-lg min-w-0"
                           >
                             <span>🎵</span>
-                            <span>Apri su Spotify</span>
+                            <div className="flex flex-col items-center leading-tight">
+                              <span>Apri</span>
+                              <span>Spotify</span>
+                            </div>
                           </a>
                         </div>
                       </div>
