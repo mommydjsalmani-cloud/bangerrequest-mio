@@ -420,7 +420,7 @@ function RichiesteLibereContent() {
                         {/* Track Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-lg sm:text-base text-white truncate">
+                            <h3 className="font-bold text-xl sm:text-lg text-white truncate drop-shadow-sm">
                               {track.title}
                             </h3>
                             {track.explicit && (
@@ -508,7 +508,7 @@ function RichiesteLibereContent() {
                     value={note} 
                     onChange={(e) => setNote(e.target.value)} 
                     placeholder="Aggiungi una nota o dedica (opzionale)..." 
-                    className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-4" 
+                    className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-4" 
                     rows={3} 
                   />
                 )}
