@@ -420,7 +420,7 @@ function RichiesteLibereContent() {
                         {/* Track Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-bold text-xl sm:text-lg text-white drop-shadow-sm truncate">
+                            <h3 className="font-bold text-lg sm:text-base text-white drop-shadow-sm truncate">
                               {track.title}
                             </h3>
                             {track.explicit && (
