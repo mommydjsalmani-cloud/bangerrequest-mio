@@ -42,7 +42,7 @@ export default function RootLayout({
         }}
       >
         <Splash duration={1500} />
-        <header className="w-full flex items-center justify-center py-3">
+        <header className="w-full flex items-center justify-center py-3 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
           <Logo size={80} className="opacity-75 drop-shadow-lg filter brightness-90" priority />
         </header>
         <div className="flex-1 w-full">
