@@ -35,11 +35,11 @@ export default function Splash({ duration = 10000 }: Props) {
       <div className="splash-card">
         <div className="w-[60vw] max-w-[420px]">
           <Image 
-            src="/splash-logo.png" 
+            src="/LogoHD_Bianco.png" 
             alt="Banger Request Logo" 
             width={420} 
             height={420} 
-            className="w-full h-auto object-contain" 
+            className="w-full h-auto" 
             priority 
           />
         </div>
