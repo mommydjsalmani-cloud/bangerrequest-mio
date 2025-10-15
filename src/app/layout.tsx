@@ -32,8 +32,8 @@ export default function RootLayout({
           content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
         />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col bg-gradient-to-br from-purple-900 via-purple-700 to-blue-800`}
+            <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900`}
         style={{
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
