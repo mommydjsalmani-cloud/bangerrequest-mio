@@ -286,7 +286,16 @@ function RichiesteLibereContent() {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-center max-w-md w-full border border-white/20 shadow-xl">
-          <div className="text-6xl mb-4">🎵</div>
+          <div className="mb-4 flex justify-center">
+            <Image 
+              src="/Simbolo_Bianco.png" 
+              alt="Banger Request Logo" 
+              width={80} 
+              height={80} 
+              className="w-auto h-16 object-contain"
+            />
+          </div>
+          <div className="text-4xl mb-4">🎵</div>
           <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
           <p className="text-gray-300 mb-6 text-sm">
             Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ

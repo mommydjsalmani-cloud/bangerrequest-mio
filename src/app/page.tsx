@@ -9,13 +9,13 @@ export default function Home() {
       <div className="w-full max-w-lg text-center space-y-8">
         {/* Logo/Brand */}
         <div>
-          <div className="mb-6 flex justify-center">
+          <div className="mb-4 flex justify-center">
             <Image 
               src="/Simbolo_Bianco.png" 
               alt="Banger Request Logo" 
-              width={200} 
-              height={200} 
-              className="w-auto h-32 md:h-40 object-contain"
+              width={150} 
+              height={150} 
+              className="w-auto h-20 md:h-24 object-contain"
               priority
             />
           </div>
