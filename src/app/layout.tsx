@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Splash from "@/components/Splash";
-import Logo from "@/components/Logo";
+import ConditionalHeader from "@/components/ConditionalHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,24 +32,12 @@ export default function RootLayout({
           content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
         />
       </head>
-            <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900`}
-        style={{
-          paddingTop: 'env(safe-area-inset-top)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)'
-        }}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col`}
       >
-        <Splash duration={1500} />
-        <div className="w-full relative">
-          <header className="relative w-full flex items-center justify-center pt-4 pb-1">
-            <Logo size={60} className="opacity-60 transition-all hover:opacity-80 hover:scale-105" priority />
-          </header>
-        </div>
-        <div className="flex-1 w-full -mt-6">
-          {children}
-        </div>
+        {/* <Splash duration={1500} /> */}
+        <ConditionalHeader />
+        {children}
       </body>
     </html>
   );
