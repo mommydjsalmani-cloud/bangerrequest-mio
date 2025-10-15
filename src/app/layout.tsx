@@ -42,10 +42,13 @@ export default function RootLayout({
         }}
       >
         <Splash duration={1500} />
-        <header className="w-full flex items-center justify-center py-2 bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-          <Logo size={80} className="opacity-75 drop-shadow-lg filter brightness-90" priority />
-        </header>
-        <div className="flex-1 w-full bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+        <div className="w-full relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 via-purple-800/5 to-transparent pointer-events-none"></div>
+          <header className="relative w-full flex items-center justify-center pt-4 pb-1">
+            <Logo size={60} className="opacity-60 transition-all hover:opacity-80 hover:scale-105" priority />
+          </header>
+        </div>
+        <div className="flex-1 w-full -mt-6">
           {children}
         </div>
       </body>

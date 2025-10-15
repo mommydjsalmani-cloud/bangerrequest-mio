@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="flex min-h-[calc(100dvh-88px)] flex-col items-center justify-center text-white px-4">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white px-4">
       <div className="w-full max-w-lg text-center space-y-8">
         {/* Logo/Brand */}
         <div>

@@ -21,7 +21,7 @@ export default function Logo({ size = 160, className = '', alt = 'Mommy Music En
       width={size}
       height={size}
       priority={priority}
-      className={`h-auto transition-all duration-300 ${className}`}
+      className={`h-auto ${className}`}
       style={{ width: size, height: 'auto' }}
     />
   );

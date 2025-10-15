@@ -284,7 +284,7 @@ function RichiesteLibereContent() {
   // Schermata di onboarding
   if (showOnboarding) {
     return (
-      <main className="flex min-h-[calc(100dvh-88px)] flex-col items-center justify-center text-white p-6">
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-center max-w-md w-full border border-white/20 shadow-xl">
           <div className="text-6xl mb-4">🎵</div>
           <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
@@ -322,7 +322,7 @@ function RichiesteLibereContent() {
   }
   
   return (
-    <main className="flex min-h-[calc(100dvh-88px)] flex-col items-center justify-start text-white p-4 sm:p-6">
+    <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-6">
       <div className="w-full max-w-4xl space-y-6 mt-4 mb-8">
         
         {/* Header Personalizzato */}
@@ -621,7 +621,7 @@ function RichiesteLibereContent() {
 export default function RichiesteLibere() {
   return (
     <Suspense fallback={
-      <div className="min-h-[calc(100dvh-88px)] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-white text-xl">Caricamento...</div>
       </div>
     }>

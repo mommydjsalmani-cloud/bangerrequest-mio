@@ -48,7 +48,7 @@ export default function EventoPage() {
   }
 
   return (
-    <main className="min-h-[calc(100dvh-88px)] text-white flex items-center justify-center px-4 py-6">
+    <main className="min-h-dvh bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white flex items-center justify-center px-4 py-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
