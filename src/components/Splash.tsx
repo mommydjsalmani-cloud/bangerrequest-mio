@@ -39,8 +39,8 @@ export default function Splash({ duration = 10000 }: Props) {
             alt="Banger Request Logo" 
             width={420} 
             height={420} 
-            className="w-full h-auto" 
             priority 
+            className="w-full h-auto object-contain"
           />
         </div>
       </div>
