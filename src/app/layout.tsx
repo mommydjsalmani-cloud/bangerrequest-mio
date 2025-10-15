@@ -33,7 +33,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col bg-gradient-to-br from-purple-900 via-purple-700 to-blue-800`}
         style={{
           paddingTop: 'env(safe-area-inset-top)',
           paddingBottom: 'env(safe-area-inset-bottom)',
@@ -43,7 +43,6 @@ export default function RootLayout({
       >
         <Splash duration={1500} />
         <div className="w-full relative">
-          <div className="absolute inset-0 bg-gradient-to-b from-purple-900/10 via-purple-800/5 to-transparent pointer-events-none"></div>
           <header className="relative w-full flex items-center justify-center pt-4 pb-1">
             <Logo size={60} className="opacity-60 transition-all hover:opacity-80 hover:scale-105" priority />
           </header>
