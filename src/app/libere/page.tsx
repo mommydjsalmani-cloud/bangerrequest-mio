@@ -35,6 +35,8 @@ function RichiesteLibereContent() {
   // Onboarding states
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingName, setOnboardingName] = useState('');
+  // Splash onboarding
+  const [showSplash, setShowSplash] = useState(true);
   
   // Form state semplificato
   const [requesterName, setRequesterName] = useState('');
@@ -56,14 +58,19 @@ function RichiesteLibereContent() {
       return;
     }
 
-    // Carica il nome salvato dalla sessione
+    // Splash onboarding solo se non c'è nome salvato
     const savedName = sessionStorage.getItem(`libere_user_name_${token}`);
     if (savedName) {
       setRequesterName(savedName);
+      setShowSplash(false);
     } else {
-      setShowOnboarding(true);
+      setShowSplash(true);
+      setTimeout(() => {
+        setShowSplash(false);
+        setShowOnboarding(true);
+      }, 2500); // Splash dura 2.5s
     }
-    
+
     const loadSession = async () => {
       try {
         const response = await fetch(`/api/libere?s=${token}`);
@@ -81,7 +88,7 @@ function RichiesteLibereContent() {
         setLoading(false);
       }
     };
-    
+
     loadSession();
   }, [token]);
 
@@ -276,6 +283,30 @@ function RichiesteLibereContent() {
           >
             Riprova
           </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Splash onboarding
+  if (showSplash) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-center max-w-md w-full border border-white/20 shadow-xl">
+          <div className="mb-4 flex justify-center">
+            <Image 
+              src="/LogoHD_Bianco.png" 
+              alt="Banger Request Logo" 
+              width={180} 
+              height={180} 
+              className="w-auto h-24 object-contain"
+            />
+          </div>
+          <div className="text-4xl mb-4">🎵</div>
+          <h1 className="text-2xl font-bold mb-2">Banger Request</h1>
+          <p className="text-gray-300 mb-6 text-sm">
+            Il sistema di richieste musicali più smart e veloce!
+          </p>
         </div>
       </main>
     );
