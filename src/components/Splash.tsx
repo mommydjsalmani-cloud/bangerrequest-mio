@@ -11,19 +11,28 @@ export default function Splash({ duration = 10000 }: Props) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
-      setVisible(false);
-      return;
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname;
+      
+      // Mostra splash solo per homepage e libere
+      if (pathname !== '/' && pathname !== '/libere') {
+        setVisible(false);
+        return;
+      }
+      
+      // Durata diversa per pagina libere: +1 secondo
+      const actualDuration = pathname === '/libere' ? duration + 1000 : duration;
+      
+      const t = setTimeout(() => setVisible(false), actualDuration);
+      function onKey(e: KeyboardEvent) {
+        if (e.key === 'Escape') setVisible(false);
+      }
+      window.addEventListener('keydown', onKey);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('keydown', onKey);
+      };
     }
-    const t = setTimeout(() => setVisible(false), duration);
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setVisible(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('keydown', onKey);
-    };
   }, [duration]);
 
   return (
