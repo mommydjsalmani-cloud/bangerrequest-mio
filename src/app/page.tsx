@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Home() {
   return (
@@ -8,7 +9,17 @@ export default function Home() {
       <div className="w-full max-w-lg text-center space-y-8">
         {/* Logo/Brand */}
         <div>
-          <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+          <div className="mb-6 flex justify-center">
+            <Image 
+              src="/Simbolo_Bianco.png" 
+              alt="Banger Request Logo" 
+              width={200} 
+              height={200} 
+              className="w-auto h-32 md:h-40 object-contain"
+              priority
+            />
+          </div>
+          <h1 className="text-3xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
             Banger Request
           </h1>
           <p className="text-lg md:text-xl text-gray-300">
