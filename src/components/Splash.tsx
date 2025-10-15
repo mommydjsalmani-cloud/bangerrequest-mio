@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Logo from '@/components/Logo';
+import Image from 'next/image';
 
 type Props = {
   duration?: number; // milliseconds
@@ -34,7 +34,14 @@ export default function Splash({ duration = 10000 }: Props) {
     >
       <div className="splash-card">
         <div className="w-[60vw] max-w-[420px]">
-          <Logo size={420} className="w-full h-auto" priority />
+          <Image 
+            src="/splash-logo.png" 
+            alt="Banger Request Logo" 
+            width={420} 
+            height={420} 
+            className="w-full h-auto object-contain" 
+            priority 
+          />
         </div>
       </div>
     </div>
