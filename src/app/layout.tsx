@@ -40,7 +40,7 @@ export default function RootLayout({
           paddingRight: 'env(safe-area-inset-right)'
         }}
       >
-        <Splash duration={1500} />
+        <Splash duration={2500} />
         <div className="flex-1 w-full">
           {children}
         </div>
