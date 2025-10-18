@@ -70,7 +70,7 @@ export default function Home() {
               {homepageSessions.map((session) => (
                 <Link 
                   key={session.id}
-                  href={`/libere?token=${session.token}`}
+                  href={`/libere?s=${session.token}`}
                   className="block w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-5 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg relative"
                 >
                   <div className="flex items-center justify-between">
