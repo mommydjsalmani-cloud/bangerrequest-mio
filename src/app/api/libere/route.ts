@@ -107,7 +107,12 @@ export async function GET(req: Request) {
   // Verifica sessione
   const { data: session } = await supabase
     .from('sessioni_libere')
-    .select('*')
+    .select(`
+      id, token, created_at, updated_at, status, name, reset_count, 
+      last_reset_at, archived, rate_limit_enabled, rate_limit_seconds, 
+      notes_enabled, homepage_visible, homepage_priority,
+      event_code_required, event_code_value
+    `)
     .eq('token', token)
     .eq('archived', false)
     .single();
@@ -162,7 +167,12 @@ export async function POST(req: Request) {
   // Verifica sessione
   const { data: session } = await supabase
     .from('sessioni_libere')
-    .select('*')
+    .select(`
+      id, token, created_at, updated_at, status, name, reset_count, 
+      last_reset_at, archived, rate_limit_enabled, rate_limit_seconds, 
+      notes_enabled, homepage_visible, homepage_priority,
+      event_code_required, event_code_value
+    `)
     .eq('token', token)
     .eq('archived', false)
     .single();
