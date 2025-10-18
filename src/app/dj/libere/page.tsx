@@ -29,6 +29,7 @@ export default function LibereAdminPanel() {
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
+  const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   
   // Auto-clear messaggi con debounce
   useEffect(() => {
@@ -168,6 +169,7 @@ export default function LibereAdminPanel() {
       setCurrentSession(data.session);
       setRequests(data.requests || []);
       setStats(data.stats || null);
+      setHomepageVisible(data.session?.homepage_visible || false); // Aggiorna stato homepage
       setError(null);
       
     } catch (err) {
@@ -460,6 +462,47 @@ export default function LibereAdminPanel() {
       } else {
         setError('Errore sconosciuto');
       }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Funzione per gestire visibilità homepage
+  const toggleHomepageVisibility = async () => {
+    if (!selectedSessionId || !authed) {
+      setError('Nessuna sessione selezionata o non autorizzato');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/homepage-sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          sessionId: selectedSessionId,
+          visible: !homepageVisible
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.ok) {
+        setHomepageVisible(!homepageVisible);
+        setSuccess(data.message);
+      } else {
+        setError(data.error || 'Errore aggiornamento homepage');
+      }
+    } catch (error) {
+      console.error('Errore toggle homepage:', error);
+      setError('Errore connessione homepage');
     } finally {
       setLoading(false);
     }
@@ -810,6 +853,22 @@ export default function LibereAdminPanel() {
               >
                 {eventMode ? '⚙️ Vista Completa' : '🎧 Modalità Evento'}
               </button>
+              
+              {selectedSessionId && (
+                <button
+                  onClick={toggleHomepageVisibility}
+                  disabled={loading}
+                  className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
+                    homepageVisible
+                      ? 'bg-green-600 hover:bg-green-700 text-white border-green-500'
+                      : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={homepageVisible ? 'Rimuovi dalla homepage' : 'Aggiungi alla homepage'}
+                >
+                  {homepageVisible ? '🏠✓' : '🏠+'}
+                </button>
+              )}
+              
               <button
                 onClick={() => setAuthed(false)}
                 className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"

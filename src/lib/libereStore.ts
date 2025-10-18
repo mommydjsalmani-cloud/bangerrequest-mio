@@ -13,6 +13,8 @@ export type LibereSession = {
   rate_limit_enabled?: boolean;
   rate_limit_seconds?: number;
   notes_enabled?: boolean;
+  homepage_visible?: boolean;
+  homepage_priority?: string;
 };
 
 export type LibereRequest = {

@@ -62,6 +62,32 @@ ADD COLUMN IF NOT EXISTS notes_enabled boolean NOT NULL DEFAULT true;
 COMMENT ON COLUMN public.sessioni_libere.notes_enabled IS 'Se true, permette agli utenti di lasciare note/commenti';`);
     }
 
+    // Verifica se esistono le colonne homepage_visible e homepage_priority
+    const { error: homepageError } = await supabase
+      .from('sessioni_libere')
+      .select('homepage_visible, homepage_priority')
+      .limit(1);
+
+    if (homepageError && (homepageError.message.includes('homepage_visible') || homepageError.message.includes('homepage_priority'))) {
+      migrationNeeded = true;
+      sqlCommands.push(`
+-- Migrazione: Aggiungi controllo homepage alle sessioni libere
+ALTER TABLE public.sessioni_libere 
+ADD COLUMN IF NOT EXISTS homepage_visible boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.sessioni_libere 
+ADD COLUMN IF NOT EXISTS homepage_priority timestamptz;
+
+-- Indice per query efficiente delle sessioni visibili ordinata per priorità
+CREATE INDEX IF NOT EXISTS idx_sessioni_libere_homepage_visible 
+ON public.sessioni_libere(homepage_visible, homepage_priority DESC) 
+WHERE homepage_visible = true;
+
+-- Commenti per documentazione
+COMMENT ON COLUMN public.sessioni_libere.homepage_visible IS 'Se true, mostra la sessione come pulsante sulla homepage';
+COMMENT ON COLUMN public.sessioni_libere.homepage_priority IS 'Timestamp per ordinare le sessioni visibili sulla homepage (più recente = priorità alta)';`);
+    }
+
     if (migrationNeeded) {
       return NextResponse.json({ 
         ok: false, 
