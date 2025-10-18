@@ -433,7 +433,7 @@ export async function POST(req: Request) {
       }
       
       // Prepara l'update object
-      const updateData: any = { event_code_required };
+      const updateData: { event_code_required: boolean; event_code?: string | null } = { event_code_required };
       
       // Se viene fornito il codice evento, aggiungilo all'update
       if (event_code !== undefined) {
