@@ -81,6 +81,8 @@ function RichiesteLibereContent() {
         }
         
         setSession(data.session);
+        console.log('Session loaded:', data.session); // DEBUG
+        console.log('Event code required:', data.session?.event_code_required); // DEBUG
       } catch {
         setError('Errore connessione');
       } finally {
@@ -326,6 +328,13 @@ function RichiesteLibereContent() {
           <p className="text-gray-300 mb-6 text-sm">
             Inserisci {session?.event_code_required ? 'il tuo nome e il codice evento' : 'il tuo nome'} per iniziare a richiedere la tua musica preferita al DJ
           </p>
+          
+          {/* DEBUG INFO */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="bg-red-500/20 p-2 mb-4 text-xs">
+              DEBUG: event_code_required = {String(session?.event_code_required)}
+            </div>
+          )}
           
           <div className="space-y-4">
             <input
