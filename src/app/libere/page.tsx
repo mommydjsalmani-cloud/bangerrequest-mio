@@ -39,6 +39,7 @@ function RichiesteLibereContent() {
   // Form state semplificato
   const [requesterName, setRequesterName] = useState('');
   const [note, setNote] = useState('');
+  const [eventCode, setEventCode] = useState('');
   
   // Spotify search
   const [query, setQuery] = useState('');
@@ -58,8 +59,13 @@ function RichiesteLibereContent() {
 
     // Carica il nome salvato dalla sessione
     const savedName = sessionStorage.getItem(`libere_user_name_${token}`);
+    const savedEventCode = sessionStorage.getItem(`libere_event_code_${token}`);
+    
     if (savedName) {
       setRequesterName(savedName);
+      if (savedEventCode) {
+        setEventCode(savedEventCode);
+      }
     } else {
       setShowOnboarding(true);
     }
@@ -162,8 +168,21 @@ function RichiesteLibereContent() {
   const completeOnboarding = () => {
     if (!onboardingName.trim()) return;
     
+    // Verifica codice evento se richiesto
+    if (session?.event_code_required && !eventCode.trim()) {
+      setError('Codice evento obbligatorio');
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+    
     setRequesterName(onboardingName);
     sessionStorage.setItem(`libere_user_name_${token}`, onboardingName);
+    
+    // Salva il codice evento se fornito
+    if (session?.event_code_required && eventCode.trim()) {
+      sessionStorage.setItem(`libere_event_code_${token}`, eventCode.trim());
+    }
+    
     setShowOnboarding(false);
     setMessage(`🎉 Benvenuto ${onboardingName}! Ora puoi richiedere la tua musica preferita.`);
     setTimeout(() => setMessage(null), 4000);
@@ -187,6 +206,12 @@ function RichiesteLibereContent() {
     
     if (!requesterName.trim()) {
       setError('Nome obbligatorio');
+      return;
+    }
+    
+    // Verifica codice evento se richiesto
+    if (session?.event_code_required && !eventCode.trim()) {
+      setError('Codice evento richiesto');
       return;
     }
     
@@ -215,7 +240,8 @@ function RichiesteLibereContent() {
         cover_url: selected.cover_url || '',
         duration_ms: selected.duration_ms,
         source: 'spotify',
-        note: note.trim() || undefined
+        note: note.trim() || undefined,
+        event_code: session?.event_code_required ? eventCode.trim() : undefined
       };
       
       const response = await fetch(`/api/libere?s=${token}`, {
@@ -298,7 +324,7 @@ function RichiesteLibereContent() {
           <div className="text-4xl mb-4">🎵</div>
           <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
           <p className="text-gray-300 mb-6 text-sm">
-            Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ
+            Inserisci {session?.event_code_required ? 'il tuo nome e il codice evento' : 'il tuo nome'} per iniziare a richiedere la tua musica preferita al DJ
           </p>
           
           <div className="space-y-4">
@@ -307,15 +333,27 @@ function RichiesteLibereContent() {
               placeholder="Come ti chiami?"
               value={onboardingName}
               onChange={(e) => setOnboardingName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && completeOnboarding()}
+              onKeyPress={(e) => e.key === 'Enter' && (!session?.event_code_required || eventCode.trim()) && completeOnboarding()}
               className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
               autoFocus
               maxLength={50}
             />
             
+            {session?.event_code_required && (
+              <input
+                type="text"
+                placeholder="Codice Evento"
+                value={eventCode}
+                onChange={(e) => setEventCode(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && completeOnboarding()}
+                className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-center"
+                maxLength={20}
+              />
+            )}
+            
             <button
               onClick={completeOnboarding}
-              disabled={!onboardingName.trim()}
+              disabled={!onboardingName.trim() || (session?.event_code_required && !eventCode.trim())}
               className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
             >
               🎉 Inizia a Richiedere!

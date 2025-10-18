@@ -183,10 +183,17 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Dati richiesta non validi' }, { status: 400 });
   }
   
-  const { title, requester_name, note, track_id, uri, artists, album, cover_url, isrc, explicit, preview_url, duration_ms, source = 'manual' } = body;
+  const { title, requester_name, note, track_id, uri, artists, album, cover_url, isrc, explicit, preview_url, duration_ms, source = 'manual', event_code } = body;
   
   if (!title?.trim()) {
     return withVersion({ ok: false, error: 'Titolo brano obbligatorio' }, { status: 400 });
+  }
+  
+  // Verifica se il codice evento è richiesto per questa sessione
+  if (session.event_code_required) {
+    if (!event_code?.trim()) {
+      return withVersion({ ok: false, error: 'Codice evento richiesto per questa sessione' }, { status: 400 });
+    }
   }
   
   // Controlla se le note sono abilitate per questa sessione
@@ -223,6 +230,7 @@ export async function POST(req: Request) {
     duration_ms: duration_ms || null,
     requester_name: requester_name?.trim() || null,
     note: finalNote, // Usa la nota filtrata in base alle impostazioni sessione
+    event_code: session.event_code_required ? (event_code?.trim() || null) : null,
     client_ip: clientIP,
     user_agent: userAgent,
     source: source,

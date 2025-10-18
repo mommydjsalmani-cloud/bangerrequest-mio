@@ -15,6 +15,7 @@ export type LibereSession = {
   notes_enabled?: boolean;
   homepage_visible?: boolean;
   homepage_priority?: string;
+  event_code_required?: boolean;
 };
 
 export type LibereRequest = {
@@ -37,6 +38,7 @@ export type LibereRequest = {
   source: 'spotify' | 'manual';
   status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived';
   note?: string;
+  event_code?: string;
   archived: boolean;
   accepted_at?: string;
   rejected_at?: string;

@@ -1182,6 +1182,35 @@ export default function LibereAdminPanel() {
                   </div>
                 </div>
               </div>
+
+              {/* Event Code Control */}
+              <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">🎫 Controllo Codice Evento</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-gray-800 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={currentSession?.event_code_required === true}
+                        onChange={(e) => {
+                          adminAction('update_event_code_control', {
+                            event_code_required: e.target.checked
+                          });
+                        }}
+                        className="w-5 h-5 rounded text-purple-600 focus:ring-purple-500 focus:ring-2"
+                      />
+                      Richiedi codice evento obbligatorio
+                    </label>
+                  </div>
+                  
+                  <div className="text-sm font-medium p-3 rounded-lg border-l-4 bg-white">
+                    {currentSession?.event_code_required === true
+                      ? <span className="text-purple-700 border-purple-400">🔒 Gli utenti devono inserire un codice evento per fare richieste</span>
+                      : <span className="text-gray-700 border-gray-400">🔓 Richieste libere senza codice evento</span>
+                    }
+                  </div>
+                </div>
+              </div>
               
               {/* Link & QR */}
               <div className="space-y-3">

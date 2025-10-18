@@ -421,6 +421,32 @@ export async function POST(req: Request) {
       });
     }
 
+    case 'update_event_code_control': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { event_code_required } = body;
+      
+      if (typeof event_code_required !== 'boolean') {
+        return withVersion({ ok: false, error: 'event_code_required deve essere boolean' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ event_code_required })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: `Codice evento ${event_code_required ? 'obbligatorio' : 'non richiesto'} ✓` 
+      });
+    }
+
     case 'delete_session': {
       if (!session_id) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });

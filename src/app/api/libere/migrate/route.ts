@@ -88,6 +88,31 @@ COMMENT ON COLUMN public.sessioni_libere.homepage_visible IS 'Se true, mostra la
 COMMENT ON COLUMN public.sessioni_libere.homepage_priority IS 'Timestamp per ordinare le sessioni visibili sulla homepage (più recente = priorità alta)';`);
     }
 
+    // Verifica se esiste la colonna event_code_required
+    const { error: eventCodeError } = await supabase
+      .from('sessioni_libere')
+      .select('event_code_required')
+      .limit(1);
+
+    if (eventCodeError && eventCodeError.message.includes('event_code_required')) {
+      migrationNeeded = true;
+      sqlCommands.push(`
+-- Migrazione: Aggiungi controllo codice evento alle sessioni libere
+ALTER TABLE public.sessioni_libere 
+ADD COLUMN IF NOT EXISTS event_code_required boolean NOT NULL DEFAULT false;
+
+-- Aggiungi campo event_code alle richieste libere
+ALTER TABLE public.richieste_libere 
+ADD COLUMN IF NOT EXISTS event_code text;
+
+-- Indice per ricerca veloce per codice evento
+CREATE INDEX IF NOT EXISTS idx_richieste_libere_event_code ON public.richieste_libere(event_code);
+
+-- Commenti per documentazione
+COMMENT ON COLUMN public.sessioni_libere.event_code_required IS 'Se true, richiede il codice evento per fare richieste';
+COMMENT ON COLUMN public.richieste_libere.event_code IS 'Codice evento fornito dall utente per la richiesta';`);
+    }
+
     if (migrationNeeded) {
       return NextResponse.json({ 
         ok: false, 
