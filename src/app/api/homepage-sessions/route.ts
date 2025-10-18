@@ -110,7 +110,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Aggiorna la visibilità della sessione richiesta
-    const updateData: any = { 
+    const updateData: {
+      homepage_visible: boolean;
+      homepage_priority: string | null;
+    } = { 
       homepage_visible: visible,
       homepage_priority: visible ? new Date().toISOString() : null
     };
