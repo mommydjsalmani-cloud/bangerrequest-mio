@@ -107,12 +107,7 @@ export async function GET(req: Request) {
   // Verifica sessione
   const { data: session } = await supabase
     .from('sessioni_libere')
-    .select(`
-      id, token, created_at, updated_at, status, name, reset_count, 
-      last_reset_at, archived, rate_limit_enabled, rate_limit_seconds, 
-      notes_enabled, homepage_visible, homepage_priority,
-      event_code_required, event_code_value
-    `)
+    .select('*')
     .eq('token', token)
     .eq('archived', false)
     .single();
@@ -120,11 +115,6 @@ export async function GET(req: Request) {
   if (!session) {
     return withVersion({ ok: false, error: 'Sessione non trovata o scaduta' }, { status: 404 });
   }
-
-  // DEBUG: Log della sessione per verificare campi
-  console.log('Session from DB:', JSON.stringify(session, null, 2));
-  console.log('event_code_required:', session.event_code_required);
-  console.log('event_code_value:', session.event_code_value);
 
   // Se richiesto il controllo dello stato di una richiesta specifica
   if (requestId) {
@@ -172,12 +162,7 @@ export async function POST(req: Request) {
   // Verifica sessione
   const { data: session } = await supabase
     .from('sessioni_libere')
-    .select(`
-      id, token, created_at, updated_at, status, name, reset_count, 
-      last_reset_at, archived, rate_limit_enabled, rate_limit_seconds, 
-      notes_enabled, homepage_visible, homepage_priority,
-      event_code_required, event_code_value
-    `)
+    .select('*')
     .eq('token', token)
     .eq('archived', false)
     .single();
@@ -210,15 +195,8 @@ export async function POST(req: Request) {
       return withVersion({ ok: false, error: 'Codice evento richiesto per questa sessione' }, { status: 400 });
     }
     
-    // Verifica che il codice evento corrisponda a quello configurato dal DJ
-    const expectedCode = session.event_code_value?.trim().toUpperCase();
-    const providedCode = event_code.trim().toUpperCase();
-    
-    if (!expectedCode) {
-      return withVersion({ ok: false, error: 'Codice evento non ancora configurato dal DJ' }, { status: 400 });
-    }
-    
-    if (providedCode !== expectedCode) {
+    // CRUCIALE: Verifica che il codice inserito corrisponda a quello impostato dal DJ
+    if (event_code.trim() !== session.event_code?.trim()) {
       return withVersion({ ok: false, error: 'Codice evento non valido' }, { status: 400 });
     }
   }
@@ -257,7 +235,7 @@ export async function POST(req: Request) {
     duration_ms: duration_ms || null,
     requester_name: requester_name?.trim() || null,
     note: finalNote, // Usa la nota filtrata in base alle impostazioni sessione
-    event_code: session.event_code_required ? (event_code?.trim() || null) : null,
+    user_event_code: session.event_code_required ? (event_code?.trim() || null) : null,
     client_ip: clientIP,
     user_agent: userAgent,
     source: source,

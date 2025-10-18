@@ -426,15 +426,23 @@ export async function POST(req: Request) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
       }
       
-      const { event_code_required } = body;
+      const { event_code_required, event_code } = body;
       
       if (typeof event_code_required !== 'boolean') {
         return withVersion({ ok: false, error: 'event_code_required deve essere boolean' }, { status: 400 });
       }
       
+      // Prepara l'update object
+      const updateData: any = { event_code_required };
+      
+      // Se viene fornito il codice evento, aggiungilo all'update
+      if (event_code !== undefined) {
+        updateData.event_code = event_code?.trim() || null;
+      }
+      
       const { error } = await supabase
         .from('sessioni_libere')
-        .update({ event_code_required })
+        .update(updateData)
         .eq('id', session_id);
       
       if (error) {
@@ -444,32 +452,6 @@ export async function POST(req: Request) {
       return withVersion({ 
         ok: true, 
         message: `Codice evento ${event_code_required ? 'obbligatorio' : 'non richiesto'} ✓` 
-      });
-    }
-
-    case 'update_event_code_value': {
-      if (!session_id) {
-        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
-      }
-      
-      const { event_code_value } = body;
-      
-      if (typeof event_code_value !== 'string') {
-        return withVersion({ ok: false, error: 'event_code_value deve essere stringa' }, { status: 400 });
-      }
-      
-      const { error } = await supabase
-        .from('sessioni_libere')
-        .update({ event_code_value: event_code_value.trim().toUpperCase() || null })
-        .eq('id', session_id);
-      
-      if (error) {
-        return withVersion({ ok: false, error: error.message }, { status: 500 });
-      }
-      
-      return withVersion({ 
-        ok: true, 
-        message: `Codice evento aggiornato: ${event_code_value.trim().toUpperCase() || '(rimosso)'} ✓` 
       });
     }
 

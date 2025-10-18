@@ -101,33 +101,20 @@ COMMENT ON COLUMN public.sessioni_libere.homepage_priority IS 'Timestamp per ord
 ALTER TABLE public.sessioni_libere 
 ADD COLUMN IF NOT EXISTS event_code_required boolean NOT NULL DEFAULT false;
 
--- Aggiungi campo event_code alle richieste libere
-ALTER TABLE public.richieste_libere 
+ALTER TABLE public.sessioni_libere 
 ADD COLUMN IF NOT EXISTS event_code text;
 
+-- Aggiungi campo event_code alle richieste libere
+ALTER TABLE public.richieste_libere 
+ADD COLUMN IF NOT EXISTS user_event_code text;
+
 -- Indice per ricerca veloce per codice evento
-CREATE INDEX IF NOT EXISTS idx_richieste_libere_event_code ON public.richieste_libere(event_code);
+CREATE INDEX IF NOT EXISTS idx_richieste_libere_user_event_code ON public.richieste_libere(user_event_code);
 
 -- Commenti per documentazione
 COMMENT ON COLUMN public.sessioni_libere.event_code_required IS 'Se true, richiede il codice evento per fare richieste';
-COMMENT ON COLUMN public.richieste_libere.event_code IS 'Codice evento fornito dall utente per la richiesta';`);
-    }
-
-    // Verifica se esiste la colonna event_code_value (codice configurato dal DJ)
-    const { error: eventCodeValueError } = await supabase
-      .from('sessioni_libere')
-      .select('event_code_value')
-      .limit(1);
-
-    if (eventCodeValueError && eventCodeValueError.message.includes('event_code_value')) {
-      migrationNeeded = true;
-      sqlCommands.push(`
--- Migrazione: Aggiungi campo per memorizzare il codice evento configurato dal DJ
-ALTER TABLE public.sessioni_libere 
-ADD COLUMN IF NOT EXISTS event_code_value text;
-
--- Commento per documentazione
-COMMENT ON COLUMN public.sessioni_libere.event_code_value IS 'Il codice evento che gli utenti devono inserire (configurato dal DJ)';`);
+COMMENT ON COLUMN public.sessioni_libere.event_code IS 'Codice evento valido impostato dal DJ';
+COMMENT ON COLUMN public.richieste_libere.user_event_code IS 'Codice evento fornito dall utente per la richiesta';`);
     }
 
     if (migrationNeeded) {

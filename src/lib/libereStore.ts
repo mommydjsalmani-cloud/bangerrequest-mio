@@ -16,7 +16,7 @@ export type LibereSession = {
   homepage_visible?: boolean;
   homepage_priority?: string;
   event_code_required?: boolean;
-  event_code_value?: string;
+  event_code?: string; // Il codice evento che il DJ imposta per la sessione (nella tabella sessioni_libere)
 };
 
 export type LibereRequest = {
@@ -39,7 +39,7 @@ export type LibereRequest = {
   source: 'spotify' | 'manual';
   status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived';
   note?: string;
-  event_code?: string;
+  user_event_code?: string; // Il codice evento inserito dall'utente
   archived: boolean;
   accepted_at?: string;
   rejected_at?: string;

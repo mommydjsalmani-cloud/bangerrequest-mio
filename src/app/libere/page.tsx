@@ -81,8 +81,6 @@ function RichiesteLibereContent() {
         }
         
         setSession(data.session);
-        console.log('Session loaded:', data.session); // DEBUG
-        console.log('Event code required:', data.session?.event_code_required); // DEBUG
       } catch {
         setError('Errore connessione');
       } finally {
@@ -329,13 +327,6 @@ function RichiesteLibereContent() {
             Inserisci {session?.event_code_required ? 'il tuo nome e il codice evento' : 'il tuo nome'} per iniziare a richiedere la tua musica preferita al DJ
           </p>
           
-          {/* DEBUG INFO */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="bg-red-500/20 p-2 mb-4 text-xs">
-              DEBUG: event_code_required = {String(session?.event_code_required)}
-            </div>
-          )}
-          
           <div className="space-y-4">
             <input
               type="text"
@@ -400,33 +391,6 @@ function RichiesteLibereContent() {
         {error && (
           <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl text-center backdrop-blur-lg">
             {error}
-          </div>
-        )}
-
-        {/* Promemoria/Controllo Codice Evento per utenti già autenticati */}
-        {session?.event_code_required && (!eventCode?.trim()) && (
-          <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-200 p-4 rounded-xl backdrop-blur-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-semibold mb-1">🎫 Codice Evento Richiesto</div>
-                <div className="text-sm">Per fare richieste in questa sessione devi inserire il codice evento</div>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Codice Evento"
-                  value={eventCode}
-                  onChange={(e) => {
-                    setEventCode(e.target.value);
-                    if (session?.event_code_required && e.target.value.trim()) {
-                      sessionStorage.setItem(`libere_event_code_${token}`, e.target.value.trim());
-                    }
-                  }}
-                  className="px-3 py-2 bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent rounded-lg"
-                  maxLength={20}
-                />
-              </div>
-            </div>
           </div>
         )}
 
@@ -589,30 +553,6 @@ function RichiesteLibereContent() {
                   </div>
                 </div>
                 
-                {/* Campo Codice Evento nel form principale */}
-                {session?.event_code_required && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-purple-200 mb-2">
-                      🎫 Codice Evento *
-                    </label>
-                    <input
-                      type="text"
-                      value={eventCode}
-                      onChange={(e) => {
-                        setEventCode(e.target.value);
-                        // Salva automaticamente se fornito
-                        if (e.target.value.trim()) {
-                          sessionStorage.setItem(`libere_event_code_${token}`, e.target.value.trim());
-                        }
-                      }}
-                      placeholder="Inserisci il codice evento"
-                      className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-sm"
-                      maxLength={20}
-                      required
-                    />
-                  </div>
-                )}
-
                 {session?.notes_enabled && (
                   <textarea 
                     value={note} 
