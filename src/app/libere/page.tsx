@@ -580,6 +580,30 @@ function RichiesteLibereContent() {
                   </div>
                 </div>
                 
+                {/* Campo Codice Evento nel form principale */}
+                {session?.event_code_required && (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
+                      🎫 Codice Evento *
+                    </label>
+                    <input
+                      type="text"
+                      value={eventCode}
+                      onChange={(e) => {
+                        setEventCode(e.target.value);
+                        // Salva automaticamente se fornito
+                        if (e.target.value.trim()) {
+                          sessionStorage.setItem(`libere_event_code_${token}`, e.target.value.trim());
+                        }
+                      }}
+                      placeholder="Inserisci il codice evento"
+                      className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent text-sm"
+                      maxLength={20}
+                      required
+                    />
+                  </div>
+                )}
+
                 {session?.notes_enabled && (
                   <textarea 
                     value={note} 
