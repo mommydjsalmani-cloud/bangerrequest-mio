@@ -121,6 +121,11 @@ export async function GET(req: Request) {
     return withVersion({ ok: false, error: 'Sessione non trovata o scaduta' }, { status: 404 });
   }
 
+  // DEBUG: Log della sessione per verificare campi
+  console.log('Session from DB:', JSON.stringify(session, null, 2));
+  console.log('event_code_required:', session.event_code_required);
+  console.log('event_code_value:', session.event_code_value);
+
   // Se richiesto il controllo dello stato di una richiesta specifica
   if (requestId) {
     const { data: request, error } = await supabase
