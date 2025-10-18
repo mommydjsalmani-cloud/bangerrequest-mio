@@ -1202,10 +1202,45 @@ export default function LibereAdminPanel() {
                       Richiedi codice evento obbligatorio
                     </label>
                   </div>
+
+                  {/* Campo per configurare il codice evento */}
+                  {currentSession?.event_code_required && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-800">
+                        Codice Evento da Richiedere:
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Inserisci il codice evento (es. EVENTO2025)"
+                          value={currentSession?.event_code_value || ''}
+                          onChange={(e) => {
+                            adminAction('update_event_code_value', {
+                              event_code_value: e.target.value.trim().toUpperCase()
+                            });
+                          }}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          maxLength={20}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        Gli utenti dovranno inserire esattamente questo codice per fare richieste
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="text-sm font-medium p-3 rounded-lg border-l-4 bg-white">
                     {currentSession?.event_code_required === true
-                      ? <span className="text-purple-700 border-purple-400">🔒 Gli utenti devono inserire un codice evento per fare richieste</span>
+                      ? (
+                        <div className="text-purple-700 border-purple-400">
+                          <div>🔒 Codice evento obbligatorio</div>
+                          {currentSession?.event_code_value && (
+                            <div className="mt-1 font-mono text-sm bg-purple-100 px-2 py-1 rounded inline-block">
+                              Codice: {currentSession.event_code_value}
+                            </div>
+                          )}
+                        </div>
+                      )
                       : <span className="text-gray-700 border-gray-400">🔓 Richieste libere senza codice evento</span>
                     }
                   </div>

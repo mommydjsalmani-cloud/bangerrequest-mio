@@ -194,6 +194,18 @@ export async function POST(req: Request) {
     if (!event_code?.trim()) {
       return withVersion({ ok: false, error: 'Codice evento richiesto per questa sessione' }, { status: 400 });
     }
+    
+    // Verifica che il codice evento corrisponda a quello configurato dal DJ
+    const expectedCode = session.event_code_value?.trim().toUpperCase();
+    const providedCode = event_code.trim().toUpperCase();
+    
+    if (!expectedCode) {
+      return withVersion({ ok: false, error: 'Codice evento non ancora configurato dal DJ' }, { status: 400 });
+    }
+    
+    if (providedCode !== expectedCode) {
+      return withVersion({ ok: false, error: 'Codice evento non valido' }, { status: 400 });
+    }
   }
   
   // Controlla se le note sono abilitate per questa sessione

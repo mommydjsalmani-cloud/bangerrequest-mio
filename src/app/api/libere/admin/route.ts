@@ -447,6 +447,32 @@ export async function POST(req: Request) {
       });
     }
 
+    case 'update_event_code_value': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { event_code_value } = body;
+      
+      if (typeof event_code_value !== 'string') {
+        return withVersion({ ok: false, error: 'event_code_value deve essere stringa' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ event_code_value: event_code_value.trim().toUpperCase() || null })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: `Codice evento aggiornato: ${event_code_value.trim().toUpperCase() || '(rimosso)'} ✓` 
+      });
+    }
+
     case 'delete_session': {
       if (!session_id) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });

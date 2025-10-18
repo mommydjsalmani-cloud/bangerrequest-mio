@@ -394,6 +394,33 @@ function RichiesteLibereContent() {
           </div>
         )}
 
+        {/* Promemoria/Controllo Codice Evento per utenti già autenticati */}
+        {session?.event_code_required && (!eventCode?.trim()) && (
+          <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-200 p-4 rounded-xl backdrop-blur-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold mb-1">🎫 Codice Evento Richiesto</div>
+                <div className="text-sm">Per fare richieste in questa sessione devi inserire il codice evento</div>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Codice Evento"
+                  value={eventCode}
+                  onChange={(e) => {
+                    setEventCode(e.target.value);
+                    if (session?.event_code_required && e.target.value.trim()) {
+                      sessionStorage.setItem(`libere_event_code_${token}`, e.target.value.trim());
+                    }
+                  }}
+                  className="px-3 py-2 bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent rounded-lg"
+                  maxLength={20}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
         {!submitted ? (
           <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl space-y-6">
             {/* Ricerca Migliorata */}
