@@ -78,11 +78,6 @@ function RichiesteLibereContent() {
         
         setSession(data.session);
         
-        // Pre-compila codice evento dalla sessione se non già impostato da query param
-        if (!codeParam && data.session?.current_event_code) {
-          setEventCode(data.session.current_event_code);
-        }
-        
         // Mostra onboarding solo dopo aver caricato la sessione, se il nome non è salvato
         if (!savedName) {
           setShowOnboarding(true);
@@ -327,8 +322,6 @@ function RichiesteLibereContent() {
           <p className="text-gray-300 mb-6 text-sm">
             {session?.require_event_code 
               ? "Inserisci il tuo nome e codice evento per iniziare a richiedere la tua musica preferita al DJ"
-              : session?.current_event_code
-              ? "Inserisci il tuo nome e opzionalmente il codice evento per richiedere la tua musica preferita al DJ"
               : "Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ"
             }
           </p>
@@ -345,24 +338,20 @@ function RichiesteLibereContent() {
               maxLength={50}
             />
             
-            {/* Campo Codice Evento - Visibile se il sistema è abilitato o richiesto */}
-            {session && (session.require_event_code || session.current_event_code) && (
+            {/* Campo Codice Evento - Visibile solo se richiesto obbligatoriamente */}
+            {session && session.require_event_code && (
               <div>
                 <input
                   type="text"
                   placeholder="Codice evento"
                   value={eventCode}
                   onChange={(e) => setEventCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && (!session?.require_event_code || eventCode.trim()) && completeOnboarding()}
+                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && eventCode.trim() && completeOnboarding()}
                   className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
                   maxLength={50}
                 />
                 <p className="text-xs text-gray-400 mt-1 text-center">
-                  {session?.require_event_code ? (
-                    eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'
-                  ) : (
-                    'Opzionale - Codice evento per questo DJ'
-                  )}
+                  {eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'}
                 </p>
               </div>
             )}
