@@ -7,8 +7,8 @@ export default function DJRedirect() {
   const router = useRouter();
   
   useEffect(() => {
-    // Redirect al login, che gestirà se l'utente è già autenticato
-    router.replace('/dj/login');
+    // Redirect direttamente al pannello richieste libere
+    router.replace('/dj/libere');
   }, [router]);
   
   return (

@@ -17,8 +17,8 @@ export default function DJLogin() {
       const savedPassword = sessionStorage.getItem('dj_secret');
       
       if (savedUser && savedPassword) {
-        // Utente già autenticato, reindirizza alla home
-        router.push('/dj/home');
+        // Utente già autenticato, reindirizza direttamente al pannello
+        router.push('/dj/libere');
         return;
       }
     } catch {}
@@ -58,8 +58,8 @@ export default function DJLogin() {
       sessionStorage.setItem('dj_secret', password.trim());
       sessionStorage.setItem('dj_user', username.trim());
       
-      // Reindirizza alla pagina di scelta modalità
-      router.push('/dj/home');
+      // Reindirizza direttamente al pannello richieste libere
+      router.push('/dj/libere');
       
     } catch {
       setError('Errore di rete durante il login.');
