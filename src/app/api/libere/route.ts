@@ -141,7 +141,9 @@ export async function GET(req: Request) {
       name: session.name,
       rate_limit_enabled: session.rate_limit_enabled,
       rate_limit_seconds: session.rate_limit_seconds,
-      notes_enabled: session.notes_enabled
+      notes_enabled: session.notes_enabled,
+      require_event_code: session.require_event_code,
+      current_event_code: session.current_event_code
     }
   });
 }
