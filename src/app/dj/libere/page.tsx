@@ -515,6 +515,21 @@ export default function LibereAdminPanel() {
       if (data.ok) {
         setHomepageVisible(!homepageVisible);
         setSuccess(data.message);
+        // Ricarica la lista delle sessioni per aggiornare l'indicatore Home
+        try {
+          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+            headers: {
+              'x-dj-user': username,
+              'x-dj-secret': password
+            }
+          });
+          const sessionsData = await sessionsResponse.json();
+          if (sessionsData.ok) {
+            setSessions(sessionsData.sessions || []);
+          }
+        } catch (e) {
+          console.error('Errore ricarica sessioni:', e);
+        }
       } else {
         setError(data.error || 'Errore aggiornamento homepage');
       }
