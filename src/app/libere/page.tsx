@@ -323,7 +323,10 @@ function RichiesteLibereContent() {
           <div className="text-4xl mb-4">🎵</div>
           <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
           <p className="text-gray-300 mb-6 text-sm">
-            Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ
+            {session?.require_event_code 
+              ? "Inserisci il tuo nome e codice evento per iniziare a richiedere la tua musica preferita al DJ"
+              : "Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ"
+            }
           </p>
           
           <div className="space-y-4">
@@ -332,13 +335,13 @@ function RichiesteLibereContent() {
               placeholder="Come ti chiami?"
               value={onboardingName}
               onChange={(e) => setOnboardingName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && completeOnboarding()}
+              onKeyPress={(e) => e.key === 'Enter' && (!session?.require_event_code || eventCode.trim()) && completeOnboarding()}
               className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
               autoFocus
               maxLength={50}
             />
             
-            {/* Campo Codice Evento nell'onboarding */}
+            {/* Campo Codice Evento sempre visibile quando richiesto */}
             {session?.require_event_code && (
               <div>
                 <input
@@ -346,10 +349,11 @@ function RichiesteLibereContent() {
                   placeholder="Codice evento"
                   value={eventCode}
                   onChange={(e) => setEventCode(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && completeOnboarding()}
                   className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
                   maxLength={50}
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-gray-400 mt-1 text-center">
                   {eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'}
                 </p>
               </div>
@@ -567,28 +571,16 @@ function RichiesteLibereContent() {
                   />
                 )}
                 
-                {/* Campo Codice Evento */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    🎫 Codice Evento
-                    {session?.require_event_code && <span className="text-red-400 ml-1">*</span>}
-                  </label>
-                  <input
-                    type="text"
-                    value={eventCode}
-                    onChange={(e) => setEventCode(e.target.value)}
-                    placeholder="Codice evento"
-                    className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
-                    maxLength={50}
-                    aria-label="Codice evento"
-                    aria-required={session?.require_event_code}
-                  />
-                  {session?.require_event_code && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      Codice richiesto per inviare la richiesta
-                    </p>
-                  )}
-                </div>
+                {/* Mostra codice evento se inserito */}
+                {eventCode && (
+                  <div className="mb-4 bg-blue-500/20 border border-blue-400/30 rounded-lg p-3">
+                    <div className="flex items-center gap-2 text-blue-200">
+                      <span>🎫</span>
+                      <span className="text-sm font-medium">Codice Evento:</span>
+                      <span className="font-bold">{eventCode}</span>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="flex gap-3">
                   <button 
