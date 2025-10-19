@@ -65,44 +65,28 @@ export default function DJHome() {
           </div>
         </div>
         
-        <p className="text-gray-300 mb-12">Scegli la modalità di gestione:</p>
+        <p className="text-gray-300 mb-12">Gestisci le richieste musicali:</p>
         
-        <div className="flex flex-col sm:flex-row gap-6 justify-center">
-          {/* Pannello Eventi */}
-          <Link 
-            href="/dj/eventi"
-            className="group flex flex-col items-center gap-4 bg-blue-600 hover:bg-blue-700 p-8 rounded-xl transition-all transform hover:scale-105 min-w-[280px]"
-          >
-            <div className="text-6xl mb-2">🎧</div>
-            <h2 className="text-2xl font-bold">Pannello Eventi</h2>
-            <p className="text-blue-100 text-center">
-              Gestisci eventi specifici con codici<br />
-              e richieste per singoli eventi
-            </p>
-            <div className="text-sm bg-blue-800 px-3 py-1 rounded-full">
-              Sistema Tradizionale
-            </div>
-          </Link>
-          
-          {/* Richieste Libere */}
+        <div className="flex justify-center">
+          {/* Pannello Richieste Libere */}
           <Link 
             href="/dj/libere"
-            className="group flex flex-col items-center gap-4 bg-purple-600 hover:bg-purple-700 p-8 rounded-xl transition-all transform hover:scale-105 min-w-[280px]"
+            className="group flex flex-col items-center gap-4 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 p-8 rounded-xl transition-all transform hover:scale-105 min-w-[320px] shadow-2xl"
           >
             <div className="text-6xl mb-2">🎵</div>
-            <h2 className="text-2xl font-bold">Richieste Libere</h2>
+            <h2 className="text-2xl font-bold">Pannello DJ</h2>
             <p className="text-purple-100 text-center">
-              Gestisci richieste aperte senza<br />
-              associazione a eventi specifici
+              Gestisci richieste musicali con<br />
+              codici evento integrati
             </p>
-            <div className="text-sm bg-purple-800 px-3 py-1 rounded-full">
-              Nuovo Sistema
+            <div className="text-sm bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+              Sistema Unificato
             </div>
           </Link>
         </div>
         
         <div className="mt-12 text-gray-400 text-sm">
-          <p>Entrambi i sistemi sono completamente indipendenti</p>
+          <p>Un unico sistema per tutte le richieste musicali</p>
         </div>
       </div>
     </div>

@@ -35,8 +35,8 @@ export default function DJLogin() {
     setError(null);
     
     try {
-      // Test delle credenziali con l'API eventi (come fa il pannello eventi)
-      const res = await fetch('/api/events', { 
+      // Test delle credenziali con l'API libere admin
+      const res = await fetch('/api/libere/admin?action=sessions', { 
         headers: { 
           'x-dj-secret': password.trim(), 
           'x-dj-user': username.trim() 
