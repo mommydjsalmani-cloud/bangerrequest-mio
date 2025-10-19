@@ -31,6 +31,7 @@ export default function LibereAdminPanel() {
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
+  const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
 
   // Funzione per filtrare le richieste per codice evento
   const filteredRequests = requests.filter(request => {
@@ -53,6 +54,15 @@ export default function LibereAdminPanel() {
       return () => clearTimeout(timeoutId);
     }
   }, [error]);
+
+  // Sincronizza campo input con codice evento corrente della sessione
+  useEffect(() => {
+    if (currentSession?.current_event_code) {
+      setCurrentEventCodeInput(currentSession.current_event_code);
+    } else {
+      setCurrentEventCodeInput('');
+    }
+  }, [currentSession?.current_event_code]);
   
   // Carica credenziali e verifica autenticazione
   useEffect(() => {
@@ -1217,6 +1227,53 @@ export default function LibereAdminPanel() {
                       ? <span className="text-green-700 border-green-400">🔒 Gli utenti devono inserire il codice evento per inviare richieste</span>
                       : <span className="text-blue-700 border-blue-400">📖 Il codice evento è opzionale per gli utenti</span>
                     }
+                  </div>
+
+                  {/* Campo per impostare codice evento corrente */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Codice Evento Corrente
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={currentEventCodeInput}
+                        onChange={(e) => setCurrentEventCodeInput(e.target.value.toUpperCase())}
+                        placeholder="es. EVENTO2025"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                      />
+                      <button
+                        onClick={() => {
+                          adminAction('set_current_event_code', {
+                            current_event_code: currentEventCodeInput.trim() || null
+                          });
+                        }}
+                        disabled={loading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
+                      >
+                        Salva
+                      </button>
+                      {currentSession?.current_event_code && (
+                        <button
+                          onClick={() => {
+                            setCurrentEventCodeInput('');
+                            adminAction('set_current_event_code', {
+                              current_event_code: null
+                            });
+                          }}
+                          disabled={loading}
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
+                        >
+                          Rimuovi
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {currentSession?.current_event_code 
+                        ? `Codice attuale: ${currentSession.current_event_code}` 
+                        : 'Nessun codice evento impostato'
+                      }
+                    </p>
                   </div>
                 </div>
               </div>

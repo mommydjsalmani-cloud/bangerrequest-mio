@@ -16,6 +16,7 @@ export type LibereSession = {
   homepage_visible?: boolean;
   homepage_priority?: string;
   require_event_code?: boolean;
+  current_event_code?: string;
 };
 
 export type LibereRequest = {
