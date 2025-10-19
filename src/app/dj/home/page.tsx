@@ -88,7 +88,6 @@ export default function DJHome() {
         <div className="mt-12 text-gray-400 text-sm">
           <p>Sistema completo per la gestione di richieste musicali</p>
         </div>
-        </div>
       </div>
     </div>
   );
