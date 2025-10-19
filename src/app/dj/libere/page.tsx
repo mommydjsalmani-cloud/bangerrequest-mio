@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
 export default function LibereAdminPanel() {
+  const router = useRouter();
   const [authed, setAuthed] = useState(false);
   const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
   const [username, setUsername] = useState('');
@@ -797,56 +799,53 @@ export default function LibereAdminPanel() {
   }
   
   if (!authed) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
-        <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
-          <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
-          
-          {error && (
+    // Se c'è un errore di schema, mostra l'interfaccia di configurazione
+    if (error && schemaError) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
+          <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
+            <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
+            
             <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
               {error}
-              {schemaError && (
-                <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm text-left">
-                  <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
-                  <button
-                    onClick={setupDatabase}
-                    disabled={setupLoading}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
-                  >
-                    {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
-                  </button>
-                  <button
-                    onClick={checkMigration}
-                    disabled={migrationLoading}
-                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
-                  >
-                    {migrationLoading ? '⏳ Controllo...' : '⚡ Controlla Migrazione Rate Limiting'}
-                  </button>
-                  <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
-                    <strong>Setup Manuale:</strong><br/>
-                    1. Vai su <strong>Supabase Dashboard</strong><br/>
-                    2. Clicca <strong>SQL Editor</strong><br/>
-                    3. Incolla il contenuto di <code className="bg-white/20 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
-                    4. Clicca <strong>Run</strong>
-                  </div>
+              <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm text-left">
+                <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
+                <button
+                  onClick={setupDatabase}
+                  disabled={setupLoading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                >
+                  {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
+                </button>
+                <button
+                  onClick={checkMigration}
+                  disabled={migrationLoading}
+                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                >
+                  {migrationLoading ? '⏳ Controllo...' : '⚡ Controlla Migrazione Rate Limiting'}
+                </button>
+                <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
+                  <strong>Setup Manuale:</strong><br/>
+                  1. Vai su <strong>Supabase Dashboard</strong><br/>
+                  2. Clicca <strong>SQL Editor</strong><br/>
+                  3. Incolla il contenuto di <code className="bg-white/20 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
+                  4. Clicca <strong>Run</strong>
                 </div>
-              )}
+              </div>
             </div>
-          )}
-          
-          <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm">
-            <p className="font-medium">Accesso richiesto</p>
-            <p className="text-sm mt-1">Effettua il login per accedere al pannello richieste libere</p>
-            <a 
-              href="/dj/login" 
-              className="inline-block mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
-            >
-              Vai al Login
-            </a>
           </div>
         </div>
-      </div>
-    );
+      );
+    }
+    
+    // Se non è ancora finita l'inizializzazione, non reindirizzare ancora
+    if (initializing) {
+      return null;
+    }
+    
+    // Altrimenti, reindirizza automaticamente al login (replace evita di aggiungere una history entry)
+    router.replace('/dj/login');
+    return null;
   }
   
   return (
