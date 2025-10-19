@@ -82,6 +82,11 @@ function RichiesteLibereContent() {
         }
         
         setSession(data.session);
+        
+        // Pre-compila codice evento dalla sessione se non già impostato da query param
+        if (!codeParam && data.session?.current_event_code) {
+          setEventCode(data.session.current_event_code);
+        }
       } catch {
         setError('Errore connessione');
       } finally {
@@ -168,11 +173,17 @@ function RichiesteLibereContent() {
   // Completa onboarding e salva nome
   const completeOnboarding = () => {
     if (!onboardingName.trim()) return;
+    if (session?.require_event_code && !eventCode.trim()) return;
     
     setRequesterName(onboardingName);
     sessionStorage.setItem(`libere_user_name_${token}`, onboardingName);
     setShowOnboarding(false);
-    setMessage(`🎉 Benvenuto ${onboardingName}! Ora puoi richiedere la tua musica preferita.`);
+    
+    const welcomeMsg = session?.require_event_code && eventCode 
+      ? `🎉 Benvenuto ${onboardingName}! Evento: ${eventCode}. Ora puoi richiedere la tua musica preferita.`
+      : `🎉 Benvenuto ${onboardingName}! Ora puoi richiedere la tua musica preferita.`;
+    
+    setMessage(welcomeMsg);
     setTimeout(() => setMessage(null), 4000);
   };
 
@@ -327,9 +338,26 @@ function RichiesteLibereContent() {
               maxLength={50}
             />
             
+            {/* Campo Codice Evento nell'onboarding */}
+            {session?.require_event_code && (
+              <div>
+                <input
+                  type="text"
+                  placeholder="Codice evento"
+                  value={eventCode}
+                  onChange={(e) => setEventCode(e.target.value)}
+                  className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
+                  maxLength={50}
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  {eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'}
+                </p>
+              </div>
+            )}
+            
             <button
               onClick={completeOnboarding}
-              disabled={!onboardingName.trim()}
+              disabled={!onboardingName.trim() || (session?.require_event_code && !eventCode.trim())}
               className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
             >
               🎉 Inizia a Richiedere!
