@@ -59,12 +59,7 @@ function RichiesteLibereContent() {
 
     // Carica il nome salvato dalla sessione
     const savedName = sessionStorage.getItem(`libere_user_name_${token}`);
-    if (savedName) {
-      setRequesterName(savedName);
-    } else {
-      setShowOnboarding(true);
-    }
-
+    
     // Pre-compila codice evento da query parameter
     const codeParam = searchParams?.get('code');
     if (codeParam) {
@@ -86,6 +81,13 @@ function RichiesteLibereContent() {
         // Pre-compila codice evento dalla sessione se non già impostato da query param
         if (!codeParam && data.session?.current_event_code) {
           setEventCode(data.session.current_event_code);
+        }
+        
+        // Mostra onboarding solo dopo aver caricato la sessione, se il nome non è salvato
+        if (!savedName) {
+          setShowOnboarding(true);
+        } else {
+          setRequesterName(savedName);
         }
       } catch {
         setError('Errore connessione');
@@ -343,8 +345,8 @@ function RichiesteLibereContent() {
               maxLength={50}
             />
             
-            {/* Campo Codice Evento - Sempre visibile se il sistema è abilitato */}
-            {(session?.require_event_code || session?.current_event_code) && (
+            {/* Campo Codice Evento - Visibile se il sistema è abilitato o richiesto */}
+            {session && (session.require_event_code || session.current_event_code) && (
               <div>
                 <input
                   type="text"
