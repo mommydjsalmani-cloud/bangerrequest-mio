@@ -1240,7 +1240,7 @@ export default function LibereAdminPanel() {
                         value={currentEventCodeInput}
                         onChange={(e) => setCurrentEventCodeInput(e.target.value.toUpperCase())}
                         placeholder="es. EVENTO2025"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-black"
                       />
                       <button
                         onClick={() => {
