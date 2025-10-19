@@ -426,23 +426,15 @@ export async function POST(req: Request) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
       }
       
-      const { event_code_required, event_code } = body;
+      const { require_event_code } = body;
       
-      if (typeof event_code_required !== 'boolean') {
-        return withVersion({ ok: false, error: 'event_code_required deve essere boolean' }, { status: 400 });
-      }
-      
-      // Prepara l'update object
-      const updateData: { event_code_required: boolean; event_code?: string | null } = { event_code_required };
-      
-      // Se viene fornito il codice evento, aggiungilo all'update
-      if (event_code !== undefined) {
-        updateData.event_code = event_code?.trim() || null;
+      if (typeof require_event_code !== 'boolean') {
+        return withVersion({ ok: false, error: 'require_event_code deve essere boolean' }, { status: 400 });
       }
       
       const { error } = await supabase
         .from('sessioni_libere')
-        .update(updateData)
+        .update({ require_event_code })
         .eq('id', session_id);
       
       if (error) {
@@ -451,7 +443,7 @@ export async function POST(req: Request) {
       
       return withVersion({ 
         ok: true, 
-        message: `Codice evento ${event_code_required ? 'obbligatorio' : 'non richiesto'} ✓` 
+        message: `Codice evento ${require_event_code ? 'richiesto' : 'opzionale'} ✓` 
       });
     }
 

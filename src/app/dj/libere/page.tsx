@@ -30,6 +30,14 @@ export default function LibereAdminPanel() {
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
+  const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
+
+  // Funzione per filtrare le richieste per codice evento
+  const filteredRequests = requests.filter(request => {
+    if (!eventCodeFilter.trim()) return true;
+    return request.event_code_upper?.includes(eventCodeFilter.toUpperCase()) || 
+           request.event_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
+  });
   
   // Auto-clear messaggi con debounce
   useEffect(() => {
@@ -661,7 +669,7 @@ export default function LibereAdminPanel() {
     }
     
     // Header CSV
-    const headers = ['Titolo', 'Artista', 'Album', 'Data Richiesta', 'Stato', 'Richiedente', 'Note', 'Fonte', 'Durata'];
+    const headers = ['Titolo', 'Artista', 'Album', 'Data Richiesta', 'Stato', 'Richiedente', 'Note', 'Fonte', 'Durata', 'Codice Evento'];
     
     // Converti richieste in righe CSV
     const csvRows = requests.map(request => [
@@ -673,7 +681,8 @@ export default function LibereAdminPanel() {
       `"${(request.requester_name || '').replace(/"/g, '""')}"`,
       `"${(request.note || '').replace(/"/g, '""')}"`,
       `"${request.source === 'spotify' ? 'Spotify' : 'Manuale'}"`,
-      `"${request.duration_ms ? formatDuration(request.duration_ms) : ''}"`
+      `"${request.duration_ms ? formatDuration(request.duration_ms) : ''}"`,
+      `"${(request.event_code || '').replace(/"/g, '""')}"`
     ]);
     
     // Combina header e righe
@@ -1191,48 +1200,22 @@ export default function LibereAdminPanel() {
                     <label className="flex items-center gap-2 text-gray-800 font-medium">
                       <input
                         type="checkbox"
-                        checked={currentSession?.event_code_required === true}
+                        checked={currentSession?.require_event_code === true}
                         onChange={(e) => {
                           adminAction('update_event_code_control', {
-                            event_code_required: e.target.checked
+                            require_event_code: e.target.checked
                           });
                         }}
-                        className="w-5 h-5 rounded text-purple-600 focus:ring-purple-500 focus:ring-2"
+                        className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500 focus:ring-2"
                       />
-                      Richiedi codice evento obbligatorio
+                      Richiedi codice evento
                     </label>
                   </div>
                   
-                  {currentSession?.event_code_required && (
-                    <div className="pt-2 border-t border-gray-200">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Codice Evento Valido
-                      </label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={currentSession?.event_code || ''}
-                          onChange={(e) => {
-                            adminAction('update_event_code_control', {
-                              event_code_required: true,
-                              event_code: e.target.value
-                            });
-                          }}
-                          placeholder="Inserisci il codice evento..."
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          maxLength={20}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Gli utenti dovranno inserire esattamente questo codice
-                      </p>
-                    </div>
-                  )}
-                  
                   <div className="text-sm font-medium p-3 rounded-lg border-l-4 bg-white">
-                    {currentSession?.event_code_required === true
-                      ? <span className="text-purple-700 border-purple-400">🔒 Gli utenti devono inserire un codice evento per fare richieste</span>
-                      : <span className="text-gray-700 border-gray-400">🔓 Richieste libere senza codice evento</span>
+                    {currentSession?.require_event_code === true 
+                      ? <span className="text-green-700 border-green-400">🔒 Gli utenti devono inserire il codice evento per inviare richieste</span>
+                      : <span className="text-blue-700 border-blue-400">📖 Il codice evento è opzionale per gli utenti</span>
                     }
                   </div>
                 </div>
@@ -1312,7 +1295,7 @@ export default function LibereAdminPanel() {
             {/* Requests List */}
             <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
               <h2 className="text-xl font-bold mb-4 text-gray-800">
-                📝 {showArchive ? 'Archivio Richieste' : 'Richieste'} ({requests.length})
+                📝 {showArchive ? 'Archivio Richieste' : 'Richieste'} ({filteredRequests.length}{requests.length !== filteredRequests.length ? ` di ${requests.length}` : ''})
                 {showArchive && (
                   <span className="text-sm font-normal text-gray-600 ml-2">
                     (Visualizzazione sola lettura)
@@ -1320,16 +1303,42 @@ export default function LibereAdminPanel() {
                 )}
               </h2>
               
-              {requests.length === 0 ? (
+              {/* Filtro Codice Evento */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  🎫 Filtra per Codice Evento
+                </label>
+                <input
+                  type="text"
+                  value={eventCodeFilter}
+                  onChange={(e) => setEventCodeFilter(e.target.value)}
+                  placeholder="Inserisci codice evento..."
+                  className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  maxLength={50}
+                />
+                {eventCodeFilter && (
+                  <button
+                    onClick={() => setEventCodeFilter('')}
+                    className="ml-2 px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                  >
+                    Cancella
+                  </button>
+                )}
+              </div>
+              
+              {filteredRequests.length === 0 ? (
                 <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="text-4xl mb-2">🎵</div>
                   <div className="font-medium">
-                    {showArchive ? 'Nessuna richiesta archiviata' : 'Nessuna richiesta presente'}
+                    {eventCodeFilter ? 
+                      `Nessuna richiesta trovata per "${eventCodeFilter}"` : 
+                      (showArchive ? 'Nessuna richiesta archiviata' : 'Nessuna richiesta presente')
+                    }
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {requests.map((request) => (
+                  {filteredRequests.map((request) => (
                     <div 
                       key={request.id} 
                       className={`border rounded-lg p-4 transition-colors ${
@@ -1376,6 +1385,14 @@ export default function LibereAdminPanel() {
                           )}
                           <div><strong>🔍 Fonte:</strong> {request.source === 'spotify' ? 'Spotify' : 'Manuale'}</div>
                           <div><strong>🌐 IP:</strong> {request.client_ip}</div>
+                          {request.event_code && (
+                            <div className="col-span-1 sm:col-span-2">
+                              <strong>🎫 Codice Evento:</strong> 
+                              <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                {request.event_code}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       

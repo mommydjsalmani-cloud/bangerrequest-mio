@@ -189,16 +189,10 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Titolo brano obbligatorio' }, { status: 400 });
   }
   
-  // Verifica se il codice evento è richiesto per questa sessione
-  if (session.event_code_required) {
-    if (!event_code?.trim()) {
-      return withVersion({ ok: false, error: 'Codice evento richiesto per questa sessione' }, { status: 400 });
-    }
-    
-    // CRUCIALE: Verifica che il codice inserito corrisponda a quello impostato dal DJ
-    if (event_code.trim() !== session.event_code?.trim()) {
-      return withVersion({ ok: false, error: 'Codice evento non valido' }, { status: 400 });
-    }
+  // Validazione codice evento se richiesto
+  const eventCodeTrimmed = event_code?.trim() || null;
+  if (session.require_event_code && !eventCodeTrimmed) {
+    return withVersion({ ok: false, error: 'Codice evento mancante' }, { status: 400 });
   }
   
   // Controlla se le note sono abilitate per questa sessione
@@ -235,12 +229,13 @@ export async function POST(req: Request) {
     duration_ms: duration_ms || null,
     requester_name: requester_name?.trim() || null,
     note: finalNote, // Usa la nota filtrata in base alle impostazioni sessione
-    user_event_code: session.event_code_required ? (event_code?.trim() || null) : null,
     client_ip: clientIP,
     user_agent: userAgent,
     source: source,
     status: 'new',
-    archived: false
+    archived: false,
+    event_code: eventCodeTrimmed,
+    event_code_upper: eventCodeTrimmed?.toUpperCase() || null
   };
   
   const { data: newRequest, error } = await supabase
