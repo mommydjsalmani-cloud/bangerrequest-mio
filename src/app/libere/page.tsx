@@ -50,6 +50,47 @@ function RichiesteLibereContent() {
   
   const submitted = !!lastRequestId;
 
+  // Funzione per validare il codice evento in tempo reale
+  const getEventCodeStatus = () => {
+    if (!session?.require_event_code) return { isValid: true, message: '', type: 'success' };
+    
+    const trimmedCode = eventCode.trim();
+    
+    if (!trimmedCode) {
+      return { 
+        isValid: false, 
+        message: 'Inserisci il codice evento per continuare', 
+        type: 'warning' 
+      };
+    }
+    
+    if (session.current_event_code) {
+      const sessionCode = (session.current_event_code || '').toString().trim().toUpperCase();
+      const providedCode = trimmedCode.toUpperCase();
+      
+      if (sessionCode && providedCode === sessionCode) {
+        return { 
+          isValid: true, 
+          message: 'Codice evento corretto!', 
+          type: 'success' 
+        };
+      } else if (sessionCode) {
+        return { 
+          isValid: false, 
+          message: 'Codice evento non valido', 
+          type: 'error' 
+        };
+      }
+    }
+    
+    // Se non c'è current_event_code ma è richiesto, accetta qualsiasi codice
+    return { 
+      isValid: true, 
+      message: 'Codice evento inserito', 
+      type: 'info' 
+    };
+  };
+
   useEffect(() => {
     if (!token) {
       setError('Token sessione mancante nell\'URL');
@@ -342,7 +383,7 @@ function RichiesteLibereContent() {
               placeholder="Come ti chiami?"
               value={onboardingName}
               onChange={(e) => setOnboardingName(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && (!session?.require_event_code || eventCode.trim()) && completeOnboarding()}
+              onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && (!session?.require_event_code || getEventCodeStatus().isValid) && completeOnboarding()}
               className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
               autoFocus
               maxLength={50}
@@ -360,21 +401,27 @@ function RichiesteLibereContent() {
                     placeholder="Inserisci il codice evento..."
                     value={eventCode}
                     onChange={(e) => setEventCode(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && eventCode.trim() && completeOnboarding()}
+                    onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && getEventCodeStatus().isValid && completeOnboarding()}
                     className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                     maxLength={50}
                   />
                 </div>
                 <div className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all duration-300 ${
-                  eventCode.trim() 
+                  getEventCodeStatus().type === 'success' 
                     ? 'bg-green-500/20 border border-green-400/30 text-green-200' 
+                    : getEventCodeStatus().type === 'error'
+                    ? 'bg-red-500/20 border border-red-400/30 text-red-200'
+                    : getEventCodeStatus().type === 'info'
+                    ? 'bg-blue-500/20 border border-blue-400/30 text-blue-200'
                     : 'bg-amber-500/20 border border-amber-400/30 text-amber-200'
                 }`}>
                   <span className="text-lg">
-                    {eventCode.trim() ? '✅' : '⚠️'}
+                    {getEventCodeStatus().type === 'success' ? '✅' : 
+                     getEventCodeStatus().type === 'error' ? '❌' :
+                     getEventCodeStatus().type === 'info' ? 'ℹ️' : '⚠️'}
                   </span>
                   <span className="text-sm font-medium">
-                    {eventCode.trim() ? 'Codice evento valido' : 'Inserisci il codice evento per continuare'}
+                    {getEventCodeStatus().message}
                   </span>
                 </div>
               </div>
@@ -382,7 +429,7 @@ function RichiesteLibereContent() {
             
             <button
               onClick={completeOnboarding}
-              disabled={!onboardingName.trim() || (session?.require_event_code && !eventCode.trim())}
+              disabled={!onboardingName.trim() || (session?.require_event_code && !getEventCodeStatus().isValid)}
               className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
             >
               🎉 Inizia a Richiedere!
