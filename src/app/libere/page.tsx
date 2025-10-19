@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
 import Image from 'next/image';
@@ -41,9 +41,6 @@ function RichiesteLibereContent() {
   const [note, setNote] = useState('');
   const [eventCode, setEventCode] = useState('');
   
-  // Ref per l'input del codice evento
-  const eventCodeInputRef = useRef<HTMLInputElement>(null);
-  
   // Spotify search
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SpotifyTrack[]>([]);
@@ -54,8 +51,7 @@ function RichiesteLibereContent() {
   const submitted = !!lastRequestId;
 
   // Funzione per validare il codice evento in tempo reale
-  // Funzione per validare il codice evento in tempo reale (ottimizzata)
-  const eventCodeStatus = useMemo(() => {
+  const getEventCodeStatus = () => {
     if (!session?.require_event_code) return { isValid: true, message: '', type: 'success' };
     
     const trimmedCode = eventCode.trim();
@@ -93,50 +89,7 @@ function RichiesteLibereContent() {
       message: 'Codice evento inserito', 
       type: 'info' 
     };
-  }, [session?.require_event_code, session?.current_event_code, eventCode]);
-
-  const getEventCodeStatus = () => eventCodeStatus;
-
-  // Handler per input codice evento con vanilla JS
-  const setupEventCodeInput = useCallback((inputElement: HTMLInputElement | null) => {
-    if (!inputElement) return;
-    
-    // Handler vanilla JS puro
-    const handleVanillaInput = (e: Event) => {
-      const target = e.target as HTMLInputElement;
-      const value = target.value.toUpperCase();
-      target.value = value; // Forza il valore maiuscolo nel DOM
-      
-      // Aggiorna React state con delay per evitare conflitti
-      requestAnimationFrame(() => {
-        setEventCode(value);
-      });
-    };
-    
-    // Aggiungi event listeners vanilla
-    inputElement.addEventListener('input', handleVanillaInput);
-    inputElement.addEventListener('keyup', handleVanillaInput);
-    
-    // Cleanup
-    return () => {
-      inputElement.removeEventListener('input', handleVanillaInput);
-      inputElement.removeEventListener('keyup', handleVanillaInput);
-    };
-  }, []);
-
-  // Ref callback per setup automatico
-  const eventCodeRefCallback = useCallback((node: HTMLInputElement | null) => {
-    if (node) {
-      setupEventCodeInput(node);
-      eventCodeInputRef.current = node;
-    }
-  }, [setupEventCodeInput]);
-
-  // Handler React standard per compatibilità
-  const handleEventCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase();
-    setEventCode(value);
-  }, []);
+  };
 
   useEffect(() => {
     if (!token) {
@@ -397,90 +350,6 @@ function RichiesteLibereContent() {
     );
   }
 
-  // Controllo re-onboarding: se la sessione ora richiede codice evento ma l'utente non l'ha inserito
-  const needsEventCodeReOnboarding = session?.require_event_code && !eventCode.trim() && requesterName.trim() && !showOnboarding;
-  
-  if (needsEventCodeReOnboarding) {
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-center max-w-md w-full border border-white/20 shadow-xl">
-          <div className="mb-4 flex justify-center">
-            <Image 
-              src="/Simbolo_Bianco.png" 
-              alt="Banger Request Logo" 
-              width={80} 
-              height={80} 
-              className="w-auto h-16 object-contain"
-            />
-          </div>
-          <div className="text-5xl mb-6">🎫</div>
-          <h1 className="text-2xl font-bold mb-4 text-yellow-400">
-            Codice Evento Richiesto!
-          </h1>
-          <div className="bg-yellow-500/20 backdrop-blur rounded-lg p-4 mb-6 border border-yellow-400/30">
-            <p className="text-yellow-200 text-base leading-relaxed">
-              🚨 Il DJ ha attivato il controllo codice evento. Devi inserire il codice per continuare a richiedere musica.
-            </p>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="bg-white/10 rounded-lg p-3 mb-4">
-              <p className="text-gray-300 text-sm">Ciao <strong>{requesterName}</strong>!</p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="text-center">
-                <label className="block text-sm font-medium text-white mb-2 flex items-center justify-center gap-2">
-                  🎫 <span>Codice Evento</span>
-                </label>
-                <input
-                  ref={eventCodeRefCallback}
-                  type="text"
-                  placeholder="Inserisci il codice evento..."
-                  onKeyPress={(e) => e.key === 'Enter' && getEventCodeStatus().isValid && setShowOnboarding(false)}
-                  className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
-                  maxLength={50}
-                  autoFocus
-                />
-              </div>
-              <div className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all duration-300 ${
-                getEventCodeStatus().type === 'success' 
-                  ? 'bg-green-500/20 border border-green-400/30 text-green-200' 
-                  : getEventCodeStatus().type === 'error'
-                  ? 'bg-red-500/20 border border-red-400/30 text-red-200'
-                  : getEventCodeStatus().type === 'info'
-                  ? 'bg-blue-500/20 border border-blue-400/30 text-blue-200'
-                  : 'bg-amber-500/20 border border-amber-400/30 text-amber-200'
-              }`}>
-                <span className="text-lg">
-                  {getEventCodeStatus().type === 'success' ? '✅' : 
-                   getEventCodeStatus().type === 'error' ? '❌' :
-                   getEventCodeStatus().type === 'info' ? 'ℹ️' : '⚠️'}
-                </span>
-                <span className="text-sm font-medium">
-                  {getEventCodeStatus().message}
-                </span>
-              </div>
-            </div>
-            
-            <button
-              onClick={() => {
-                if (getEventCodeStatus().isValid) {
-                  setMessage(`🎉 Codice evento inserito! Ora puoi richiedere la tua musica preferita.`);
-                  setTimeout(() => setMessage(null), 4000);
-                }
-              }}
-              disabled={!getEventCodeStatus().isValid}
-              className="w-full bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
-            >
-              🎫 Continua con il Codice
-            </button>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   // Schermata di onboarding
   if (showOnboarding) {
     return (
@@ -531,7 +400,7 @@ function RichiesteLibereContent() {
                     type="text"
                     placeholder="Inserisci il codice evento..."
                     value={eventCode}
-                    onChange={handleEventCodeChange}
+                    onChange={(e) => setEventCode(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && getEventCodeStatus().isValid && completeOnboarding()}
                     className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                     maxLength={50}
@@ -794,13 +663,25 @@ function RichiesteLibereContent() {
                 {session?.require_event_code && (
                   <div className="mb-4">
                     {eventCode ? (
-                      // Mostra codice evento se già inserito
-                      <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-3">
-                        <div className="flex items-center gap-2 text-blue-200">
-                          <span>🎫</span>
-                          <span className="text-sm font-medium">Codice Evento:</span>
-                          <span className="font-bold">{eventCode}</span>
-                        </div>
+                      // Mostra codice evento con possibilità di modifica diretta
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          🎫 Codice Evento
+                          <span className="text-red-400 ml-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={eventCode}
+                          onChange={(e) => setEventCode(e.target.value)}
+                          placeholder="Codice evento"
+                          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                          maxLength={50}
+                          aria-label="Codice evento"
+                          aria-required={true}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Puoi modificare il codice evento in qualsiasi momento
+                        </p>
                       </div>
                     ) : (
                       // Campo input se non ancora inserito
@@ -812,7 +693,7 @@ function RichiesteLibereContent() {
                         <input
                           type="text"
                           value={eventCode}
-                          onChange={handleEventCodeChange}
+                          onChange={(e) => setEventCode(e.target.value)}
                           placeholder="Codice evento"
                           className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
                           maxLength={50}
