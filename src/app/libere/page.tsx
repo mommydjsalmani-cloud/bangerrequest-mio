@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
 import Image from 'next/image';
@@ -51,7 +51,8 @@ function RichiesteLibereContent() {
   const submitted = !!lastRequestId;
 
   // Funzione per validare il codice evento in tempo reale
-  const getEventCodeStatus = () => {
+  // Funzione per validare il codice evento in tempo reale (ottimizzata)
+  const eventCodeStatus = useMemo(() => {
     if (!session?.require_event_code) return { isValid: true, message: '', type: 'success' };
     
     const trimmedCode = eventCode.trim();
@@ -89,7 +90,9 @@ function RichiesteLibereContent() {
       message: 'Codice evento inserito', 
       type: 'info' 
     };
-  };
+  }, [session?.require_event_code, session?.current_event_code, eventCode]);
+
+  const getEventCodeStatus = () => eventCodeStatus;
 
   useEffect(() => {
     if (!token) {
@@ -390,7 +393,10 @@ function RichiesteLibereContent() {
                   type="text"
                   placeholder="Inserisci il codice evento..."
                   value={eventCode}
-                  onChange={(e) => setEventCode(e.target.value)}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    setEventCode(e.target.value.toUpperCase());
+                  }}
                   onKeyPress={(e) => e.key === 'Enter' && getEventCodeStatus().isValid && setShowOnboarding(false)}
                   className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                   maxLength={50}
