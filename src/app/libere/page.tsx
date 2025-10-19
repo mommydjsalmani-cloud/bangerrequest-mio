@@ -172,6 +172,16 @@ function RichiesteLibereContent() {
     if (!onboardingName.trim()) return;
     if (session?.require_event_code && !eventCode.trim()) return;
     
+    // Validazione codice evento se richiesto dalla sessione
+    if (session?.require_event_code && session.current_event_code) {
+      const sessionCode = (session.current_event_code || '').toString().trim().toUpperCase();
+      const provided = (eventCode || '').toString().trim().toUpperCase();
+      if (sessionCode && provided !== sessionCode) {
+        setError('Codice evento non valido. Controlla e riprova.');
+        return;
+      }
+    }
+    
     setRequesterName(onboardingName);
     sessionStorage.setItem(`libere_user_name_${token}`, onboardingName);
     setShowOnboarding(false);
@@ -205,20 +215,7 @@ function RichiesteLibereContent() {
       return;
     }
 
-    // Validazione codice evento se richiesto
-    if (session?.require_event_code && !eventCode.trim()) {
-      setError('Inserisci il codice evento');
-      return;
-    }
-    // Se la sessione definisce un codice evento corrente, verifica il match (case-insensitive)
-    if (session?.require_event_code && session.current_event_code) {
-      const sessionCode = (session.current_event_code || '').toString().trim().toUpperCase();
-      const provided = (eventCode || '').toString().trim().toUpperCase();
-      if (sessionCode && provided !== sessionCode) {
-        setError('Codice evento non valido. Controlla e riprova.');
-        return;
-      }
-    }
+
     
     // Rate limiting check (solo se abilitato dalla sessione)
     if (session?.rate_limit_enabled !== false) {
