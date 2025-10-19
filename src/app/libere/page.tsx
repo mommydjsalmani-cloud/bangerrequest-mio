@@ -325,6 +325,8 @@ function RichiesteLibereContent() {
           <p className="text-gray-300 mb-6 text-sm">
             {session?.require_event_code 
               ? "Inserisci il tuo nome e codice evento per iniziare a richiedere la tua musica preferita al DJ"
+              : session?.current_event_code
+              ? "Inserisci il tuo nome e opzionalmente il codice evento per richiedere la tua musica preferita al DJ"
               : "Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ"
             }
           </p>
@@ -341,20 +343,24 @@ function RichiesteLibereContent() {
               maxLength={50}
             />
             
-            {/* Campo Codice Evento sempre visibile quando richiesto */}
-            {session?.require_event_code && (
+            {/* Campo Codice Evento - Sempre visibile se il sistema è abilitato */}
+            {(session?.require_event_code || session?.current_event_code) && (
               <div>
                 <input
                   type="text"
                   placeholder="Codice evento"
                   value={eventCode}
                   onChange={(e) => setEventCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && completeOnboarding()}
+                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && (!session?.require_event_code || eventCode.trim()) && completeOnboarding()}
                   className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
                   maxLength={50}
                 />
                 <p className="text-xs text-gray-400 mt-1 text-center">
-                  {eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'}
+                  {session?.require_event_code ? (
+                    eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'
+                  ) : (
+                    'Opzionale - Codice evento per questo DJ'
+                  )}
                 </p>
               </div>
             )}
@@ -571,8 +577,45 @@ function RichiesteLibereContent() {
                   />
                 )}
                 
-                {/* Mostra codice evento se inserito */}
-                {eventCode && (
+                {/* Campo Codice Evento - Input se non inserito, Display se già inserito */}
+                {session?.require_event_code && (
+                  <div className="mb-4">
+                    {eventCode ? (
+                      // Mostra codice evento se già inserito
+                      <div className="bg-blue-500/20 border border-blue-400/30 rounded-lg p-3">
+                        <div className="flex items-center gap-2 text-blue-200">
+                          <span>🎫</span>
+                          <span className="text-sm font-medium">Codice Evento:</span>
+                          <span className="font-bold">{eventCode}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      // Campo input se non ancora inserito
+                      <div>
+                        <label className="block text-sm font-medium text-gray-300 mb-2">
+                          🎫 Codice Evento
+                          <span className="text-red-400 ml-1">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={eventCode}
+                          onChange={(e) => setEventCode(e.target.value)}
+                          placeholder="Codice evento"
+                          className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
+                          maxLength={50}
+                          aria-label="Codice evento"
+                          aria-required={true}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Codice richiesto per inviare la richiesta
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* Mostra codice evento anche se opzionale e inserito */}
+                {!session?.require_event_code && eventCode && (
                   <div className="mb-4 bg-blue-500/20 border border-blue-400/30 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-blue-200">
                       <span>🎫</span>
