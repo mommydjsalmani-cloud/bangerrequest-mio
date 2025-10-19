@@ -317,14 +317,18 @@ function RichiesteLibereContent() {
               className="w-auto h-16 object-contain"
             />
           </div>
-          <div className="text-4xl mb-4">🎵</div>
-          <h1 className="text-2xl font-bold mb-2">Benvenuto!</h1>
-          <p className="text-gray-300 mb-6 text-sm">
-            {session?.require_event_code 
-              ? "Inserisci il tuo nome e codice evento per iniziare a richiedere la tua musica preferita al DJ"
-              : "Inserisci il tuo nome per iniziare a richiedere la tua musica preferita al DJ"
-            }
-          </p>
+          <div className="text-5xl mb-6">🎵</div>
+          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+            Benvenuto nella Musica!
+          </h1>
+          <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-6 border border-white/20">
+            <p className="text-gray-200 text-base leading-relaxed">
+              {session?.require_event_code 
+                ? "✨ Inserisci il tuo nome e il codice evento per iniziare il viaggio musicale. Il DJ sta aspettando le tue richieste!"
+                : "✨ Inserisci il tuo nome per iniziare il viaggio musicale. Il DJ sta aspettando le tue richieste!"
+              }
+            </p>
+          </div>
           
           <div className="space-y-4">
             <input
@@ -338,21 +342,35 @@ function RichiesteLibereContent() {
               maxLength={50}
             />
             
-            {/* Campo Codice Evento - Visibile solo se richiesto obbligatoriamente */}
+            {/* Campo Codice Evento - Design migliorato */}
             {session && session.require_event_code && (
-              <div>
-                <input
-                  type="text"
-                  placeholder="Codice evento"
-                  value={eventCode}
-                  onChange={(e) => setEventCode(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && eventCode.trim() && completeOnboarding()}
-                  className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
-                  maxLength={50}
-                />
-                <p className="text-xs text-gray-400 mt-1 text-center">
-                  {eventCode ? '✅ Codice evento inserito' : '⚠️ Codice evento richiesto'}
-                </p>
+              <div className="space-y-3">
+                <div className="text-center">
+                  <label className="block text-sm font-medium text-white mb-2 flex items-center justify-center gap-2">
+                    🎫 <span>Codice Evento</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Inserisci il codice evento..."
+                    value={eventCode}
+                    onChange={(e) => setEventCode(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && eventCode.trim() && completeOnboarding()}
+                    className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
+                    maxLength={50}
+                  />
+                </div>
+                <div className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all duration-300 ${
+                  eventCode.trim() 
+                    ? 'bg-green-500/20 border border-green-400/30 text-green-200' 
+                    : 'bg-amber-500/20 border border-amber-400/30 text-amber-200'
+                }`}>
+                  <span className="text-lg">
+                    {eventCode.trim() ? '✅' : '⚠️'}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {eventCode.trim() ? 'Codice evento valido' : 'Inserisci il codice evento per continuare'}
+                  </span>
+                </div>
               </div>
             )}
             
@@ -365,8 +383,11 @@ function RichiesteLibereContent() {
             </button>
           </div>
           
-          <div className="mt-6 text-xs text-gray-400">
-            Il tuo nome verrà salvato per questa sessione
+          <div className="mt-8 bg-white/5 backdrop-blur rounded-lg p-4 border border-white/10">
+            <div className="flex items-center justify-center gap-2 text-gray-300 text-sm">
+              <span className="text-blue-400">💾</span>
+              <span>Il tuo nome verrà salvato per questa sessione</span>
+            </div>
           </div>
         </div>
       </main>
@@ -409,16 +430,19 @@ function RichiesteLibereContent() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   type="text"
-                  placeholder="Inserisci titolo, artista o album..."
-                  className="w-full p-4 pl-12 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-base"
+                  placeholder="🎵 Cerca la tua canzone preferita..."
+                  className="w-full p-4 pl-12 pr-14 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400/50 text-base transition-all duration-300 shadow-lg"
                   autoFocus
                 />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400 text-xl">
                   🎵
                 </div>
                 {searching && (
                   <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-                    <div className="w-5 h-5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-pink-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-pink-400 text-sm font-medium">Cerco...</span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -531,10 +555,24 @@ function RichiesteLibereContent() {
             )}
 
             {query && !searching && results.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-4xl mb-2">🤔</div>
-                <p className="text-gray-300">Nessun risultato trovato per &quot;{query}&quot;</p>
-                <p className="text-gray-400 text-sm mt-1">Prova con termini diversi</p>
+              <div className="text-center py-12">
+                <div className="text-6xl mb-4">🔍</div>
+                <div className="bg-white/10 backdrop-blur rounded-xl p-6 border border-white/20 max-w-md mx-auto">
+                  <h3 className="text-xl font-bold text-white mb-3">Nessun risultato trovato</h3>
+                  <div className="bg-purple-500/20 rounded-lg p-3 mb-4">
+                    <p className="text-purple-200 font-medium">"{query}"</p>
+                  </div>
+                  <div className="space-y-2 text-gray-300">
+                    <p className="flex items-center gap-2">
+                      <span>💡</span>
+                      <span>Prova con termini diversi</span>
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span>🎵</span>
+                      <span>Cerca per artista, titolo o album</span>
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -661,24 +699,34 @@ function RichiesteLibereContent() {
               </div>
             )}
             
-            <div className="space-y-2">
-              <div className="text-sm text-gray-300">
-                Stato attuale: 
-                <span className={`font-bold ml-2 ${
-                  lastRequestStatus === 'accepted' ? 'text-green-400' :
-                  lastRequestStatus === 'rejected' ? 'text-red-400' :
-                  lastRequestStatus === 'cancelled' ? 'text-yellow-400' :
-                  'text-blue-400'
-                }`}>
-                  {lastRequestStatus === 'accepted' ? '✅ Accettata' :
-                   lastRequestStatus === 'rejected' ? '❌ Rifiutata' :
-                   lastRequestStatus === 'cancelled' ? '⚠️ Cancellata' :
-                   '⏳ In attesa'}
-                </span>
+            <div className="space-y-4">
+              <div className={`rounded-lg p-4 border-2 transition-all duration-300 ${
+                lastRequestStatus === 'accepted' ? 'bg-green-500/20 border-green-400/50' :
+                lastRequestStatus === 'rejected' ? 'bg-red-500/20 border-red-400/50' :
+                lastRequestStatus === 'cancelled' ? 'bg-yellow-500/20 border-yellow-400/50' :
+                'bg-blue-500/20 border-blue-400/50'
+              }`}>
+                <div className="flex items-center justify-center gap-3">
+                  <span className="text-lg font-medium text-white">Stato richiesta:</span>
+                  <span className={`text-xl font-bold flex items-center gap-2 ${
+                    lastRequestStatus === 'accepted' ? 'text-green-300' :
+                    lastRequestStatus === 'rejected' ? 'text-red-300' :
+                    lastRequestStatus === 'cancelled' ? 'text-yellow-300' :
+                    'text-blue-300'
+                  }`}>
+                    {lastRequestStatus === 'accepted' ? '✅ Accettata' :
+                     lastRequestStatus === 'rejected' ? '❌ Rifiutata' :
+                     lastRequestStatus === 'cancelled' ? '⚠️ Cancellata' :
+                     '⏳ In attesa'}
+                  </span>
+                </div>
               </div>
-              <p className="text-xs text-gray-400">
-                La pagina si aggiorna automaticamente quando il DJ decide
-              </p>
+              <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+                <div className="flex items-center justify-center gap-2 text-gray-300">
+                  <span>🔄</span>
+                  <span className="text-sm">La pagina si aggiorna automaticamente quando il DJ decide</span>
+                </div>
+              </div>
             </div>
             
             {/* Pulsante Instagram */}
