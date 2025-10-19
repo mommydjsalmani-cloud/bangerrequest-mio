@@ -97,7 +97,7 @@ function RichiesteLibereContent() {
     };
     
     loadSession();
-  }, [token]);
+  }, [token, searchParams]);
 
   // Carica ultima richiesta e stato
   useEffect(() => {
