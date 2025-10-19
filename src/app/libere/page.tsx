@@ -210,6 +210,15 @@ function RichiesteLibereContent() {
       setError('Inserisci il codice evento');
       return;
     }
+    // Se la sessione definisce un codice evento corrente, verifica il match (case-insensitive)
+    if (session?.require_event_code && session.current_event_code) {
+      const sessionCode = (session.current_event_code || '').toString().trim().toUpperCase();
+      const provided = (eventCode || '').toString().trim().toUpperCase();
+      if (sessionCode && provided !== sessionCode) {
+        setError('Codice evento non valido. Controlla e riprova.');
+        return;
+      }
+    }
     
     // Rate limiting check (solo se abilitato dalla sessione)
     if (session?.rate_limit_enabled !== false) {

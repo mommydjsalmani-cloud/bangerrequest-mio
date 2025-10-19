@@ -196,6 +196,14 @@ export async function POST(req: Request) {
   if (session.require_event_code && !eventCodeTrimmed) {
     return withVersion({ ok: false, error: 'Codice evento mancante' }, { status: 400 });
   }
+  // Se la sessione ha un codice evento corrente configurato, richiedi che corrisponda
+  if (session.require_event_code && session.current_event_code) {
+    const sessionCode = (session.current_event_code || '').toString().trim().toUpperCase();
+    const providedCode = (eventCodeTrimmed || '').toString().trim().toUpperCase();
+    if (sessionCode && providedCode !== sessionCode) {
+      return withVersion({ ok: false, error: 'Codice evento non valido' }, { status: 403 });
+    }
+  }
   
   // Controlla se le note sono abilitate per questa sessione
   const finalNote = session.notes_enabled ? (note?.trim() || null) : null;
