@@ -87,13 +87,6 @@ export default function Home() {
           )}
 
           <Link 
-            href="/evento"
-            className="block w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-6 px-8 rounded-xl text-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
-            🎉 Entra in un Evento
-          </Link>
-          
-          <Link 
             href="/dj"
             className="block w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
           >
