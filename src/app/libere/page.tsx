@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useMemo, useCallback } from 'react';
+import { useEffect, useState, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
 import Image from 'next/image';
@@ -40,6 +40,9 @@ function RichiesteLibereContent() {
   const [requesterName, setRequesterName] = useState('');
   const [note, setNote] = useState('');
   const [eventCode, setEventCode] = useState('');
+  
+  // Ref per l'input del codice evento
+  const eventCodeInputRef = useRef<HTMLInputElement>(null);
   
   // Spotify search
   const [query, setQuery] = useState('');
@@ -94,10 +97,23 @@ function RichiesteLibereContent() {
 
   const getEventCodeStatus = () => eventCodeStatus;
 
-  // Handler memoizzato per l'input del codice evento
+  // Handler isolato per l'input del codice evento (bypass React)
   const handleEventCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase();
     setEventCode(value);
+    // Forza l'aggiornamento del valore DOM per evitare conflitti
+    if (e.target.value !== value) {
+      e.target.value = value;
+    }
+  }, []);
+
+  // Handler alternativo usando setTimeout per bypassare il re-render
+  const handleEventCodeInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    const target = e.target as HTMLInputElement;
+    const value = target.value.toUpperCase();
+    setTimeout(() => {
+      setEventCode(value);
+    }, 0);
   }, []);
 
   useEffect(() => {
@@ -396,10 +412,11 @@ function RichiesteLibereContent() {
                   🎫 <span>Codice Evento</span>
                 </label>
                 <input
+                  ref={eventCodeInputRef}
                   type="text"
                   placeholder="Inserisci il codice evento..."
-                  value={eventCode}
-                  onChange={handleEventCodeChange}
+                  defaultValue={eventCode}
+                  onInput={handleEventCodeInput}
                   onKeyPress={(e) => e.key === 'Enter' && getEventCodeStatus().isValid && setShowOnboarding(false)}
                   className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                   maxLength={50}
