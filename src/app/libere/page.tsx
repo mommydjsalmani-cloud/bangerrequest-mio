@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useMemo } from 'react';
+import { useEffect, useState, Suspense, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
 import Image from 'next/image';
@@ -93,6 +93,12 @@ function RichiesteLibereContent() {
   }, [session?.require_event_code, session?.current_event_code, eventCode]);
 
   const getEventCodeStatus = () => eventCodeStatus;
+
+  // Handler memoizzato per l'input del codice evento
+  const handleEventCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.toUpperCase();
+    setEventCode(value);
+  }, []);
 
   useEffect(() => {
     if (!token) {
@@ -393,10 +399,7 @@ function RichiesteLibereContent() {
                   type="text"
                   placeholder="Inserisci il codice evento..."
                   value={eventCode}
-                  onChange={(e) => {
-                    e.preventDefault();
-                    setEventCode(e.target.value.toUpperCase());
-                  }}
+                  onChange={handleEventCodeChange}
                   onKeyPress={(e) => e.key === 'Enter' && getEventCodeStatus().isValid && setShowOnboarding(false)}
                   className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                   maxLength={50}
@@ -491,7 +494,7 @@ function RichiesteLibereContent() {
                     type="text"
                     placeholder="Inserisci il codice evento..."
                     value={eventCode}
-                    onChange={(e) => setEventCode(e.target.value)}
+                    onChange={handleEventCodeChange}
                     onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && getEventCodeStatus().isValid && completeOnboarding()}
                     className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
                     maxLength={50}
@@ -772,7 +775,7 @@ function RichiesteLibereContent() {
                         <input
                           type="text"
                           value={eventCode}
-                          onChange={(e) => setEventCode(e.target.value)}
+                          onChange={handleEventCodeChange}
                           placeholder="Codice evento"
                           className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm"
                           maxLength={50}
