@@ -154,6 +154,33 @@ function RichiesteLibereContent() {
     }
   }, []);
 
+  // Polling per controllare cambiamenti nella configurazione della sessione
+  useEffect(() => {
+    if (!token || !session) return;
+
+    const checkSessionConfig = async () => {
+      try {
+        const response = await fetch(`/api/libere?s=${token}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.session) {
+            // Controlla se require_event_code è cambiato
+            if (data.session.require_event_code !== session.require_event_code) {
+              // Ricarica la pagina per mostrare/nascondere il campo codice evento
+              window.location.reload();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Errore controllo configurazione sessione:', error);
+      }
+    };
+
+    // Controlla ogni 5 secondi
+    const interval = setInterval(checkSessionConfig, 5000);
+    return () => clearInterval(interval);
+  }, [token, session]);
+
   // Controlla stato richiesta con polling
   useEffect(() => {
     if (!lastRequestId || !token) return;
