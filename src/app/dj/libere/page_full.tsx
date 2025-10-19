@@ -135,7 +135,7 @@ export default function LibereAdminPanel() {
     }
   };
 
-  // Polling automatico come negli eventi
+  // Polling automatico
   useEffect(() => {
     if (!authed || !selectedSessionId) return;
     
@@ -281,7 +281,7 @@ export default function LibereAdminPanel() {
     }
   };
   
-  // Funzione veloce stile eventi
+  // Funzione veloce
   const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled') => {
     if (!authed) return;
     

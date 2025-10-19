@@ -113,7 +113,7 @@ function RichiesteLibereContent() {
     }
   }, []);
 
-  // Controlla stato richiesta (come negli eventi)
+  // Controlla stato richiesta con polling
   useEffect(() => {
     if (!lastRequestId || !token) return;
 
@@ -140,7 +140,7 @@ function RichiesteLibereContent() {
     return () => clearInterval(interval);
   }, [lastRequestId, token, lastRequestStatus]);
   
-  // Ricerca Spotify con debounce (come negli eventi)
+  // Ricerca Spotify con debounce
   useEffect(() => {
     const t = setTimeout(() => {
       if (!query.trim()) {
@@ -196,7 +196,7 @@ function RichiesteLibereContent() {
     }
   };
   
-  // Conferma brano selezionato (come negli eventi)
+  // Conferma brano selezionato
   const confirmTrack = async () => {
     if (!selected) return;
     

@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
 export default function LibereAdminPanel() {
-  const router = useRouter();
   const [authed, setAuthed] = useState(false);
   const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
   const [username, setUsername] = useState('');
@@ -30,6 +28,7 @@ export default function LibereAdminPanel() {
   const [setupLoading, setSetupLoading] = useState(false);
   const [migrationLoading, setMigrationLoading] = useState(false);
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
+  const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
@@ -209,7 +208,7 @@ export default function LibereAdminPanel() {
     }
   };
 
-  // Polling automatico come negli eventi - MA SOLO se non stiamo visualizzando l'archivio
+  // Polling automatico - MA SOLO se non stiamo visualizzando l'archivio
   useEffect(() => {
     if (!authed || !selectedSessionId || showArchive) return; // Non fare polling se stiamo visualizzando l'archivio
     
@@ -527,7 +526,7 @@ export default function LibereAdminPanel() {
     }
   };
   
-  // Funzione veloce stile eventi con retry automatico
+  // Funzione veloce con retry automatico
   const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled', retryCount = 0) => {
     if (!authed) {
       setError('Non autenticato');
@@ -799,53 +798,56 @@ export default function LibereAdminPanel() {
   }
   
   if (!authed) {
-    // Se c'è un errore di schema, mostra l'interfaccia di configurazione
-    if (error && schemaError) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
-          <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
-            <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
-            
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 flex items-center justify-center p-4">
+        <div className="bg-white/10 backdrop-blur-lg p-6 md:p-8 rounded-xl shadow-2xl max-w-md w-full border border-white/20 text-center">
+          <h1 className="text-2xl font-bold mb-6 text-white">🎵 Richieste Libere</h1>
+          
+          {error && (
             <div className="bg-red-500/20 border border-red-400 text-red-100 px-4 py-3 rounded mb-4 backdrop-blur-sm">
               {error}
-              <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm text-left">
-                <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
-                <button
-                  onClick={setupDatabase}
-                  disabled={setupLoading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
-                >
-                  {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
-                </button>
-                <button
-                  onClick={checkMigration}
-                  disabled={migrationLoading}
-                  className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
-                >
-                  {migrationLoading ? '⏳ Controllo...' : '⚡ Controlla Migrazione Rate Limiting'}
-                </button>
-                <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
-                  <strong>Setup Manuale:</strong><br/>
-                  1. Vai su <strong>Supabase Dashboard</strong><br/>
-                  2. Clicca <strong>SQL Editor</strong><br/>
-                  3. Incolla il contenuto di <code className="bg-white/20 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
-                  4. Clicca <strong>Run</strong>
+              {schemaError && (
+                <div className="mt-4 p-3 bg-blue-500/20 border border-blue-400 rounded backdrop-blur-sm text-left">
+                  <h4 className="font-medium text-blue-200 mb-2">🔧 Configurazione Database</h4>
+                  <button
+                    onClick={setupDatabase}
+                    disabled={setupLoading}
+                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                  >
+                    {setupLoading ? '⏳ Verifica...' : '🚀 Verifica Database'}
+                  </button>
+                  <button
+                    onClick={checkMigration}
+                    disabled={migrationLoading}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded mr-3 mb-2"
+                  >
+                    {migrationLoading ? '⏳ Controllo...' : '⚡ Controlla Migrazione Rate Limiting'}
+                  </button>
+                  <div className="text-sm text-blue-200 bg-blue-600/20 p-2 rounded border-l-4 border-blue-400">
+                    <strong>Setup Manuale:</strong><br/>
+                    1. Vai su <strong>Supabase Dashboard</strong><br/>
+                    2. Clicca <strong>SQL Editor</strong><br/>
+                    3. Incolla il contenuto di <code className="bg-white/20 px-1 rounded">docs/richieste_libere_schema.sql</code><br/>
+                    4. Clicca <strong>Run</strong>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
+          )}
+          
+          <div className="bg-blue-500/20 border border-blue-400 text-blue-100 px-4 py-3 rounded backdrop-blur-sm">
+            <p className="font-medium">Accesso richiesto</p>
+            <p className="text-sm mt-1">Effettua il login per accedere al pannello richieste libere</p>
+            <a 
+              href="/dj/login" 
+              className="inline-block mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded transition-colors"
+            >
+              Vai al Login
+            </a>
           </div>
         </div>
-      );
-    }
-    
-    // Se non è ancora finita l'inizializzazione, non reindirizzare ancora
-    if (initializing) {
-      return null;
-    }
-    
-    // Altrimenti, reindirizza automaticamente al login (replace evita di aggiungere una history entry)
-    router.replace('/dj/login');
-    return null;
+      </div>
+    );
   }
   
   return (
@@ -857,8 +859,19 @@ export default function LibereAdminPanel() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <h1 className="text-xl md:text-2xl font-bold text-white">
               🎵 Pannello Richieste Libere
+              {eventMode && <span className="text-lg font-normal text-blue-200 ml-2">- Modalità Evento</span>}
             </h1>
             <div className="flex gap-2">
+              <button
+                onClick={() => setEventMode(!eventMode)}
+                className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
+                  eventMode
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500'
+                    : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
+                }`}
+              >
+                {eventMode ? '⚙️ Vista Completa' : '🎧 Modalità Evento'}
+              </button>
               
               {selectedSessionId && (
                 <button
@@ -902,8 +915,9 @@ export default function LibereAdminPanel() {
               ))}
             </select>
             
-            <>
-              <button
+            {!eventMode && (
+              <>
+                <button
                   onClick={() => setShowCreateSession(!showCreateSession)}
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors shadow-lg"
                 >
@@ -924,10 +938,11 @@ export default function LibereAdminPanel() {
                   </button>
                 )}
               </>
+            )}
           </div>
           
-          {/* Create Session Form */}
-          {showCreateSession && (
+          {/* Create Session Form - Solo se NON in modalità evento */}
+          {!eventMode && showCreateSession && (
             <div className="border border-white/20 rounded-lg p-4 bg-white/10 backdrop-blur-sm mb-4 shadow-lg">
               <div className="flex flex-col sm:flex-row gap-2">
                 <input
@@ -974,8 +989,49 @@ export default function LibereAdminPanel() {
         
         {currentSession && (
           <>
-            {/* Controls */}
-            (
+            {/* Header Modalità Evento - Semplificato */}
+            {eventMode && (
+              <div className="bg-white rounded-lg shadow-lg p-4 mb-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
+                    <div className="flex items-center gap-4 mt-2">
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        currentSession.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {SESSION_STATUS_LABELS[currentSession.status]}
+                      </span>
+                      <button
+                        onClick={() => adminAction('toggle_status')}
+                        className={`py-2 px-4 rounded-lg text-white font-medium transition-colors shadow-sm ${
+                          currentSession.status === 'active' 
+                            ? 'bg-orange-600 hover:bg-orange-700' 
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                      >
+                        {currentSession.status === 'active' ? '⏸️ Pausa' : '▶️ Attiva'}
+                      </button>
+                    </div>
+                  </div>
+                  {showArchive && (
+                    <div className="text-right">
+                      <button
+                        onClick={() => {
+                          setShowArchive(false);
+                          loadSessionData(selectedSessionId);
+                        }}
+                        className="py-2 px-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium shadow-sm transition-colors"
+                      >
+                        📋 Vista Normale
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Controls - Solo se NON in modalità evento */}
+            {!eventMode && (
               <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-gray-900">{currentSession.name}</h2>
@@ -1258,9 +1314,10 @@ export default function LibereAdminPanel() {
                 )}
               </div>
             </div>
+            )}
             
-            {/* Stats */}
-            {stats && (
+            {/* Stats - Solo se NON in modalità evento */}
+            {!eventMode && stats && (
               <div className="bg-white rounded-lg shadow-lg p-6 mb-6 border border-gray-200">
                 <h2 className="text-xl font-bold mb-4 text-gray-800">📊 Statistiche</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

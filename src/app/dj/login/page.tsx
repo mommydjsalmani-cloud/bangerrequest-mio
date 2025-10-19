@@ -17,8 +17,8 @@ export default function DJLogin() {
       const savedPassword = sessionStorage.getItem('dj_secret');
       
       if (savedUser && savedPassword) {
-        // Utente già autenticato, reindirizza direttamente al pannello
-        router.push('/dj/libere');
+        // Utente già autenticato, reindirizza alla home
+        router.push('/dj/home');
         return;
       }
     } catch {}
@@ -58,8 +58,8 @@ export default function DJLogin() {
       sessionStorage.setItem('dj_secret', password.trim());
       sessionStorage.setItem('dj_user', username.trim());
       
-      // Reindirizza direttamente al pannello richieste libere
-      router.push('/dj/libere');
+      // Reindirizza alla pagina di scelta modalità
+      router.push('/dj/home');
       
     } catch {
       setError('Errore di rete durante il login.');
@@ -76,7 +76,7 @@ export default function DJLogin() {
       >
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">🎧 Pannello DJ</h1>
-          <p className="text-white/80">Accedi per gestire richieste ed eventi</p>
+          <p className="text-white/80">Accedi per gestire richieste musicali</p>
         </div>
         
         {error && (
