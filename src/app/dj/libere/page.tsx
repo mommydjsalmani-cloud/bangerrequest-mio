@@ -910,7 +910,7 @@ export default function LibereAdminPanel() {
               <option value="" className="text-gray-800">Seleziona sessione...</option>
               {sessions.map(session => (
                 <option key={session.id} value={session.id} className="text-gray-800">
-                  {session.name} ({SESSION_STATUS_LABELS[session.status]})
+                  {session.name} ({SESSION_STATUS_LABELS[session.status]}){session.homepage_visible ? ' 🏠 Home' : ''}
                 </option>
               ))}
             </select>
