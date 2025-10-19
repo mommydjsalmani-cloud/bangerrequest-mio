@@ -86,24 +86,29 @@ export default function Home() {
             </div>
           )}
 
-          <Link 
-            href="/dj"
-            className="block w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
-            🎧 Zona DJ
-          </Link>
+          <div className="space-y-4">
+            <a
+              href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white font-bold py-3 px-6 rounded-xl text-lg transition-all duration-300 transform hover:scale-103 shadow-lg flex items-center justify-center gap-3"
+            >
+              <span className="bg-white/20 p-2 rounded-md text-sm">📸</span>
+              <span className="text-lg">Seguimi su Instagram</span>
+            </a>
+
+            <Link 
+              href="/dj"
+              className="block w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg"
+            >
+              🎧 Zona DJ
+            </Link>
+          </div>
         </div>
 
         {/* Footer Links */}
         <div className="pt-8 space-y-4">
-          <a 
-            href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-block text-gray-400 hover:text-white transition-colors text-sm underline"
-          >
-            📸 Seguici su Instagram
-          </a>
+          {/* Instagram moved above Zona DJ */}
           
           <div className="flex justify-center gap-4 text-xs text-gray-500">
             <Link href="/privacy" className="hover:text-gray-300 transition-colors">
