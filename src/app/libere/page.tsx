@@ -560,7 +560,7 @@ function RichiesteLibereContent() {
                 <div className="bg-white/10 backdrop-blur rounded-xl p-6 border border-white/20 max-w-md mx-auto">
                   <h3 className="text-xl font-bold text-white mb-3">Nessun risultato trovato</h3>
                   <div className="bg-purple-500/20 rounded-lg p-3 mb-4">
-                    <p className="text-purple-200 font-medium">"{query}"</p>
+                    <p className="text-purple-200 font-medium">&quot;{query}&quot;</p>
                   </div>
                   <div className="space-y-2 text-gray-300">
                     <p className="flex items-center gap-2">
