@@ -1,0 +1,109 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: 🧪 Test & Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🔍 Run ESLint
+        run: npm run lint
+        
+      - name: 🧪 Run tests
+        run: npm test
+        
+      - name: 🏗️ Build application
+        run: npm run build
+        env:
+          # Mock env vars for build (secrets not needed for build step)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'mock-key' }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID || 'mock-id' }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET || 'mock-secret' }}
+          DJ_PANEL_SECRET: ${{ secrets.DJ_PANEL_SECRET || 'mock-secret' }}
+          DJ_PANEL_USER: ${{ secrets.DJ_PANEL_USER || 'mock-user' }}
+
+  security:
+    name: 🔒 Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🔍 Security audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+        
+      - name: 🕵️ Check for secrets
+        run: |
+          if git ls-files | grep -E "\.env$|\.env\..*$" | grep -v "\.env\.example$"; then
+            echo "❌ Found .env files in git!"
+            exit 1
+          else
+            echo "✅ No .env files committed"
+          fi
+
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🚀 Deploy to Vercel (Preview)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-comment: true
+          
+  deploy-production:
+    name: 🌐 Deploy to Production
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🚀 Deploy to Vercel (Production)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          github-comment: true

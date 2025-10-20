@@ -4,10 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack -H 0.0.0.0",
-  "build": "next build",
+    "build": "next build",
     "start": "next start",
-  "lint": "eslint . --max-warnings=0",
-    "test": "vitest run"
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --max-warnings=0 --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "type-check": "tsc --noEmit",
+    "ci": "npm run lint && npm run type-check && npm run test && npm run build",
+    "health": "node scripts/check_health.js",
+    "clean": "rm -rf .next node_modules/.cache",
+    "update-deps": "npm update && npm audit fix"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

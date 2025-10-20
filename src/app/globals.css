@@ -50,10 +50,6 @@ main {
   justify-content: center;
   padding: 1rem;
 }
-.splash-logo {
-  width: 200px;
-  height: auto;
-}
 .splash-hidden {
   opacity: 0;
   visibility: hidden;

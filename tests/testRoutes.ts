@@ -1,7 +1,5 @@
-import { NextResponse } from 'next/server';
-
 // Helper per costruire Request facilmente
-export function buildRequest(method: string, url: string, body?: any, headers?: Record<string,string>) {
+export function buildRequest(method: string, url: string, body?: unknown, headers?: Record<string,string>) {
   return new Request(url, {
     method,
     headers: { 'Content-Type': 'application/json', ...(headers||{}) },

@@ -1,0 +1,82 @@
+name: Dependency Update
+
+on:
+  schedule:
+    # Run every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-dependencies:
+    name: 📦 Update Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🔄 Update dependencies
+        run: |
+          # Update patch and minor versions only (safer)
+          npm update --save
+          npm update --save-dev
+          
+      - name: 🧪 Run tests after update
+        run: |
+          npm run lint
+          npm test
+          npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co'
+          SUPABASE_SERVICE_ROLE_KEY: 'mock-key'
+          SPOTIFY_CLIENT_ID: 'mock-id'
+          SPOTIFY_CLIENT_SECRET: 'mock-secret'
+          DJ_PANEL_SECRET: 'mock-secret'
+          DJ_PANEL_USER: 'mock-user'
+          
+      - name: 🔍 Check for changes
+        id: changes
+        run: |
+          if git diff --quiet package*.json; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: 📝 Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: update dependencies'
+          title: '📦 Automated Dependency Update'
+          body: |
+            ## 📦 Dependency Updates
+            
+            This PR contains automated dependency updates:
+            
+            ### Changes
+            - Updated patch and minor versions for better security and performance
+            - All tests pass ✅
+            - Build successful ✅
+            
+            ### Review Notes
+            - Review the changes carefully before merging
+            - Run additional manual tests if needed
+            - Check for any breaking changes in the updated packages
+            
+            ---
+            *This PR was created automatically by the dependency-update workflow*
+          branch: chore/dependency-update
+          delete-branch: true
