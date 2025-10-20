@@ -1,0 +1,78 @@
+name: Health Check
+
+on:
+  schedule:
+    # Check every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    name: 🏥 Production Health Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📚 Install dependencies
+        run: npm ci
+        
+      - name: 🏥 Check application health
+        run: |
+          # Get the production URL from Vercel deployment
+          PROD_URL="https://bangerrequest-ffdp6sj3d-mommys-projects-f4f4fbbb.vercel.app"
+          
+          echo "🔍 Checking health endpoints..."
+          
+          # Check main health endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health" || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Main health check passed"
+          else
+            echo "❌ Main health check failed (HTTP $response)"
+            exit 1
+          fi
+          
+          # Check Supabase health
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health/supabase" || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Supabase health check passed"
+          else
+            echo "⚠️ Supabase health check failed (HTTP $response)"
+          fi
+          
+          # Check Spotify health
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/spotify/health" || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Spotify health check passed"
+          else
+            echo "⚠️ Spotify health check failed (HTTP $response)"
+          fi
+          
+          # Check main page loads
+          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/" || echo "000")
+          if [ "$response" = "200" ]; then
+            echo "✅ Homepage loads successfully"
+          else
+            echo "❌ Homepage failed to load (HTTP $response)"
+            exit 1
+          fi
+          
+          echo "🎉 Health check completed successfully!"
+          
+      - name: 📊 Run detailed health check
+        run: |
+          node scripts/check_health.js https://bangerrequest-ffdp6sj3d-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
+          
+      - name: 💬 Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Health check failed! Production may be down."
+          echo "Check the application immediately: https://bangerrequest-ffdp6sj3d-mommys-projects-f4f4fbbb.vercel.app"

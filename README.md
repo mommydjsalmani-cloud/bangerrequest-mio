@@ -2,18 +2,46 @@
 
 App Next.js per richieste brani con ricerca Spotify, pannello DJ e persistenza opzionale su Supabase.
 
-### Requisiti
-- Node.js 18+
-- Variabili ambiente (vedi `.env.example`)
-
-### Sviluppo
+### 🚀 Quick Start
 ```bash
 npm install
 npm run dev
 ```
 Apri http://localhost:3000
 
-### Deploy su Vercel
+### 📋 Scripts Disponibili
+```bash
+npm run dev          # Avvia development server
+npm run build        # Build production
+npm run start        # Avvia production server
+npm run lint         # Esegue ESLint
+npm run lint:fix     # Fix automatico ESLint
+npm run test         # Esegue test
+npm run test:watch   # Test in watch mode
+npm run type-check   # TypeScript check
+npm run ci           # Pipeline completa (lint + test + build)
+npm run health       # Health check locale
+npm run clean        # Pulisce cache
+```
+
+### 🔧 Requisiti
+- Node.js 18+
+- Variabili ambiente (vedi `.env.example`)
+
+### 🏗️ CI/CD
+Il progetto include GitHub Actions per:
+- **CI Pipeline**: Lint, test, build automatici su PR/push
+- **Auto Deploy**: Staging su develop, Production su main
+- **Health Monitoring**: Controlli ogni 15 minuti
+- **Dependency Updates**: Aggiornamenti automatici settimanali
+
+### 🔒 Security
+- ✅ Nessun secret committato
+- ✅ ESLint configurato con regole strict
+- ✅ Health checks automatici
+- ✅ Audit dipendenze settimanale
+
+### 🚀 Deploy su Vercel
 1. Collega il repo su Vercel
 2. Imposta ENV (Production/Preview/Development):
 	- Obbligatorie autenticazione DJ (senza queste NON puoi creare/moderare eventi): `DJ_PANEL_USER`, `DJ_PANEL_SECRET`
@@ -23,7 +51,7 @@ Apri http://localhost:3000
 Se `DJ_PANEL_USER` o `DJ_PANEL_SECRET` non sono impostate, le route protette restituiscono `{ ok:false, error:"misconfigured" }`.
 3. Redeploy
 
-### Setup Supabase (versione non tecnica)
+### ⚙️ Setup Supabase (versione non tecnica)
 1. Vai su https://supabase.com e crea un progetto (piano Free va bene).
 2. Apri il progetto: Settings → API.
 3. Copia "Project URL" e la chiave "service_role".
@@ -36,9 +64,9 @@ Se `DJ_PANEL_USER` o `DJ_PANEL_SECRET` non sono impostate, le route protette res
 
 Se non imposti le variabili Supabase l'app funziona lo stesso ma i dati non sono persistenti (si perdono al riavvio).
 
-
-### Guide
+### 📚 Guide
 - Setup Spotify: `docs/SETUP_SPOTIFY.md`
 - Setup Supabase: `docs/SETUP_SUPABASE.md`
+- Deploy Vercel: `docs/DEPLOY_VERCEL.md`
 
 
