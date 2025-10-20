@@ -1,9 +1,5 @@
 name: CI/CD Pipeline
 
-# Note: Vercel auto-deployment is temporarily disabled (commented out)
-# until VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID secrets are configured.
-# Manual deployment via `vercel --prod` is currently used.
-
 on:
   push:
     branches: [ main, develop ]
@@ -75,39 +71,39 @@ jobs:
             echo "✅ No .env files committed"
           fi
 
-  # deploy-staging:
-  #   name: 🚀 Deploy to Staging  
-  #   needs: [test, security]
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
-  #   
-  #   steps:
-  #     - name: 📥 Checkout code
-  #       uses: actions/checkout@v4
-  #       
-  #     - name: 🚀 Deploy to Vercel (Preview)
-  #       uses: amondnet/vercel-action@v25
-  #       with:
-  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-  #         github-comment: true
+  deploy-staging:
+    name: 🚀 Deploy to Staging  
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🚀 Deploy to Vercel (Preview)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          github-comment: true
           
-  # deploy-production:
-  #   name: 🌐 Deploy to Production
-  #   needs: [test, security]
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   
-  #   steps:
-  #     - name: 📥 Checkout code
-  #       uses: actions/checkout@v4
-  #       
-  #     - name: 🚀 Deploy to Vercel (Production)
-  #       uses: amondnet/vercel-action@v25
-  #       with:
-  #         vercel-token: ${{ secrets.VERCEL_TOKEN }}
-  #         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-  #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-  #         vercel-args: '--prod'
-  #         github-comment: true
+  deploy-production:
+    name: 🌐 Deploy to Production
+    needs: [test, security]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 🚀 Deploy to Vercel (Production)
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          github-comment: true
