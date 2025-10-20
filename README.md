@@ -3,6 +3,7 @@
 App Next.js per richieste brani con ricerca Spotify, pannello DJ e persistenza opzionale su Supabase.
 
 🚀 **Auto-deployment attivo!** Ogni push su main = deploy automatico in production.
+✅ **Secrets configurati correttamente** - Test deploy in corso!
 
 ### 🚀 Quick Start
 ```bash
