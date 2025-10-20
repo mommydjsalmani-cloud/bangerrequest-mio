@@ -69,10 +69,10 @@ jobs:
           
       - name: 📊 Run detailed health check
         run: |
-          node scripts/check_health.js https://bangerrequest-ffdp6sj3d-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
+          node scripts/check_health.js https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
           
       - name: 💬 Notify on failure
         if: failure()
         run: |
           echo "❌ Health check failed! Production may be down."
-          echo "Check the application immediately: https://bangerrequest-ffdp6sj3d-mommys-projects-f4f4fbbb.vercel.app"
+          echo "Check the application immediately: https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app"

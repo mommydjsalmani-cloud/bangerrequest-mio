@@ -1,8 +1,12 @@
 import http from 'node:http';
+import https from 'node:https';
 
 const url = process.argv[2] || 'http://localhost:3000/api/health/supabase';
 
-http.get(url, (res) => {
+// Determina quale modulo usare in base al protocollo
+const client = url.startsWith('https:') ? https : http;
+
+client.get(url, (res) => {
   console.log('STATUS', res.statusCode);
   let data = '';
   res.on('data', (chunk) => data += chunk);
