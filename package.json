@@ -34,10 +34,11 @@
     "supertest": "^7.1.4",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "engines": {
     "node": "22.x",
-    "npm": ">=10.0.0"
+    "npm": ">=9.8.0"
   }
 }
