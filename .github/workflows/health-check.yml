@@ -69,7 +69,7 @@ jobs:
           
       - name: 📊 Run detailed health check
         run: |
-          node scripts/check_health.js https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
+          node scripts/check_health.cjs https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
           
       - name: 💬 Notify on failure
         if: failure()
