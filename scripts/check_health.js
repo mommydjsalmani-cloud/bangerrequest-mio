@@ -1,4 +1,4 @@
-const http = require('http');
+import http from 'node:http';
 
 const url = process.argv[2] || 'http://localhost:3000/api/health/supabase';
 
