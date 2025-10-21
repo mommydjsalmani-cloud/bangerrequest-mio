@@ -1,141 +1,153 @@
-// Web Push Service Worker
-const CACHE_NAME = 'bangerrequest-v1';
+// Service Worker per Push Notifications
+// VINCOLO: Fail-safe totale, nessun impatto su funzionalità esistenti
+
+const CACHE_NAME = 'banger-request-v1';
 
 // Install event
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll([
-        '/',
-        '/dj/libere',
-        '/icon-192.png',
-        '/badge-72.png'
-      ]);
-    })
-  );
-  self.skipWaiting();
+  event.waitUntil(self.skipWaiting());
 });
 
 // Activate event
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
-  );
-  self.clients.claim();
+  event.waitUntil(self.clients.claim());
 });
 
-// Push event listener
+// Push event - listener principale per notifiche
 self.addEventListener('push', (event) => {
-  if (!event.data) return;
+  console.log('[SW] Push received');
+  
+  if (!event.data) {
+    console.warn('[SW] Push event without data');
+    return;
+  }
 
-  const payload = event.data.json();
-  const { id, title, artist, event: eventName } = payload;
-
-  const notificationTitle = '🎵 Banger Request';
-  const notificationOptions = {
-    body: `Nuova richiesta: ${title} - ${artist}`,
-    icon: '/icon-192.png',
-    badge: '/badge-72.png',
-    tag: `new-request-${id}`,
-    requireInteraction: true,
-    renotify: true,
-    vibrate: [200, 100, 200],
-    actions: [
-      { action: 'accept', title: '✅ Accetta' },
-      { action: 'view', title: '👀 Visualizza' }
-    ],
-    data: { id, title, artist, event: eventName }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(notificationTitle, notificationOptions)
-  );
-});
-
-// Notification click event listener
-self.addEventListener('notificationclick', (event) => {
-  const { action, data } = event;
-  const { id } = data;
-
-  event.notification.close();
-
-  if (action === 'accept') {
-    // Accept request
-    event.waitUntil(
-      fetch(`/api/requests`, {
-        method: 'PATCH',
-        credentials: 'same-origin',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-secret': self.DJ_SECRET || '',
-          'x-dj-user': self.DJ_USER || ''
+  try {
+    const data = event.data.json();
+    const { id, title, artist, event: eventName } = data;
+    
+    const notificationTitle = '🎵 Banger Request';
+    const notificationBody = `Nuova richiesta: ${title} - ${artist}`;
+    
+    const notificationOptions = {
+      body: notificationBody,
+      icon: '/icon-192.png',
+      badge: '/badge-72.png',
+      tag: `new-request-${id}`, // Previene duplicati
+      requireInteraction: true,
+      renotify: true,
+      vibrate: [200, 100, 200],
+      actions: [
+        {
+          action: 'accept',
+          title: '✅ Accetta'
         },
-        body: JSON.stringify({ id, action: 'accept' })
-      }).catch((error) => {
-        console.error('Failed to accept request:', error);
+        {
+          action: 'view', 
+          title: '👀 Visualizza'
+        }
+      ],
+      data: {
+        id,
+        title,
+        artist,
+        event: eventName
+      }
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(notificationTitle, notificationOptions)
+    );
+    
+  } catch (error) {
+    console.error('[SW] Error processing push:', error);
+    // Fail-safe: mostra notifica generica
+    event.waitUntil(
+      self.registration.showNotification('🎵 Banger Request', {
+        body: 'Nuova richiesta musicale',
+        icon: '/icon-192.png',
+        badge: '/badge-72.png',
+        requireInteraction: true
       })
     );
-  } else if (action === 'view') {
-    // View request - focus existing window or open new one
+  }
+});
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification click:', event.action);
+  
+  event.notification.close();
+  
+  const { id } = event.notification.data || {};
+  
+  if (!id) {
+    console.warn('[SW] Notification click without ID');
+    return;
+  }
+
+  if (event.action === 'accept') {
+    // Azione Accept: chiama API per accettare richiesta
     event.waitUntil(
-      clients.matchAll({ type: 'window' }).then((clientList) => {
-        const djUrl = `/dj/libere`;
-        
-        // Try to focus existing DJ panel window
+      fetch(`/api/requests/${id}/accept`, {
+        method: 'POST',
+        credentials: 'include', // Same-origin cookies
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }).then(response => {
+        console.log('[SW] Accept response:', response.status);
+      }).catch(error => {
+        console.error('[SW] Accept error:', error);
+      })
+    );
+    
+  } else if (event.action === 'view') {
+    // Azione View: apri/focus sulla pagina DJ
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then(clientList => {
+        // Cerca finestra esistente
         for (const client of clientList) {
-          if (client.url.includes('/dj/')) {
+          if (client.url.includes('/dj')) {
             return client.focus();
           }
         }
-        
-        // Open new window if no DJ panel found
-        if (clients.openWindow) {
-          return clients.openWindow(djUrl);
-        }
+        // Apri nuova finestra
+        return clients.openWindow(`/dj/requests/${id}`);
+      }).catch(error => {
+        console.error('[SW] View error:', error);
+        // Fallback: apri pannello DJ generico
+        return clients.openWindow('/dj/libere');
       })
     );
+    
   } else {
-    // Default click behavior - open DJ panel
+    // Click generico: focus o apri pannello DJ
     event.waitUntil(
-      clients.matchAll({ type: 'window' }).then((clientList) => {
-        const djUrl = `/dj/libere`;
-        
+      clients.matchAll({ type: 'window' }).then(clientList => {
         for (const client of clientList) {
-          if (client.url.includes('/dj/')) {
+          if (client.url.includes('/dj')) {
             return client.focus();
           }
         }
-        
-        if (clients.openWindow) {
-          return clients.openWindow(djUrl);
-        }
+        return clients.openWindow('/dj/libere');
+      }).catch(error => {
+        console.error('[SW] Generic click error:', error);
       })
     );
   }
 });
 
-// Handle background sync for offline requests
+// Background sync (future enhancement)
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'accept-request') {
-    event.waitUntil(
-      // Handle offline accept requests if needed
-      console.log('Background sync for accept-request')
-    );
-  }
+  console.log('[SW] Background sync:', event.tag);
 });
 
-// Store DJ credentials for notification actions
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SET_DJ_CREDENTIALS') {
-    self.DJ_SECRET = event.data.secret;
-    self.DJ_USER = event.data.user;
-  }
+// Error handling
+self.addEventListener('error', (event) => {
+  console.error('[SW] Error:', event.error);
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+  console.error('[SW] Unhandled rejection:', event.reason);
 });

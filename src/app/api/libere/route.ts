@@ -1,87 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { sendPushNotification } from '@/lib/webpush';
 
 const BUILD_TAG = 'libere-api-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
   return NextResponse.json(data, { status: init?.status, headers: { 'X-App-Version': BUILD_TAG } });
-}
-
-async function sendNewRequestNotification(requestData: {
-  id: string;
-  title: string;
-  artists?: string;
-  requester_name?: string;
-  cover_url?: string;
-}, sessionName: string) {
-  try {
-    // Invia notifica push ai DJ registrati per questa sessione
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    // Ottieni subscriptions attive per i DJ
-    const { data: subscriptions } = await supabase
-      .from('dj_push_subscriptions')
-      .select('*')
-      .eq('is_active', true);
-
-    if (!subscriptions || subscriptions.length === 0) {
-      return; // Nessuna subscription attiva
-    }
-
-    // Crea messaggio notifica
-    const notification = {
-      title: `🎵 Nuova richiesta - ${sessionName}`,
-      body: `${requestData.title}${requestData.artists ? ` - ${requestData.artists}` : ''}${requestData.requester_name ? ` (${requestData.requester_name})` : ''}`,
-      icon: requestData.cover_url || '/icon-192.png',
-      data: {
-        requestId: requestData.id,
-        action: 'new_request',
-        url: '/dj/libere'
-      }
-    };
-
-    // Invia a tutte le subscriptions
-    const results = await Promise.allSettled(
-      subscriptions.map(async (sub) => {
-        try {
-          await sendPushNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: {
-                p256dh: sub.p256dh,
-                auth: sub.auth
-              }
-            },
-            JSON.stringify(notification)
-          );
-          return { success: true };
-        } catch (error) {
-          console.error('Failed to send push notification:', error);
-          
-          // Se subscription è invalida (410 status), disattivala
-          if (error instanceof Error && error.message.includes('410')) {
-            await supabase
-              .from('dj_push_subscriptions')
-              .update({ is_active: false })
-              .eq('endpoint', sub.endpoint);
-          }
-          
-          return { success: false };
-        }
-      })
-    );
-
-    const successful = results.filter(result => 
-      result.status === 'fulfilled' && result.value.success
-    ).length;
-    
-    console.log(`Push notifications sent: ${successful}/${subscriptions.length}`);
-    
-  } catch (error) {
-    console.error('Error sending push notifications:', error);
-  }
 }
 
 function getClientIP(req: Request): string {
@@ -334,14 +257,6 @@ export async function POST(req: Request) {
   if (error) {
     console.error('Errore creazione richiesta:', error);
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
-  }
-  
-  // Invia notifiche push ai DJ
-  try {
-    await sendNewRequestNotification(newRequest, session.name);
-  } catch (notificationError) {
-    console.error('Errore invio notifiche:', notificationError);
-    // Non bloccare la risposta per errori di notifica
   }
   
   return withVersion({ 

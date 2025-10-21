@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
+import { sendNewRequestNotification, isWebPushConfigured } from '@/lib/webpush';
 
 type RequestItem = {
   id: string;
@@ -84,6 +85,22 @@ export async function POST(req: Request) {
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
+    
+    // Invia notifica push per nuova richiesta (se configurato)
+    if (isWebPushConfigured()) {
+      try {
+        await sendNewRequestNotification({
+          id: data.id,
+          titolo: data.title || 'Titolo sconosciuto',
+          artista: data.artists || 'Artista sconosciuto',
+          nome_richiedente: data.requester || undefined,
+        });
+      } catch (pushError) {
+        // Log error ma non bloccare la risposta
+        console.error('Push notification failed:', pushError);
+      }
+    }
+    
     return withVersion({ ok: true, item: data });
   } else {
     store.unshift(item);

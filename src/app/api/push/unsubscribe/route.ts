@@ -1,49 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+import { getSupabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
-    // Validate DJ credentials
+    // Validazione header DJ
     const djSecret = request.headers.get('x-dj-secret');
     const djUser = request.headers.get('x-dj-user');
     
-    const expectedSecret = process.env.DJ_PANEL_SECRET;
-    const expectedUser = process.env.DJ_PANEL_USER;
+    const expectedSecret = process.env.DJ_PANEL_SECRET?.trim();
+    const expectedUser = process.env.DJ_PANEL_USER?.trim();
     
-    if (!djSecret || !djUser || djSecret !== expectedSecret || djUser !== expectedUser) {
-      return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-    }
-
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
+    if (!expectedSecret || !expectedUser) {
       return NextResponse.json({ 
         ok: false, 
-        error: 'Push notifications require Supabase configuration' 
+        error: 'Server not configured' 
+      }, { status: 500 });
+    }
+    
+    if (djSecret !== expectedSecret || djUser !== expectedUser) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Unauthorized' 
+      }, { status: 401 });
+    }
+
+    // Inizializza Supabase
+    const supabase = getSupabase();
+    if (!supabase) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Database not configured' 
       }, { status: 500 });
     }
 
-    const { endpoint } = await request.json();
+    // Parse body
+    const body = await request.json();
+    const { endpoint } = body;
     
     if (!endpoint) {
       return NextResponse.json({ 
         ok: false, 
-        error: 'Endpoint required' 
+        error: 'Missing endpoint' 
       }, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    
-    // Deactivate or delete subscription
+    // Disattiva o rimuovi subscription
     const { error } = await supabase
       .from('dj_push_subscriptions')
-      .update({ is_active: false })
+      .update({ 
+        is_active: false,
+        deactivated_at: new Date().toISOString()
+      })
       .eq('endpoint', endpoint)
       .eq('dj_id', djUser);
 
     if (error) {
-      console.error('Supabase unsubscription error:', error);
+      console.error('Supabase update error:', error);
       return NextResponse.json({ 
         ok: false, 
         error: 'Database error' 
@@ -51,12 +63,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ 
-      ok: true, 
-      message: 'Push subscription removed successfully' 
+      ok: true,
+      message: 'Successfully unsubscribed'
     });
 
   } catch (error) {
-    console.error('Push unsubscription error:', error);
+    console.error('Push unsubscribe error:', error);
     return NextResponse.json({ 
       ok: false, 
       error: 'Internal server error' 

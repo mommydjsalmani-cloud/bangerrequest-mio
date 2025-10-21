@@ -1,154 +1,201 @@
-# Setup Push Notifications
+# Push Notifications Configuration Guide
 
-## Variabili d'ambiente Vercel
+Questa guida spiega come configurare completamente le notifiche push native per il sistema di richieste.
 
-Aggiungi le seguenti variabili d'ambiente nel dashboard Vercel:
+## 📋 Prerequisiti
 
-### 1. VAPID Keys (per Web Push)
+- Supabase configurato con tabelle esistenti
+- Vercel deployment attivo
+- Browser moderni con supporto Web Push API
+
+## 🔧 Configurazione Environment Variables
+
+### 1. Genera chiavi VAPID
+
+Le chiavi VAPID sono necessarie per identificare il server presso i browser:
+
+```bash
+# Installa web-push globalmente se non presente
+npm install -g web-push
+
+# Genera coppia di chiavi VAPID
+web-push generate-vapid-keys
 ```
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=BOETUOAogFdMArvpc_8MYVHbWAyRvtHKpveDYsy5BV_s7sl0k5FP_Sk-HEQuI4dhj4NAv0RD-P1VEid83YX39p4
-VAPID_PRIVATE_KEY=<vedi docs/VAPID_KEYS.md per la chiave privata>
-VAPID_SUBJECT=mailto:admin@bangerrequest.app
+
+Output esempio:
+```
+=======================================
+
+Public Key:
+BEl62iUYgUivxIkv69yViEuiBIa6HdVeByRyqhj5VQKjsEDhY...
+
+Private Key:
+GV6dqOEKGbI8kJy2O4vQy2HtfQ_XsJ8cYz7YHHfQ...
+
+=======================================
 ```
 
-### 2. Database Schema
+### 2. Configura Vercel Environment Variables
 
-Esegui questo comando per aggiungere la tabella delle push subscriptions in Supabase:
+Aggiungi le seguenti variabili in Vercel Dashboard > Settings > Environment Variables:
+
+```bash
+# VAPID Keys (OBBLIGATORIE)
+VAPID_PUBLIC_KEY=BEl62iUYgUivxIkv69yViEuiBIa6HdVeByRyqhj5VQKjsEDhY...
+VAPID_PRIVATE_KEY=GV6dqOEKGbI8kJy2O4vQy2HtfQ_XsJ8cYz7YHHfQ...
+VAPID_SUBJECT=mailto:your-email@example.com
+
+# Client-side VAPID (OBBLIGATORIA)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BEl62iUYgUivxIkv69yViEuiBIa6HdVeByRyqhj5VQKjsEDhY...
+
+# Esistenti (mantenere)
+DJ_PANEL_SECRET=your-existing-secret
+DJ_PANEL_USER=your-existing-user
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+**⚠️ IMPORTANTE**: Usa la STESSA chiave pubblica per `VAPID_PUBLIC_KEY` e `NEXT_PUBLIC_VAPID_PUBLIC_KEY`.
+
+### 3. Configura Database Supabase
+
+Esegui lo script SQL per creare la tabella delle subscription:
 
 ```sql
--- Tabella per memorizzare le push subscriptions dei DJ
+-- Copia e incolla tutto il contenuto da docs/push_notifications_schema.sql
+-- nel SQL Editor di Supabase
+```
+
+O via comando (se hai Supabase CLI):
+```bash
+supabase db push
+```
+
+```sql
+-- Crea la tabella per le subscription push
 CREATE TABLE IF NOT EXISTS dj_push_subscriptions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  dj_id VARCHAR(255) NOT NULL,
-  endpoint TEXT NOT NULL UNIQUE,
-  p256dh TEXT NOT NULL,
-  auth TEXT NOT NULL,
-  user_agent TEXT,
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    dj_id TEXT NOT NULL,
+    endpoint TEXT NOT NULL UNIQUE,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    user_agent TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    deactivated_at TIMESTAMP WITH TIME ZONE,
+    error_reason TEXT
 );
 
--- Indici per ottimizzare le query
+-- Indici per performance
 CREATE INDEX IF NOT EXISTS idx_dj_push_subscriptions_dj_id ON dj_push_subscriptions(dj_id);
 CREATE INDEX IF NOT EXISTS idx_dj_push_subscriptions_active ON dj_push_subscriptions(is_active);
 CREATE INDEX IF NOT EXISTS idx_dj_push_subscriptions_endpoint ON dj_push_subscriptions(endpoint);
 
--- RLS policies
+-- Abilita RLS
 ALTER TABLE dj_push_subscriptions ENABLE ROW LEVEL SECURITY;
 
--- Policy per permettere la lettura tramite service role
-CREATE POLICY "Allow service role to manage push subscriptions" ON dj_push_subscriptions
-  FOR ALL USING (auth.role() = 'service_role');
+-- Policy per DJ autenticati
+CREATE POLICY "DJ can manage own push subscriptions" ON dj_push_subscriptions
+    FOR ALL USING (
+        dj_id = current_setting('app.current_dj_id', true)
+    );
 
--- Policy per permettere inserimenti autenticati (dai DJ)
-CREATE POLICY "Allow authenticated DJ to insert own subscriptions" ON dj_push_subscriptions
-  FOR INSERT WITH CHECK (true); -- La validazione avviene nel codice API
+-- Policy per service role
+CREATE POLICY "Service role can manage all push subscriptions" ON dj_push_subscriptions
+    FOR ALL USING (
+        auth.role() = 'service_role'
+    );
 ```
 
-## Come funzionano le notifiche
+## Come Funziona
 
-### 1. Registrazione DJ
-- Il DJ accede al pannello DJ
-- Il browser chiede il permesso per le notifiche
-- Viene creata una push subscription
-- La subscription viene salvata in Supabase
+### 1. Subscription Management
 
-### 2. Invio notifiche
-- Quando arriva una nuova richiesta libera
-- Il sistema invia automaticamente notifiche push a tutti i DJ registrati
-- Le notifiche funzionano anche quando il browser è in background
+Quando un DJ accede al panel:
+1. Il componente `NotificationsClient` controlla se il browser supporta le notifiche
+2. Richiede i permessi di notifica se necessario
+3. Crea una subscription push utilizzando la chiave pubblica VAPID
+4. Invia la subscription al server tramite `/api/push/subscribe`
 
-### 3. Gestione click notifica
-- Click "Accetta": apre il pannello DJ
-- Click generico: naviga alla pagina richieste libere
-- Azioni disponibili nel service worker
+### 2. Invio Notifiche
 
-## Test funzionalità
+Quando viene creata una nuova richiesta:
+1. L'endpoint `/api/requests` (POST) crea la richiesta nel database
+2. Se le notifiche push sono configurate, chiama `sendNewRequestNotification()`
+3. Il server recupera tutte le subscription attive dal database
+4. Invia notifiche push a tutti i DJ connessi
 
-### 1. Test dal pannello DJ
-```bash
-# Vai al pannello DJ
-https://bangerrequest.app/dj/libere
+### 3. Gestione Service Worker
 
-# Abilita notifiche
-# Invia una richiesta di test
-# Verifica che arriva la notifica
-```
+Il service worker (`public/sw.js`) gestisce:
+- Ricezione eventi push in background
+- Visualizzazione notifiche OS-level
+- Gestione click sulle notifiche (accept/view actions)
+- Click sulle notifiche per aprire/focalizzare l'app
 
-### 2. Test API diretta
-```bash
-curl -X POST https://bangerrequest.app/api/push/send \
-  -H "Content-Type: application/json" \
-  -H "x-dj-secret: $DJ_PANEL_SECRET" \
-  -H "x-dj-user: $DJ_PANEL_USER" \
-  -d '{
-    "notification": {
-      "title": "Test Push Notification",
-      "body": "Questo è un test delle notifiche push",
-      "icon": "/icon-192.png",
-      "data": {
-        "action": "test",
-        "url": "/dj/libere"
-      }
-    }
-  }'
-```
+## Funzionalità
 
-## Supporto piattaforme
+### ✅ Notifiche Native
+- Notifiche a livello OS (Android, Windows, macOS)
+- Funziona anche quando il browser è in background
+- Supporta azioni rapide (Accetta/Visualizza)
 
-### ✅ Supportate
-- **Android Chrome**: Notifiche native complete
-- **Desktop Chrome/Edge**: Notifiche desktop
-- **Desktop Firefox**: Notifiche desktop
-- **Desktop Safari**: Notifiche desktop (macOS 13+)
+### 🔔 Azioni Rapide
+- **Accetta**: Accetta automaticamente la richiesta via API
+- **Visualizza**: Apre/focalizza la tab del panel DJ
 
-### ⚠️ Limitazioni iOS
-- **iOS Safari**: Non supporta Web Push API
-- **iOS PWA**: Supporta notifiche se installata come PWA
-- **iOS Chrome**: Usa motore Safari, no notifiche
+### 🛡️ Sicurezza
+- Autenticazione tramite `DJ_PANEL_SECRET` esistente
+- Validation server-side di tutte le subscription
+- Chiavi VAPID per crittografia end-to-end
 
-### Workaround iOS
-Il sistema rileva automaticamente iOS e mostra istruzioni per:
-1. Aggiungere l'app alla home screen
-2. Aprire come PWA per ricevere notifiche
+### 📱 Compatibilità
+- **Desktop**: Chrome, Firefox, Edge, Safari
+- **Android**: Chrome, Firefox, Samsung Internet
+- **iOS**: Safari (richiede PWA installata)
 
 ## Troubleshooting
 
-### Notifiche non arrivano
-1. Verifica VAPID keys in Vercel
-2. Controlla console browser per errori
-3. Verifica che il browser supporti le notifiche
-4. Controlla permessi notifiche nel browser
+### Notifiche Non Ricevute
 
-### Subscription fails
-1. Verifica che HTTPS sia abilitato
-2. Controlla che le VAPID keys siano corrette
-3. Verifica connessione Supabase
+1. **Verifica permessi browser**:
+   - Controlla le impostazioni notifiche del sito
+   - Assicurati che le notifiche non siano bloccate
 
-### iOS non funziona
-1. Verifica che sia installata come PWA
-2. Controlla che manifest.json sia corretto
-3. Assicurati che il service worker sia registrato
+2. **Controlla configurazione**:
+   - Verifica che `NEXT_PUBLIC_VAPID_PUBLIC_KEY` sia impostata
+   - Controlla che `VAPID_PRIVATE_KEY` sia configurata correttamente
 
-## File coinvolti
+3. **Debug console**:
+   - Apri DevTools > Console per errori JavaScript
+   - Controlla Network tab per errori API
 
-### Service Worker
-- `/public/sw.js` - Gestisce le notifiche in background
+### iOS/Safari
 
-### Client Components  
-- `/src/components/NotificationsClient.tsx` - UI per DJ panel
-- `/src/lib/notifications.ts` - Utilities client-side
+Su iOS le notifiche push funzionano solo se:
+1. Il sito è installato come PWA (Add to Home Screen)
+2. L'utente ha dato i permessi di notifica alla PWA
 
-### API Routes
-- `/src/app/api/push/subscribe/route.ts` - Registrazione subscription
-- `/src/app/api/push/unsubscribe/route.ts` - Rimozione subscription  
-- `/src/app/api/push/send/route.ts` - Invio notifiche
+### Database Errors
 
-### Server Utils
-- `/src/lib/webpush.ts` - Wrapper Web Push API
-- `/src/app/api/libere/route.ts` - Integrazione con richieste
+Se ricevi errori di database:
+1. Verifica che la tabella `dj_push_subscriptions` esista
+2. Controlla le policy RLS in Supabase
+3. Assicurati che il service role abbia i permessi corretti
 
-### Database
-- Schema in `/docs/push_notifications_schema.sql`
-- Documentazione VAPID in `/docs/VAPID_KEYS.md`
+## Testing
+
+Per testare le notifiche:
+
+1. Accedi al panel DJ
+2. Clicca sul pulsante notifiche per abilitarle
+3. Apri un'altra tab e crea una richiesta
+4. Dovresti ricevere una notifica native
+
+## Note di Sicurezza
+
+- Le chiavi VAPID private NON devono mai essere esposte al client
+- Usa sempre HTTPS in produzione per le notifiche push
+- Le subscription sono legate al browser/dispositivo specifico
+- I token di subscription scadono e vengono automaticamente puliti
