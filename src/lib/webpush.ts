@@ -1,4 +1,6 @@
 // Server-side utilities per notifiche push
+import webpush from 'web-push';
+
 export interface PushSubscription {
   endpoint: string;
   keys: {
@@ -9,6 +11,19 @@ export interface PushSubscription {
 
 // Storage in-memory per sottoscrizioni DJ (in produzione usare DB)
 const djSubscriptions = new Map<string, PushSubscription[]>();
+
+// VAPID keys (in produzione usare variabili ambiente)
+export const VAPID_KEYS = {
+  publicKey: process.env.VAPID_PUBLIC_KEY || 'BL7ELYgWbwZ-zTgfHBFfHZ8CqF4vtyJR8t_-o8L8WsxXzXHOdYh6bXBzqSs4dYfJH2WL3b4rFKs6yTfR9lXqLCY',
+  privateKey: process.env.VAPID_PRIVATE_KEY || 'pxYiHHB8Qoe6Mqek5-i4KGHlpd3YhEAaE9k8b-eO9hA'
+};
+
+// Configura web-push con VAPID keys
+webpush.setVapidDetails(
+  'mailto:dev@bangerrequest.com',
+  VAPID_KEYS.publicKey,
+  VAPID_KEYS.privateKey
+);
 
 // Aggiungi sottoscrizione per un DJ
 export function addDJSubscription(djUser: string, subscription: PushSubscription): void {
@@ -54,18 +69,67 @@ export function cleanupInvalidSubscriptions(invalidEndpoints: string[]): void {
 }
 
 /**
+ * Invia notifica push a tutte le sottoscrizioni attive
+ */
+export async function sendPushNotification(payload: {
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  data?: Record<string, unknown>;
+}): Promise<{ success: number; failed: number; invalidEndpoints: string[] }> {
+  const subscriptions = getAllDJSubscriptions();
+  
+  if (subscriptions.length === 0) {
+    console.log('📭 No DJ subscriptions found');
+    return { success: 0, failed: 0, invalidEndpoints: [] };
+  }
+
+  console.log(`📤 Sending push notification to ${subscriptions.length} subscribers`);
+  console.log(`� Payload:`, payload);
+
+  const invalidEndpoints: string[] = [];
+  let successCount = 0;
+  let failedCount = 0;
+
+  // Invia notifica a tutte le sottoscrizioni
+  const promises = subscriptions.map(async (subscription) => {
+    try {
+      await webpush.sendNotification(subscription, JSON.stringify(payload));
+      successCount++;
+      console.log(`✅ Notification sent to: ${subscription.endpoint.substring(0, 50)}...`);
+    } catch (error) {
+      failedCount++;
+      console.error(`❌ Failed to send notification to ${subscription.endpoint.substring(0, 50)}:`, error);
+      
+      // Se la sottoscrizione è invalida, marcala per la rimozione
+      if (error && typeof error === 'object' && 'statusCode' in error) {
+        const statusCode = (error as { statusCode: number }).statusCode;
+        if (statusCode === 410 || statusCode === 404) {
+          invalidEndpoints.push(subscription.endpoint);
+        }
+      }
+    }
+  });
+
+  await Promise.allSettled(promises);
+
+  // Pulisci sottoscrizioni invalide
+  if (invalidEndpoints.length > 0) {
+    cleanupInvalidSubscriptions(invalidEndpoints);
+    console.log(`�️ Cleaned up ${invalidEndpoints.length} invalid subscriptions`);
+  }
+
+  console.log(`📊 Push notification results: ${successCount} success, ${failedCount} failed`);
+  return { success: successCount, failed: failedCount, invalidEndpoints };
+}
+
+/**
  * Funzione specifica per inviare notifiche di nuove richieste
  */
 export async function sendNewRequestNotification(request: { id: string; title: string; artists?: string | null }): Promise<void> {
   console.log('🔔 Preparing to send new request notification...');
   
-  const allSubscriptions = getAllDJSubscriptions();
-  
-  if (allSubscriptions.length === 0) {
-    console.log('📭 No DJ subscriptions found - notification skipped');
-    return;
-  }
-
   const title = '🎵 Nuova Richiesta Musicale!';
   const body = `${request.title}${request.artists ? ` - ${request.artists}` : ''}`;
   
@@ -82,16 +146,11 @@ export async function sendNewRequestNotification(request: { id: string; title: s
     }
   };
 
-  console.log(`📤 Sending notification to ${allSubscriptions.length} DJ subscriptions`);
-
-  // Per ora simuliamo l'invio senza la libreria web-push
-  // In futuro si può aggiungere la vera implementazione
-  console.log('✅ Notification sent successfully (simulated)');
-  console.log('📝 Payload:', payload);
+  const result = await sendPushNotification(payload);
+  
+  if (result.success > 0) {
+    console.log(`✅ New request notification sent successfully to ${result.success} subscribers`);
+  } else {
+    console.log('� No active subscriptions found for new request notification');
+  }
 }
-
-// VAPID keys (in produzione usare variabili ambiente)
-export const VAPID_KEYS = {
-  publicKey: process.env.VAPID_PUBLIC_KEY || 'BL7ELYgWbwZ-zTgfHBFfHZ8CqF4vtyJR8t_-o8L8WsxXzXHOdYh6bXBzqSs4dYfJH2WL3b4rFKs6yTfR9lXqLCY',
-  privateKey: process.env.VAPID_PRIVATE_KEY || 'pxYiHHB8Qoe6Mqek5-i4KGHlpd3YhEAaE9k8b-eO9hA'
-};
