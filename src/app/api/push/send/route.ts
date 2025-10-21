@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendPushNotification } from '@/lib/webpush';
+import { sendPushNotification, getAllDJSubscriptions } from '@/lib/webpush';
 
 // Endpoint per inviare notifiche push manuali (test)
 export async function POST(request: NextRequest) {
@@ -11,11 +11,29 @@ export async function POST(request: NextRequest) {
     const icon = body.icon || '/icon-192x192.png';
     const badge = body.badge || '/icon-192x192.png';
 
-    console.log(`📱 Sending test notification`);
+    console.log(`� === PUSH NOTIFICATION TEST START ===`);
+    console.log(`📝 Request body:`, body);
     console.log(`📝 Title: ${title}`);
     console.log(`📝 Message: ${message}`);
+    
+    // Debug: controlla subscriptions disponibili
+    const subscriptions = getAllDJSubscriptions();
+    console.log(`� Available DJ subscriptions: ${subscriptions.length}`);
+    
+    if (subscriptions.length === 0) {
+      console.log(`⚠️ No DJ subscriptions found - cannot send test notification`);
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'No DJ subscriptions found. Please subscribe to notifications first in the DJ panel.' 
+      }, { status: 404 });
+    }
+    
+    subscriptions.forEach((sub, index) => {
+      console.log(`📱 Subscription ${index + 1}: ${sub.endpoint.substring(0, 50)}...`);
+    });
 
     // Invia notifica push reale
+    console.log(`🚀 Sending push notification...`);
     const result = await sendPushNotification({
       title,
       body: message,
@@ -28,12 +46,8 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    if (result.success === 0 && result.failed === 0) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'No DJ subscriptions found' 
-      }, { status: 404 });
-    }
+    console.log(`📊 Push notification results:`, result);
+    console.log(`🔔 === PUSH NOTIFICATION TEST END ===`);
     
     return NextResponse.json({ 
       ok: true, 
@@ -41,15 +55,18 @@ export async function POST(request: NextRequest) {
       stats: {
         success: result.success,
         failed: result.failed,
-        invalidCleaned: result.invalidEndpoints.length
+        invalidCleaned: result.invalidEndpoints.length,
+        totalSubscriptions: subscriptions.length
       }
     });
     
   } catch (error) {
     console.error('❌ Push send error:', error);
+    console.log(`🔔 === PUSH NOTIFICATION TEST ERROR ===`);
     return NextResponse.json({ 
       ok: false, 
-      error: 'Internal server error' 
+      error: 'Internal server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
 }

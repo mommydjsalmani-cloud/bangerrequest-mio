@@ -34,8 +34,9 @@ self.addEventListener('push', function(event) {
       title = payload.title || title;
       options.body = payload.body || options.body;
       options.data = { ...options.data, ...payload.data };
-    } catch (e) {
+    } catch (error) {
       console.log('📝 Push data (text):', event.data.text());
+      console.log('📝 Parse error:', error);
     }
   }
 
@@ -62,6 +63,7 @@ self.addEventListener('notificationclick', function(event) {
 // Cache per offline (opzionale)
 self.addEventListener('install', function(event) {
   console.log('⚙️ SW installed');
+  console.log('📦 Install event:', event);
   self.skipWaiting();
 });
 
