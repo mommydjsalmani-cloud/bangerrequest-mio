@@ -1,65 +1,94 @@
+// API endpoint for push notification unsubscriptions
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
-// POST /api/push/unsubscribe
+// DJ authentication check (same as subscribe)
+function authenticateDJ(req: NextRequest) {
+  const djSecret = process.env.DJ_PANEL_SECRET?.trim();
+  const djUser = process.env.DJ_PANEL_USER?.trim();
+  
+  if (!djSecret || !djUser) {
+    return { ok: false, error: 'DJ panel not configured' };
+  }
+  
+  const headerSecret = req.headers.get('x-dj-secret')?.trim();
+  const headerUser = req.headers.get('x-dj-user')?.trim();
+  
+  if (headerSecret !== djSecret || headerUser !== djUser) {
+    return { ok: false, error: 'unauthorized' };
+  }
+  
+  return { ok: true };
+}
+
+// Initialize Supabase client
+function getSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl || !supabaseKey) {
+    return null;
+  }
+  
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+// Memory storage reference (same as subscribe)
+const subscriptions = new Map();
+
 export async function POST(req: NextRequest) {
   try {
-    // Autenticazione DJ
-    const djSecret = req.headers.get('x-dj-secret')?.trim();
-    const djUser = req.headers.get('x-dj-user')?.trim();
-    
-    const envSecret = process.env.DJ_PANEL_SECRET?.trim();
-    const envUser = process.env.DJ_PANEL_USER?.trim();
-    
-    if (!envSecret || !envUser || djSecret !== envSecret || djUser !== envUser) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Unauthorized' 
-      }, { status: 401 });
+    // Authenticate DJ
+    const auth = authenticateDJ(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: 401 });
     }
-
-    const { endpoint } = await req.json();
+    
+    const djUser = req.headers.get('x-dj-user')?.trim() || 'unknown';
+    const body = await req.json();
+    
+    const { endpoint } = body;
     
     if (!endpoint) {
       return NextResponse.json({ 
         ok: false, 
-        error: 'Endpoint required' 
+        error: 'Missing required field: endpoint' 
       }, { status: 400 });
     }
-
-    // Rimuovi/disattiva subscription
-    const supabase = getSupabase();
-    if (!supabase) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Database not configured' 
-      }, { status: 500 });
+    
+    // Try to remove from Supabase first
+    const supabase = getSupabaseClient();
+    
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .delete()
+          .eq('dj_user', djUser);
+        
+        if (error) {
+          console.error('Supabase push unsubscription error:', error);
+        }
+      } catch (error) {
+        console.error('Supabase push unsubscription failed:', error);
+      }
     }
-
-    const { error } = await supabase
-      .from('dj_push_subscriptions')
-      .update({ is_active: false })
-      .eq('endpoint', endpoint)
-      .eq('dj_user', djUser);
-
-    if (error) {
-      console.error('Error unsubscribing:', error);
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Database error' 
-      }, { status: 500 });
-    }
-
+    
+    // Remove from memory storage
+    subscriptions.delete(djUser);
+    
+    console.log(`Push subscription removed for DJ: ${djUser}`);
+    
     return NextResponse.json({ 
-      ok: true,
-      message: 'Push notifications disattivate'
+      ok: true, 
+      message: 'Push subscription removed successfully' 
     });
     
   } catch (error) {
-    console.error('Push unsubscribe error:', error);
+    console.error('Push unsubscription error:', error);
     return NextResponse.json({ 
       ok: false, 
-      error: 'Server error' 
+      error: 'Internal server error' 
     }, { status: 500 });
   }
 }

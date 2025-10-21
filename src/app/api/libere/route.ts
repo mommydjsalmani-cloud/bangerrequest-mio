@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
-import { sendPushNotification } from '@/lib/push';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -260,25 +259,11 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
   }
 
-  // Invia notifica push ai DJ collegati (non aspettare il completamento)
-  try {
-    const pushPayload = {
-      title: '🎵 Nuova Richiesta!',
-      artist: newRequest.artists || 'Artista sconosciuto',
-      request_id: newRequest.id.toString(),
-      session_id: session.id.toString(),
-      session_name: session.session_name,
-      body: `${newRequest.title}${newRequest.artists ? ` - ${newRequest.artists}` : ''}`
-    };
-    
-    // Invia notifica in background (non bloccare la risposta)
-    sendPushNotification(pushPayload)
-      .catch(error => console.error('Push notification error:', error));
-      
-  } catch (error) {
-    // Log l'errore ma non bloccare la risposta
-    console.error('Push notification setup error:', error);
-  }
+  // Trigger notifiche push in background (non bloccante)
+  triggerPushNotification(session.id, newRequest).catch(error => {
+    console.error('Errore invio notifica push:', error);
+    // Non bloccare la risposta se le notifiche falliscono
+  });
   
   return withVersion({ 
     ok: true, 
@@ -286,4 +271,57 @@ export async function POST(req: Request) {
     request_id: newRequest.id,
     request: newRequest 
   }, { status: 201 });
+}
+
+// Funzione per triggerare notifiche push (non bloccante)
+async function triggerPushNotification(sessionId: string, requestData: {
+  title: string;
+  artists?: string | null;
+  album?: string | null;
+  requester_name?: string | null;
+  event_code?: string | null;
+}) {
+  try {
+    // Verifica che le variabili d'ambiente per DJ siano configurate
+    const djSecret = process.env.DJ_SECRET;
+    const djUser = process.env.DJ_USER;
+
+    if (!djSecret || !djUser) {
+      console.warn('DJ credentials not configured - push notifications disabled');
+      return;
+    }
+
+    // Prepara i dati per la notifica
+    const notificationData = {
+      title: requestData.title,
+      artists: requestData.artists,
+      album: requestData.album,
+      requester_name: requestData.requester_name,
+      event_code: requestData.event_code
+    };
+
+    // Effettua chiamata interna all'API push
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/push/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-dj-secret': djSecret,
+        'x-dj-user': djUser
+      },
+      body: JSON.stringify({
+        sessionId,
+        requestData: notificationData
+      })
+    });
+
+    const result = await response.json();
+    
+    if (result.ok) {
+      console.log('Push notification sent:', result.message);
+    } else {
+      console.warn('Push notification failed:', result.error);
+    }
+  } catch (error) {
+    console.error('Push notification trigger error:', error);
+  }
 }

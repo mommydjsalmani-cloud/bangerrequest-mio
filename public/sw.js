@@ -1,8 +1,10 @@
-// Service Worker per Push Notifications
-// Gira in background anche quando l'app è chiusa
+// Service Worker for Push Notifications
+// Handles background push notifications even when app is closed
+
+const CACHE_NAME = 'banger-request-v1';
 
 // Install event
-self.addEventListener('install', () => {
+self.addEventListener('install', (event) => {
   console.log('Service Worker installing...');
   self.skipWaiting();
 });
@@ -10,50 +12,63 @@ self.addEventListener('install', () => {
 // Activate event
 self.addEventListener('activate', (event) => {
   console.log('Service Worker activating...');
-  event.waitUntil(clients.claim());
+  event.waitUntil(self.clients.claim());
 });
 
-// Push event - quando arriva una notifica
+// Push event - handles incoming push notifications
 self.addEventListener('push', (event) => {
   console.log('Push received:', event);
   
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch (e) {
-    console.error('Error parsing push data:', e);
-    data = { title: 'Nuova richiesta', body: 'Una nuova richiesta musicale è arrivata!' };
+  if (!event.data) {
+    console.log('Push event but no data');
+    return;
   }
 
-  const options = {
-    body: data.body || `${data.title} - ${data.artist}`,
-    icon: '/Simbolo_Bianco.png',
-    badge: '/Simbolo_Bianco.png',
-    tag: 'new-request',
-    data: {
-      request_id: data.request_id,
-      session_id: data.session_id,
-      url: `/dj/libere?highlight=${data.request_id}`
-    },
-    actions: [
-      {
-        action: 'view',
-        title: '👀 Visualizza',
-        icon: '/Simbolo_Bianco.png'
-      },
-      {
-        action: 'dismiss',
-        title: '✖️ Chiudi'
-      }
-    ],
-    requireInteraction: true, // Mantiene visibile finché non si interagisce
-    silent: false,
-    vibrate: [200, 100, 200] // Vibrazione per mobile
-  };
+  try {
+    const data = event.data.json();
+    console.log('Push data:', data);
 
-  event.waitUntil(
-    self.registration.showNotification('🎵 Banger Request', options)
-  );
+    const options = {
+      body: `${data.title} - ${data.artists}\nEvento: ${data.event || 'Richieste Libere'}`,
+      icon: '/Simbolo_Bianco.png',
+      badge: '/Simbolo_Bianco.png',
+      tag: `request-${data.id}`,
+      data: {
+        request_id: data.id,
+        session_id: data.session_id,
+        url: data.url || '/'
+      },
+      actions: [
+        {
+          action: 'view',
+          title: '👀 Visualizza',
+          icon: '/Simbolo_Bianco.png'
+        },
+        {
+          action: 'dismiss',
+          title: '❌ Ignora'
+        }
+      ],
+      requireInteraction: true, // Keeps notification visible until user interacts
+      vibrate: [200, 100, 200], // Vibration pattern for mobile
+      silent: false
+    };
+
+    event.waitUntil(
+      self.registration.showNotification('🎵 Nuova Richiesta Musicale', options)
+    );
+  } catch (error) {
+    console.error('Error processing push notification:', error);
+    
+    // Fallback notification if data parsing fails
+    event.waitUntil(
+      self.registration.showNotification('🎵 Banger Request', {
+        body: 'Hai ricevuto una nuova richiesta musicale',
+        icon: '/Simbolo_Bianco.png',
+        tag: 'fallback-notification'
+      })
+    );
+  }
 });
 
 // Notification click event
@@ -61,39 +76,50 @@ self.addEventListener('notificationclick', (event) => {
   console.log('Notification clicked:', event);
   
   event.notification.close();
-  
-  if (event.action === 'view' || !event.action) {
-    // Apri l'app nel pannello DJ
-    const url = event.notification.data.url || '/dj/libere';
-    
-    event.waitUntil(
-      clients.matchAll({ type: 'window', includeUncontrolled: true })
-        .then((windowClients) => {
-          // Se c'è già una finestra aperta, focusla
-          for (let client of windowClients) {
-            if (client.url.includes('/dj') && 'focus' in client) {
-              return client.focus().then(() => {
-                // Naviga alla richiesta specifica se possibile
-                return client.navigate(url);
-              });
-            }
-          }
-          
-          // Altrimenti apri nuova finestra
-          if (clients.openWindow) {
-            return clients.openWindow(url);
-          }
-        })
-    );
-  } else if (event.action === 'dismiss') {
-    // Solo chiudi la notifica (già fatto sopra)
+
+  const action = event.action;
+  const data = event.notification.data;
+
+  if (action === 'dismiss') {
+    // Just close notification, do nothing
+    return;
   }
+
+  // For 'view' action or default click
+  const targetUrl = action === 'view' && data?.session_id 
+    ? `/dj/libere?session=${data.session_id}` 
+    : '/dj/libere';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Check if app is already open
+        for (const client of clientList) {
+          if (client.url.includes('/dj') && 'focus' in client) {
+            // Focus existing DJ window and navigate if needed
+            return client.focus().then(() => {
+              if ('navigate' in client) {
+                return client.navigate(targetUrl);
+              }
+            });
+          }
+        }
+        
+        // Open new window if app not open
+        if (clients.openWindow) {
+          return clients.openWindow(targetUrl);
+        }
+      })
+      .catch((error) => {
+        console.error('Error handling notification click:', error);
+      })
+  );
 });
 
-// Background sync per retry se offline (opzionale)
+// Background sync for offline functionality (future enhancement)
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'retry-request') {
-    console.log('Background sync for retry-request');
-    // Implementare retry logica se necessario
+  if (event.tag === 'background-sync') {
+    console.log('Background sync triggered');
+    // Handle background synchronization if needed
   }
 });
