@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
-import NotificationsClient from '@/components/NotificationsClient';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -878,9 +877,6 @@ export default function LibereAdminPanel() {
               {eventMode && <span className="text-lg font-normal text-blue-200 ml-2">- Modalità Evento</span>}
             </h1>
             <div className="flex gap-2">
-              {/* Componente Push Notifications */}
-              {authed && <NotificationsClient djSecret={password} />}
-              
               <button
                 onClick={() => setEventMode(!eventMode)}
                 className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
@@ -905,11 +901,6 @@ export default function LibereAdminPanel() {
                 >
                   {homepageVisible ? '🏠✓' : '🏠+'}
                 </button>
-              )}
-              
-              {/* Componente Notifiche Push */}
-              {authed && (
-                <NotificationsClient djSecret={password} />
               )}
               
               <button

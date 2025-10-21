@@ -20,11 +20,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
-    "@types/web-push": "^3.6.4",
     "next": "15.5.3",
     "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "web-push": "^3.6.7"
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
