@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { sendPushNotification } from '@/lib/push';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -257,6 +258,26 @@ export async function POST(req: Request) {
   if (error) {
     console.error('Errore creazione richiesta:', error);
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
+  }
+
+  // Invia notifica push ai DJ collegati (non aspettare il completamento)
+  try {
+    const pushPayload = {
+      title: '🎵 Nuova Richiesta!',
+      artist: newRequest.artists || 'Artista sconosciuto',
+      request_id: newRequest.id.toString(),
+      session_id: session.id.toString(),
+      session_name: session.session_name,
+      body: `${newRequest.title}${newRequest.artists ? ` - ${newRequest.artists}` : ''}`
+    };
+    
+    // Invia notifica in background (non bloccare la risposta)
+    sendPushNotification(pushPayload)
+      .catch(error => console.error('Push notification error:', error));
+      
+  } catch (error) {
+    // Log l'errore ma non bloccare la risposta
+    console.error('Push notification setup error:', error);
   }
   
   return withVersion({ 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
+import { NotificationManager } from '@/lib/notifications';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -32,6 +33,11 @@ export default function LibereAdminPanel() {
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
+  
+  // Push notifications state
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationSupported, setNotificationSupported] = useState(false);
+  const [notificationLoading, setNotificationLoading] = useState(false);
 
   // Funzione per filtrare le richieste per codice evento
   const filteredRequests = requests.filter(request => {
@@ -290,6 +296,13 @@ export default function LibereAdminPanel() {
       }
     };
   }, [authed, selectedSessionId, password, username, showArchive]); // Aggiunto showArchive alle dipendenze
+
+  // Inizializza le notifiche quando l'utente si autentica
+  useEffect(() => {
+    if (authed) {
+      initializeNotifications();
+    }
+  }, [authed]);
   
   // Funzione per caricare richieste archiviate
   const loadArchivedRequests = async (sessionId: string) => {
@@ -685,6 +698,74 @@ export default function LibereAdminPanel() {
       setError('Errore copia link');
     }
   };
+
+  // Push notifications functions
+  const initializeNotifications = async () => {
+    try {
+      const notificationManager = NotificationManager.getInstance();
+      const supported = notificationManager.isSupported();
+      setNotificationSupported(supported);
+      
+      if (!supported) return;
+      
+      const enabled = await notificationManager.isSubscribed();
+      setNotificationsEnabled(enabled);
+    } catch (error) {
+      console.error('Error initializing notifications:', error);
+    }
+  };
+
+  const toggleNotifications = async () => {
+    if (!notificationSupported) {
+      setError('Le notifiche non sono supportate in questo browser');
+      return;
+    }
+
+    setNotificationLoading(true);
+    setError(null);
+    
+    try {
+      const notificationManager = NotificationManager.getInstance();
+      
+      if (notificationsEnabled) {
+        // Disabilita notifiche
+        await notificationManager.unsubscribe(username, password);
+        setNotificationsEnabled(false);
+        setSuccess('Notifiche disabilitate ✓');
+      } else {
+        // Abilita notifiche
+        const success = await notificationManager.subscribe(username, password);
+        if (success) {
+          setNotificationsEnabled(true);
+          setSuccess('Notifiche abilitate ✓');
+          
+          // Test notification
+          setTimeout(async () => {
+            try {
+              await fetch('/api/push/subscribe', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-dj-user': username,
+                  'x-dj-secret': password
+                },
+                body: JSON.stringify({ test: true })
+              });
+            } catch (error) {
+              console.error('Test notification failed:', error);
+            }
+          }, 1000);
+        } else {
+          setError('Impossibile abilitare le notifiche');
+        }
+      }
+    } catch (error: unknown) {
+      console.error('Notification toggle error:', error);
+      setError(error instanceof Error ? error.message : 'Errore durante la gestione delle notifiche');
+    } finally {
+      setNotificationLoading(false);
+    }
+  };
   
   // Funzione per esportare richieste in CSV
   const exportToCSV = () => {
@@ -900,6 +981,22 @@ export default function LibereAdminPanel() {
                   title={homepageVisible ? 'Rimuovi dalla homepage' : 'Aggiungi alla homepage'}
                 >
                   {homepageVisible ? '🏠✓' : '🏠+'}
+                </button>
+              )}
+              
+              {/* Pulsante Notifiche */}
+              {notificationSupported && (
+                <button
+                  onClick={toggleNotifications}
+                  disabled={notificationLoading}
+                  className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
+                    notificationsEnabled
+                      ? 'bg-orange-600 hover:bg-orange-700 text-white border-orange-500'
+                      : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
+                  } ${notificationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={notificationsEnabled ? 'Disabilita notifiche push' : 'Abilita notifiche push per nuove richieste'}
+                >
+                  {notificationLoading ? '⏳' : (notificationsEnabled ? '🔔✓' : '🔔')}
                 </button>
               )}
               

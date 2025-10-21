@@ -1,0 +1,52 @@
+{
+  "name": "Banger Request",
+  "short_name": "BangerReq",
+  "description": "Sistema richieste musicali per DJ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1b4b",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "categories": ["music", "entertainment"],
+  "lang": "it",
+  "icons": [
+    {
+      "src": "/Simbolo_Bianco.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/LogoHD_Bianco.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Pannello DJ",
+      "short_name": "DJ",
+      "description": "Accedi direttamente al pannello DJ",
+      "url": "/dj/libere",
+      "icons": [
+        {
+          "src": "/Simbolo_Bianco.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Nuova Richiesta",
+      "short_name": "Richiesta", 
+      "description": "Fai una nuova richiesta",
+      "url": "/libere",
+      "icons": [
+        {
+          "src": "/Simbolo_Bianco.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
