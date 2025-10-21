@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
+import { PushNotificationSettings } from '@/components/PushNotificationSettings';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -1292,6 +1293,9 @@ export default function LibereAdminPanel() {
                   </div>
                 </div>
               </div>
+
+              {/* 🔔 Push Notifications Settings */}
+              <PushNotificationSettings />
               
               {/* Link & QR */}
               <div className="space-y-3">

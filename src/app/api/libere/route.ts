@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { sendNewRequestNotification } from '@/lib/webpush';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -257,6 +258,14 @@ export async function POST(req: Request) {
   if (error) {
     console.error('Errore creazione richiesta:', error);
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
+  }
+
+  // 🔔 NOTIFICHE: Invia notifica push ai DJ (non bloccante)
+  try {
+    await sendNewRequestNotification(newRequest);
+  } catch (notificationError) {
+    // Le notifiche fallite non devono far fallire la richiesta
+    console.warn('⚠️ Failed to send push notification:', notificationError);
   }
   
   return withVersion({ 
