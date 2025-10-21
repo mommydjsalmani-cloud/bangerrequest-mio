@@ -5,10 +5,11 @@ console.log('🔔 Banger Request SW loaded');
 self.addEventListener('push', function(event) {
   console.log('📱 Push received:', event);
   
-  const options = {
+  let title = '🎧 Banger Request';
+  let options = {
     body: 'Nuova richiesta musicale ricevuta!',
-    icon: '/LogoHD_Bianco.png',
-    badge: '/Simbolo_Bianco.png',
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
     vibrate: [100, 50, 100],
     data: {
       url: '/dj/libere'
@@ -17,7 +18,7 @@ self.addEventListener('push', function(event) {
       {
         action: 'view',
         title: 'Vedi Richieste',
-        icon: '/Simbolo_Bianco.png'
+        icon: '/icon-192x192.png'
       },
       {
         action: 'dismiss',
@@ -29,15 +30,17 @@ self.addEventListener('push', function(event) {
   if (event.data) {
     try {
       const payload = event.data.json();
-      options.body = payload.message || options.body;
-      options.data = { ...options.data, ...payload };
+      console.log('📝 Push payload:', payload);
+      title = payload.title || title;
+      options.body = payload.body || options.body;
+      options.data = { ...options.data, ...payload.data };
     } catch (e) {
-      console.log('📝 Push data:', event.data.text());
+      console.log('📝 Push data (text):', event.data.text());
     }
   }
 
   event.waitUntil(
-    self.registration.showNotification('🎧 Banger Request', options)
+    self.registration.showNotification(title, options)
   );
 });
 

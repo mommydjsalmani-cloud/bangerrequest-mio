@@ -1,4 +1,23 @@
 // Gestione notifiche push per DJ
+
+/**
+ * Converte una stringa base64 in Uint8Array per le VAPID keys
+ */
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export class NotificationManager {
   private static instance: NotificationManager;
   private registration: ServiceWorkerRegistration | null = null;
@@ -97,12 +116,18 @@ export class NotificationManager {
         throw new Error('Failed to get VAPID key');
       }
       const { publicKey } = await vapidResponse.json();
+      console.log('🔑 VAPID public key received:', publicKey.substring(0, 20) + '...');
+
+      // Converti la chiave VAPID in Uint8Array
+      const applicationServerKey = urlBase64ToUint8Array(publicKey);
 
       // Crea sottoscrizione push
       this.subscription = await this.registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: publicKey
+        applicationServerKey: applicationServerKey as BufferSource
       });
+
+      console.log('📱 Push subscription created:', this.subscription.endpoint.substring(0, 50) + '...');
 
       // Invia sottoscrizione al server
       const response = await fetch('/api/push/subscribe', {
@@ -114,7 +139,8 @@ export class NotificationManager {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to subscribe on server');
+        const errorText = await response.text();
+        throw new Error(`Failed to subscribe on server: ${response.status} - ${errorText}`);
       }
 
       console.log('✅ Push subscription successful');
