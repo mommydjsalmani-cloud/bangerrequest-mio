@@ -1,10 +1,8 @@
 // Service Worker for Push Notifications
 // Handles background push notifications even when app is closed
 
-const CACHE_NAME = 'banger-request-v1';
-
 // Install event
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   console.log('Service Worker installing...');
   self.skipWaiting();
 });
