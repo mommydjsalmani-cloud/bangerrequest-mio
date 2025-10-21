@@ -1,123 +1,141 @@
-// Service Worker for Push Notifications
-// Handles background push notifications even when app is closed
+// Web Push Service Worker
+const CACHE_NAME = 'bangerrequest-v1';
 
 // Install event
-self.addEventListener('install', () => {
-  console.log('Service Worker installing...');
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll([
+        '/',
+        '/dj/libere',
+        '/icon-192.png',
+        '/badge-72.png'
+      ]);
+    })
+  );
   self.skipWaiting();
 });
 
 // Activate event
 self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating...');
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
 });
 
-// Push event - handles incoming push notifications
+// Push event listener
 self.addEventListener('push', (event) => {
-  console.log('Push received:', event);
-  
-  if (!event.data) {
-    console.log('Push event but no data');
-    return;
-  }
+  if (!event.data) return;
 
-  try {
-    const data = event.data.json();
-    console.log('Push data:', data);
+  const payload = event.data.json();
+  const { id, title, artist, event: eventName } = payload;
 
-    const options = {
-      body: `${data.title} - ${data.artists}\nEvento: ${data.event || 'Richieste Libere'}`,
-      icon: '/Simbolo_Bianco.png',
-      badge: '/Simbolo_Bianco.png',
-      tag: `request-${data.id}`,
-      data: {
-        request_id: data.id,
-        session_id: data.session_id,
-        url: data.url || '/'
-      },
-      actions: [
-        {
-          action: 'view',
-          title: '👀 Visualizza',
-          icon: '/Simbolo_Bianco.png'
-        },
-        {
-          action: 'dismiss',
-          title: '❌ Ignora'
-        }
-      ],
-      requireInteraction: true, // Keeps notification visible until user interacts
-      vibrate: [200, 100, 200], // Vibration pattern for mobile
-      silent: false
-    };
-
-    event.waitUntil(
-      self.registration.showNotification('🎵 Nuova Richiesta Musicale', options)
-    );
-  } catch (error) {
-    console.error('Error processing push notification:', error);
-    
-    // Fallback notification if data parsing fails
-    event.waitUntil(
-      self.registration.showNotification('🎵 Banger Request', {
-        body: 'Hai ricevuto una nuova richiesta musicale',
-        icon: '/Simbolo_Bianco.png',
-        tag: 'fallback-notification'
-      })
-    );
-  }
-});
-
-// Notification click event
-self.addEventListener('notificationclick', (event) => {
-  console.log('Notification clicked:', event);
-  
-  event.notification.close();
-
-  const action = event.action;
-  const data = event.notification.data;
-
-  if (action === 'dismiss') {
-    // Just close notification, do nothing
-    return;
-  }
-
-  // For 'view' action or default click
-  const targetUrl = action === 'view' && data?.session_id 
-    ? `/dj/libere?session=${data.session_id}` 
-    : '/dj/libere';
+  const notificationTitle = '🎵 Banger Request';
+  const notificationOptions = {
+    body: `Nuova richiesta: ${title} - ${artist}`,
+    icon: '/icon-192.png',
+    badge: '/badge-72.png',
+    tag: `new-request-${id}`,
+    requireInteraction: true,
+    renotify: true,
+    vibrate: [200, 100, 200],
+    actions: [
+      { action: 'accept', title: '✅ Accetta' },
+      { action: 'view', title: '👀 Visualizza' }
+    ],
+    data: { id, title, artist, event: eventName }
+  };
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        // Check if app is already open
-        for (const client of clientList) {
-          if (client.url.includes('/dj') && 'focus' in client) {
-            // Focus existing DJ window and navigate if needed
-            return client.focus().then(() => {
-              if ('navigate' in client) {
-                return client.navigate(targetUrl);
-              }
-            });
-          }
-        }
-        
-        // Open new window if app not open
-        if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
-        }
-      })
-      .catch((error) => {
-        console.error('Error handling notification click:', error);
-      })
+    self.registration.showNotification(notificationTitle, notificationOptions)
   );
 });
 
-// Background sync for offline functionality (future enhancement)
+// Notification click event listener
+self.addEventListener('notificationclick', (event) => {
+  const { action, data } = event;
+  const { id } = data;
+
+  event.notification.close();
+
+  if (action === 'accept') {
+    // Accept request
+    event.waitUntil(
+      fetch(`/api/requests`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-secret': self.DJ_SECRET || '',
+          'x-dj-user': self.DJ_USER || ''
+        },
+        body: JSON.stringify({ id, action: 'accept' })
+      }).catch((error) => {
+        console.error('Failed to accept request:', error);
+      })
+    );
+  } else if (action === 'view') {
+    // View request - focus existing window or open new one
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        const djUrl = `/dj/libere`;
+        
+        // Try to focus existing DJ panel window
+        for (const client of clientList) {
+          if (client.url.includes('/dj/')) {
+            return client.focus();
+          }
+        }
+        
+        // Open new window if no DJ panel found
+        if (clients.openWindow) {
+          return clients.openWindow(djUrl);
+        }
+      })
+    );
+  } else {
+    // Default click behavior - open DJ panel
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        const djUrl = `/dj/libere`;
+        
+        for (const client of clientList) {
+          if (client.url.includes('/dj/')) {
+            return client.focus();
+          }
+        }
+        
+        if (clients.openWindow) {
+          return clients.openWindow(djUrl);
+        }
+      })
+    );
+  }
+});
+
+// Handle background sync for offline requests
 self.addEventListener('sync', (event) => {
-  if (event.tag === 'background-sync') {
-    console.log('Background sync triggered');
-    // Handle background synchronization if needed
+  if (event.tag === 'accept-request') {
+    event.waitUntil(
+      // Handle offline accept requests if needed
+      console.log('Background sync for accept-request')
+    );
+  }
+});
+
+// Store DJ credentials for notification actions
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SET_DJ_CREDENTIALS') {
+    self.DJ_SECRET = event.data.secret;
+    self.DJ_USER = event.data.user;
   }
 });

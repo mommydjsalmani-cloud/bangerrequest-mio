@@ -16,7 +16,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Banger Request - Richieste Musicali",
   description: "Richiedi la tua musica preferita al DJ! Sistema di richieste musicali interattivo con integrazione Spotify.",
-  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -31,21 +30,6 @@ export default function RootLayout({
           name="viewport"
           content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"
         />
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            if ('serviceWorker' in navigator) {
-              window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                  .then(function(registration) {
-                    console.log('Service Worker registrato:', registration);
-                  })
-                  .catch(function(error) {
-                    console.log('Errore Service Worker:', error);
-                  });
-              });
-            }
-          `
-        }} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh flex flex-col`}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
-import NotificationManager from '@/components/NotificationManager';
+import { NotificationsClient } from '@/components/NotificationsClient';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -872,10 +872,6 @@ export default function LibereAdminPanel() {
         
         {/* Header */}
         <div className="bg-white/10 backdrop-blur-lg rounded-lg shadow-xl p-4 md:p-6 mb-4 md:mb-6 border border-white/20">
-          
-          {/* Notification Manager */}
-          <NotificationManager djSecret={password} djUser={username} />
-          
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
             <h1 className="text-xl md:text-2xl font-bold text-white">
               🎵 Pannello Richieste Libere
@@ -916,6 +912,16 @@ export default function LibereAdminPanel() {
               </button>
             </div>
           </div>
+          
+          {/* Notifications Component */}
+          {authed && (
+            <div className="mb-4">
+              <NotificationsClient 
+                djUser={username}
+                djSecret={password}
+              />
+            </div>
+          )}
           
           {/* Session Selection */}
           <div className="flex flex-col sm:flex-row gap-2 md:gap-4 items-stretch sm:items-center mb-4">
