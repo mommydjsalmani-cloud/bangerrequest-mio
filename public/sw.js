@@ -1,8 +1,6 @@
 // Service Worker per Push Notifications
 // VINCOLO: Fail-safe totale, nessun impatto su funzionalità esistenti
 
-const CACHE_NAME = 'banger-request-v1';
-
 // Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
