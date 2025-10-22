@@ -5,8 +5,8 @@ import { getAllDJSubscriptions } from '@/lib/webpush';
 export async function GET() {
   try {
     console.log('📋 [DEBUG] /api/push/list called - checking subscription count...');
-    const subscriptions = getAllDJSubscriptions();
-    console.log(`📋 [DEBUG] Found ${subscriptions.length} subscriptions in memory`);
+    const subscriptions = await getAllDJSubscriptions();
+    console.log(`📋 [DEBUG] Found ${subscriptions.length} subscriptions`);
 
     // Non esporre le chiavi sensibili in produzione; questo endpoint è pensato per debug locale.
     const sanitized = subscriptions.map((s) => ({ endpoint: s.endpoint }));

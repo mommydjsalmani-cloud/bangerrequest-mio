@@ -2,6 +2,7 @@
 import webpush from 'web-push';
 import fs from 'fs';
 import path from 'path';
+import { getSupabase } from './supabase';
 
 export interface PushSubscription {
   endpoint: string;
@@ -11,12 +12,12 @@ export interface PushSubscription {
   };
 }
 
-// Storage in-memory per sottoscrizioni DJ (in produzione usare DB)
+// Storage in-memory per sottoscrizioni DJ (fallback per sviluppo)
 export const djSubscriptions = new Map<string, PushSubscription[]>();
 
 // Simple file-backed persistence for local development to avoid losing subscriptions
 // between restarts or hot-reloads. This is intentionally lightweight and only used
-// when NODE_ENV !== 'production'. In production you should use a proper DB.
+// when NODE_ENV !== 'production'. In production we use Supabase.
 const DATA_DIR = path.resolve(process.cwd(), '.data');
 const DATA_FILE = path.join(DATA_DIR, 'push_subscriptions.json');
 
@@ -67,7 +68,65 @@ webpush.setVapidDetails(
 );
 
 // Aggiungi sottoscrizione per un DJ
-export function addDJSubscription(djUser: string, subscription: PushSubscription): void {
+export async function addDJSubscription(djUser: string, subscription: PushSubscription): Promise<void> {
+  // In produzione usa Supabase, altrimenti Map in-memory + file
+  if (process.env.NODE_ENV === 'production') {
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        // Upsert: inserisci o aggiorna se esiste già
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .upsert({
+            dj_user: djUser,
+            endpoint: subscription.endpoint,
+            p256dh_key: subscription.keys.p256dh,
+            auth_key: subscription.keys.auth,
+            last_used_at: new Date().toISOString()
+          }, {
+            onConflict: 'dj_user,endpoint'
+          });
+        
+        if (error) {
+          console.error('❌ Error saving push subscription to DB:', error);
+          // Fallback a memoria se DB fallisce
+          addToMemory(djUser, subscription);
+        } else {
+          console.log(`📱 Saved push subscription to DB for DJ: ${djUser}`);
+        }
+      } catch (error) {
+        console.error('❌ Error connecting to DB for push subscription:', error);
+        // Fallback a memoria
+        addToMemory(djUser, subscription);
+      }
+    } else {
+      // Fallback a memoria se Supabase non configurato
+      addToMemory(djUser, subscription);
+    }
+  } else {
+    // Sviluppo: usa memoria + file
+    addToMemory(djUser, subscription);
+  }
+}
+
+// Helper per aggiungere a memoria (sviluppo o fallback)
+function addToMemory(djUser: string, subscription: PushSubscription): void {
+  if (!djSubscriptions.has(djUser)) {
+    djSubscriptions.set(djUser, []);
+  }
+  
+  const userSubs = djSubscriptions.get(djUser)!;
+  // Rimuovi eventuali sottoscrizioni duplicate
+  const filtered = userSubs.filter(sub => sub.endpoint !== subscription.endpoint);
+  filtered.push(subscription);
+  djSubscriptions.set(djUser, filtered);
+  
+  console.log(`📱 Added push subscription to memory for DJ: ${djUser}`);
+  saveSubscriptionsToDisk();
+}
+
+// Funzione helper per memoria (sviluppo e fallback)
+function addDJSubscriptionMemory(djUser: string, subscription: PushSubscription): void {
   if (!djSubscriptions.has(djUser)) {
     djSubscriptions.set(djUser, []);
   }
@@ -83,7 +142,40 @@ export function addDJSubscription(djUser: string, subscription: PushSubscription
 }
 
 // Rimuovi sottoscrizione per un DJ
-export function removeDJSubscription(djUser: string, subscription: PushSubscription): void {
+export async function removeDJSubscription(djUser: string, subscription: PushSubscription): Promise<void> {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Produzione: rimuovi da Supabase
+    const supabase = getSupabase();
+    if (!supabase) {
+      removeDJSubscriptionMemory(djUser, subscription);
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('push_subscriptions')
+        .delete()
+        .eq('dj_user', djUser)
+        .eq('endpoint', subscription.endpoint);
+      
+      if (error) {
+        console.error('❌ Failed to remove subscription from DB:', error);
+      } else {
+        console.log(`📱 Removed push subscription from DB for DJ: ${djUser}`);
+      }
+    } catch (err) {
+      console.error('❌ Error removing subscription from DB:', err);
+    }
+  } else {
+    // Sviluppo: usa memoria + file
+    removeDJSubscriptionMemory(djUser, subscription);
+  }
+}
+
+// Funzione helper per memoria (sviluppo)
+function removeDJSubscriptionMemory(djUser: string, subscription: PushSubscription): void {
   const userSubs = djSubscriptions.get(djUser);
   if (!userSubs) return;
   
@@ -95,7 +187,47 @@ export function removeDJSubscription(djUser: string, subscription: PushSubscript
 }
 
 // Ottieni tutte le sottoscrizioni per inviare notifiche
-export function getAllDJSubscriptions(): PushSubscription[] {
+export async function getAllDJSubscriptions(): Promise<PushSubscription[]> {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Produzione: leggi da Supabase
+    const supabase = getSupabase();
+    if (!supabase) {
+      console.warn('⚠️ Supabase not configured, using in-memory subscriptions');
+      return getAllDJSubscriptionsMemory();
+    }
+    
+    try {
+      const { data: subscriptions, error } = await supabase
+        .from('push_subscriptions')
+        .select('endpoint, p256dh_key, auth_key')
+        .order('last_used_at', { ascending: false });
+      
+      if (error) {
+        console.error('❌ Failed to load subscriptions from DB:', error);
+        return getAllDJSubscriptionsMemory();
+      }
+      
+      return subscriptions.map(sub => ({
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh_key,
+          auth: sub.auth_key
+        }
+      }));
+    } catch (err) {
+      console.error('❌ Error loading subscriptions from DB:', err);
+      return getAllDJSubscriptionsMemory();
+    }
+  } else {
+    // Sviluppo: usa memoria
+    return getAllDJSubscriptionsMemory();
+  }
+}
+
+// Funzione helper per memoria (sviluppo e fallback)
+function getAllDJSubscriptionsMemory(): PushSubscription[] {
   const allSubs: PushSubscription[] = [];
   for (const subs of djSubscriptions.values()) {
     allSubs.push(...subs);
@@ -104,7 +236,33 @@ export function getAllDJSubscriptions(): PushSubscription[] {
 }
 
 // Pulisci sottoscrizioni invalide
-export function cleanupInvalidSubscriptions(invalidEndpoints: string[]): void {
+export async function cleanupInvalidSubscriptions(invalidEndpoints: string[]): Promise<void> {
+  if (invalidEndpoints.length === 0) return;
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    // Produzione: rimuovi da Supabase
+    const supabase = getSupabase();
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('push_subscriptions')
+          .delete()
+          .in('endpoint', invalidEndpoints);
+        
+        if (error) {
+          console.error('❌ Failed to cleanup invalid subscriptions from DB:', error);
+        } else {
+          console.log(`🗑️ Cleaned up ${invalidEndpoints.length} invalid subscriptions from DB`);
+        }
+      } catch (err) {
+        console.error('❌ Error cleaning up subscriptions from DB:', err);
+      }
+    }
+  }
+  
+  // Sempre pulisci dalla memoria (dev + fallback)
   for (const [djUser, subs] of djSubscriptions.entries()) {
     const validSubs = subs.filter(sub => !invalidEndpoints.includes(sub.endpoint));
     djSubscriptions.set(djUser, validSubs);
@@ -122,7 +280,7 @@ export async function sendPushNotification(payload: {
   badge?: string;
   data?: Record<string, unknown>;
 }): Promise<{ success: number; failed: number; invalidEndpoints: string[] }> {
-  const subscriptions = getAllDJSubscriptions();
+  const subscriptions = await getAllDJSubscriptions();
   
   if (subscriptions.length === 0) {
     console.log('📭 No DJ subscriptions found');

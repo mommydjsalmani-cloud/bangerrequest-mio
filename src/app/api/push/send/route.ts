@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
     console.log(`📝 Message: ${message}`);
     
     // Debug: controlla subscriptions disponibili
-    const subscriptions = getAllDJSubscriptions();
-    console.log(`� Available DJ subscriptions: ${subscriptions.length}`);
+    const subscriptions = await getAllDJSubscriptions();
+    console.log(`📊 Available DJ subscriptions: ${subscriptions.length}`);
     
     if (subscriptions.length === 0) {
       console.log(`⚠️ No DJ subscriptions found - cannot send test notification`);

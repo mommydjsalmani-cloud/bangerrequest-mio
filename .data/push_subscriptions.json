@@ -1,0 +1,11 @@
+{
+  "dj-anonymous": [
+    {
+      "endpoint": "https://fcm.googleapis.com/fcm/send/test-endpoint-1761118180342",
+      "keys": {
+        "p256dh": "kaNm5o5wwpIKTPLAZnTNuHMYva6EgazN-5RfnYkRlEAzIq-co2jiuy3jSXkUf7_hfVZbnD8WxMWdR1BgWgei1H8",
+        "auth": "lRAgSgnoACOsjq4988F--w"
+      }
+    }
+  ]
+}

@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Rimuovi sottoscrizione autenticata
-      removeDJSubscription(djUser, subscription);
+      await removeDJSubscription(djUser, subscription);
       
       return NextResponse.json({ 
         ok: true, 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Rimuovi sottoscrizione generica (usa 'anonymous' come user)
-      removeDJSubscription('dj-anonymous', subscription);
+      await removeDJSubscription('dj-anonymous', subscription);
       
       return NextResponse.json({ 
         ok: true, 

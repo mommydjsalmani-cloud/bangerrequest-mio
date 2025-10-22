@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Salva sottoscrizione autenticata
-      addDJSubscription(djUser, subscription);
+      await addDJSubscription(djUser, subscription);
       
       return NextResponse.json({ 
         ok: true, 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Salva sottoscrizione generica (usa 'anonymous' come user)
-      addDJSubscription('dj-anonymous', subscription);
+      await addDJSubscription('dj-anonymous', subscription);
       
       return NextResponse.json({ 
         ok: true, 
