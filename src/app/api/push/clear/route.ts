@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
+import { djSubscriptions } from '@/lib/webpush';
 
 // Endpoint di debug: cancella tutte le subscriptions (solo per sviluppo)
 export async function POST() {
   try {
-    // Importa e manipola direttamente la Map interna
-    const webpushModule = await import('@/lib/webpush');
-    
-    // Accediamo alla Map interna del modulo (hack per sviluppo)
-    const djSubscriptions = (webpushModule as any).djSubscriptions || new Map();
+    // Usa l'export esplicito della Map dal modulo webpush
     djSubscriptions.clear();
     
     console.log('🧹 Cleared all push subscriptions from memory');
