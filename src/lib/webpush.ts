@@ -1,5 +1,7 @@
 // Server-side utilities per notifiche push
 import webpush from 'web-push';
+import fs from 'fs';
+import path from 'path';
 
 export interface PushSubscription {
   endpoint: string;
@@ -10,7 +12,46 @@ export interface PushSubscription {
 }
 
 // Storage in-memory per sottoscrizioni DJ (in produzione usare DB)
-const djSubscriptions = new Map<string, PushSubscription[]>();
+export const djSubscriptions = new Map<string, PushSubscription[]>();
+
+// Simple file-backed persistence for local development to avoid losing subscriptions
+// between restarts or hot-reloads. This is intentionally lightweight and only used
+// when NODE_ENV !== 'production'. In production you should use a proper DB.
+const DATA_DIR = path.resolve(process.cwd(), '.data');
+const DATA_FILE = path.join(DATA_DIR, 'push_subscriptions.json');
+
+function loadSubscriptionsFromDisk() {
+  try {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!fs.existsSync(DATA_FILE)) return;
+    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+    const parsed: Record<string, PushSubscription[]> = JSON.parse(raw || '{}');
+    for (const [k, v] of Object.entries(parsed)) {
+      djSubscriptions.set(k, v);
+    }
+    console.log(`📥 Loaded ${Array.from(djSubscriptions.values()).flat().length} push subscriptions from disk`);
+  } catch (err) {
+    console.error('Failed to load push subscriptions from disk:', err);
+  }
+}
+
+function saveSubscriptionsToDisk() {
+  try {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    const obj: Record<string, PushSubscription[]> = {};
+    for (const [k, v] of djSubscriptions.entries()) {
+      obj[k] = v;
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+    // console.log('📤 Saved push subscriptions to disk');
+  } catch (err) {
+    console.error('Failed to save push subscriptions to disk:', err);
+  }
+}
+
+// Carica le subscription all'import
+loadSubscriptionsFromDisk();
 
 // VAPID keys (in produzione usare variabili ambiente)
 export const VAPID_KEYS = {
@@ -38,6 +79,7 @@ export function addDJSubscription(djUser: string, subscription: PushSubscription
   djSubscriptions.set(djUser, filtered);
   
   console.log(`📱 Added push subscription for DJ: ${djUser}`);
+  saveSubscriptionsToDisk();
 }
 
 // Rimuovi sottoscrizione per un DJ
@@ -49,6 +91,7 @@ export function removeDJSubscription(djUser: string, subscription: PushSubscript
   djSubscriptions.set(djUser, filtered);
   
   console.log(`📱 Removed push subscription for DJ: ${djUser}`);
+  saveSubscriptionsToDisk();
 }
 
 // Ottieni tutte le sottoscrizioni per inviare notifiche
@@ -66,6 +109,7 @@ export function cleanupInvalidSubscriptions(invalidEndpoints: string[]): void {
     const validSubs = subs.filter(sub => !invalidEndpoints.includes(sub.endpoint));
     djSubscriptions.set(djUser, validSubs);
   }
+  saveSubscriptionsToDisk();
 }
 
 /**
