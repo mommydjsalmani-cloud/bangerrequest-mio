@@ -10,13 +10,18 @@ describe('Aggregated health endpoint', () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_URL; // assicura missing supabase
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const res = await healthGET() as Response;
-  expect(res.status).toBe(200);
-  const j = await parseJSON(res as Response);
-    expect(j).toHaveProperty('supabase');
-    expect(j).toHaveProperty('auth');
-    expect(j.auth.ok).toBe(true);
-    expect(j.supabase.ok).toBe(false); // manca supabase => in-memory
-    expect(j.supabase.error).toBe('missing_env');
+    const res = await healthGET() as Response;
+    
+    // Il nuovo health check è più rigoroso - ritorna 503 se i servizi critici non sono disponibili
+    expect(res.status).toBe(503);
+    
+    const j = await parseJSON(res as Response);
+    expect(j).toHaveProperty('checks');
+    expect(j.checks).toHaveProperty('auth');
+    expect(j.checks).toHaveProperty('database');
+    expect(j.checks.auth.ok).toBe(true);
+    expect(j.checks.database.ok).toBe(false); // manca supabase => in-memory
+    expect(j.checks.database.error).toBe('missing_credentials');
+    expect(j.ok).toBe(false); // Overall health è false se mancano servizi critici
   });
 });

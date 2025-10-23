@@ -1,109 +1,127 @@
 import { NextResponse } from 'next/server';
+import { withErrorHandler, ValidationError, ExternalServiceError, withTimeout, logger } from '@/lib/errorHandler';
+import { config } from '@/lib/config';
 import { getSpotifyToken } from '@/lib/spotify';
 
-type SpotifyTrack = {
+// Tipi Spotify API
+interface SpotifyArtist {
+  name: string;
   id: string;
-  uri?: string;
-  title?: string;
-  artists?: string;
-  album?: string;
-  cover_url?: string | null;
-  duration_ms?: number;
-  explicit?: boolean;
-  preview_url?: string | null;
-  isrc?: string | null;
-};
-
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const q = url.searchParams.get('q') || '';
-  const limit = url.searchParams.get('limit') || '10';
-  if (!q) return NextResponse.json({ tracks: [] });
-
-  const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
-  if ((!clientId || !clientSecret) && process.env.NODE_ENV !== 'production') {
-    const mock = [
-      {
-        id: 'mock1',
-        uri: 'spotify:track:mock1',
-        title: `Brano di test: ${q}`,
-        artists: 'Artista Demo',
-        album: 'Album Demo',
-        cover_url: null,
-        duration_ms: 210000,
-        explicit: false,
-        preview_url: null,
-        isrc: null,
-      },
-      {
-        id: 'mock2',
-        uri: 'spotify:track:mock2',
-        title: `Secondo brano: ${q}`,
-        artists: 'Band Fittizia',
-        album: 'Raccolta Test',
-        cover_url: null,
-        duration_ms: 185000,
-        explicit: false,
-        preview_url: null,
-        isrc: null,
-      },
-    ];
-    return NextResponse.json({ tracks: mock, mock: true });
-  }
-
-  let token: string;
-  try {
-    token = await getSpotifyToken();
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message || 'token error' }, { status: 500 });
-  }
-
-  const spotifyRes = await fetch(`https://api.spotify.com/v1/search?${new URLSearchParams({ q, type: 'track', market: 'IT', limit })}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!spotifyRes.ok) {
-    const txt = await spotifyRes.text();
-    return NextResponse.json({ error: 'spotify search failed', details: txt }, { status: 500 });
-  }
-
-  const data = await spotifyRes.json();
-
-  // Map minimal track info with explicit types (avoid `any` for ESLint)
-  type RawArtist = { name?: string };
-  type RawAlbumImage = { url?: string };
-  type RawAlbum = { name?: string; images?: RawAlbumImage[] };
-  type RawTrack = {
-    id: string;
-    uri?: string;
-    name?: string;
-    artists?: RawArtist[];
-    album?: RawAlbum;
-    duration_ms?: number;
-    explicit?: boolean;
-    preview_url?: string | null;
-    external_ids?: { isrc?: string } | null;
-  };
-
-  const items: RawTrack[] = data.tracks?.items || [];
-
-  const tracks: SpotifyTrack[] = items.map((t) => {
-    const artists = Array.isArray(t.artists) ? t.artists.map((a) => a.name || '').filter(Boolean).join(', ') : '';
-    return {
-      id: t.id,
-      uri: t.uri,
-      title: t.name,
-      artists,
-      album: t.album?.name,
-      cover_url: t.album?.images?.[0]?.url || null,
-      duration_ms: t.duration_ms,
-      explicit: Boolean(t.explicit),
-      preview_url: t.preview_url ?? null,
-      isrc: t.external_ids?.isrc ?? null,
-    };
-  });
-
-  return NextResponse.json({ tracks });
 }
+
+interface SpotifyImage {
+  url: string;
+  height: number;
+  width: number;
+}
+
+interface SpotifyAlbum {
+  name: string;
+  images: SpotifyImage[];
+}
+
+interface SpotifyTrack {
+  id: string;
+  uri: string;
+  name: string;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+  duration_ms: number;
+  explicit: boolean;
+  preview_url: string | null;
+  external_ids: { isrc?: string };
+  popularity: number;
+  external_urls: { spotify: string };
+}
+
+async function searchHandler(req: Request): Promise<NextResponse> {
+  const url = new URL(req.url);
+  const query = url.searchParams.get('q')?.trim();
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '10'), 50);
+  const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'), 0);
+
+  // Validazione input
+  if (!query) {
+    throw new ValidationError('Search query is required', 'q');
+  }
+
+  if (query.length < 2) {
+    throw new ValidationError('Search query must be at least 2 characters', 'q');
+  }
+
+  if (query.length > 100) {
+    throw new ValidationError('Search query too long (max 100 characters)', 'q');
+  }
+
+  try {
+    // Get token with timeout
+    const token = await withTimeout(
+      getSpotifyToken(),
+      config.spotify.searchTimeout,
+      'spotify_token_fetch'
+    );
+
+    // Search tracks with timeout
+    const searchResponse = await withTimeout(
+      fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=${limit}&offset=${offset}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      }),
+      config.spotify.searchTimeout,
+      'spotify_search_request'
+    );
+
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      logger.error(new Error(`Spotify API error: ${searchResponse.status} ${errorText}`), {
+        operation: 'spotify_search',
+        endpoint: req.url
+      });
+      
+      throw new ExternalServiceError(
+        'Spotify',
+        `Search failed: ${searchResponse.status}`,
+        searchResponse.status === 429 ? 60 : undefined // Rate limit retry after
+      );
+    }
+
+    const data = await searchResponse.json();
+    
+    // Trasforma i risultati in formato consistente
+    const tracks = (data.tracks?.items || []).map((track: SpotifyTrack) => ({
+      id: track.id,
+      uri: track.uri,
+      title: track.name,
+      artists: track.artists?.map((a: SpotifyArtist) => a.name).join(', ') || 'Unknown Artist',
+      album: track.album?.name || '',
+      cover_url: track.album?.images?.[0]?.url || null,
+      duration_ms: track.duration_ms || 0,
+      explicit: track.explicit || false,
+      preview_url: track.preview_url || null,
+      isrc: track.external_ids?.isrc || null,
+      popularity: track.popularity || 0,
+      external_urls: track.external_urls
+    }));
+
+    return NextResponse.json({
+      ok: true,
+      tracks,
+      total: data.tracks?.total || 0,
+      limit,
+      offset,
+      query,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('token error')) {
+      throw new ExternalServiceError('Spotify', 'Authentication failed');
+    }
+    throw error; // Re-throw per essere gestito dal wrapper
+  }
+}
+
+export const GET = withErrorHandler(searchHandler);
