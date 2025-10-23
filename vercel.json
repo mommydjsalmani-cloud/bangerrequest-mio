@@ -5,16 +5,13 @@
   "installCommand": "npm ci",
   "functions": {
     "src/app/api/**/*.ts": {
-      "maxDuration": 30,
-      "memory": 1024
+      "maxDuration": 30
     },
     "src/app/api/health/**/*.ts": {
-      "maxDuration": 10,
-      "memory": 512
+      "maxDuration": 10
     },
     "src/app/api/spotify/**/*.ts": {
-      "maxDuration": 15,
-      "memory": 512
+      "maxDuration": 15
     }
   },
   "regions": ["cdg1"],
