@@ -8,70 +8,99 @@ function withVersion<T>(data: T, init?: { status?: number }) {
 }
 
 function getClientIP(req: Request): string {
-  // Estrae IP del client considerando proxy/load balancer
+  // Estrae IP del client considerando vari header impostati da proxy (Cloudflare, Vercel, ecc.)
+  // Preferiamo il primo elemento di x-forwarded-for (IP reale del client)
+  const cf = req.headers.get('cf-connecting-ip');
   const forwarded = req.headers.get('x-forwarded-for');
   const realIP = req.headers.get('x-real-ip');
-  const remoteAddr = req.headers.get('x-remote-addr');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  if (realIP) {
-    return realIP.trim();
-  }
-  if (remoteAddr) {
-    return remoteAddr.trim();
-  }
-  
-  return 'unknown';
+  const remoteAddr = req.headers.get('x-remote-addr') || req.headers.get('x-remoteaddr');
+
+  const pick = (v?: string | null) => (v ? v.split(',')[0].trim() : undefined);
+
+  const ip = pick(cf) || pick(forwarded) || pick(realIP) || (remoteAddr ? remoteAddr.trim() : undefined);
+  if (!ip) return 'unknown';
+
+  // Normalizza eventuali IPv6 zone id (%eth0) rimuovendolo
+  return ip.replace(/%[\w]+$/, '');
 }
 
-async function checkRateLimit(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, clientIP: string, rateLimitEnabled: boolean = true, rateLimitSeconds: number = 60): Promise<boolean> {
+type RateLimitResult = { ok: boolean; retryAfterSeconds?: number };
+
+async function checkRateLimit(
+  supabase: NonNullable<ReturnType<typeof getSupabase>>,
+  sessionId: string,
+  clientIP: string,
+  rateLimitEnabled: boolean = true,
+  rateLimitSeconds: number = 60,
+  maxRequests: number = 3,
+  blockDurationSeconds: number = 60 * 5
+): Promise<RateLimitResult> {
   // Se il rate limiting è disabilitato, consenti sempre
-  if (!rateLimitEnabled) {
-    return true;
-  }
+  if (!rateLimitEnabled) return { ok: true };
 
   const now = new Date();
   const rateLimitInterval = new Date(now.getTime() - rateLimitSeconds * 1000);
-  
-  // Controlla rate limit esistente
+
+  // Recupera record se esistente (maybeSingle evita errori se non c'è)
   const { data: rateLimitData } = await supabase
     .from('libere_rate_limit')
     .select('*')
     .eq('client_ip', clientIP)
     .eq('session_id', sessionId)
-    .single();
-  
+    .maybeSingle();
+
   if (rateLimitData) {
-    const lastRequest = new Date(rateLimitData.last_request_at);
-    
-    // Se ultimo request è più recente dell'intervallo consentito, blocca
-    if (lastRequest > rateLimitInterval) {
-      return false; // rate limited
+    // Controlla se esiste un ban temporaneo
+    if (rateLimitData.blocked_until) {
+      const blockedUntil = new Date(rateLimitData.blocked_until);
+      if (blockedUntil > now) {
+        const remaining = Math.ceil((blockedUntil.getTime() - now.getTime()) / 1000);
+        return { ok: false, retryAfterSeconds: remaining };
+      }
     }
-    
-    // Aggiorna timestamp
+
+    const lastRequest = new Date(rateLimitData.last_request_at);
+
+    // Se ultimo request è più recente dell'intervallo consentito -> siamo in burst
+    if (lastRequest > rateLimitInterval) {
+      const newCount = (rateLimitData.request_count || 0) + 1;
+
+      // Se supera la soglia, imposta blocked_until
+      if (newCount >= maxRequests) {
+        const blockedUntil = new Date(now.getTime() + blockDurationSeconds * 1000).toISOString();
+        await supabase
+          .from('libere_rate_limit')
+          .update({ last_request_at: now.toISOString(), request_count: newCount, blocked_until: blockedUntil })
+          .eq('id', rateLimitData.id);
+
+        return { ok: false, retryAfterSeconds: blockDurationSeconds };
+      }
+
+      // Non ancora sopra soglia, solo incrementa contatore e blocca la richiesta
+      await supabase
+        .from('libere_rate_limit')
+        .update({ last_request_at: now.toISOString(), request_count: newCount })
+        .eq('id', rateLimitData.id);
+
+      // Suggeriamo di ritentare dopo il limite normale
+      return { ok: false, retryAfterSeconds: rateLimitSeconds };
+    }
+
+    // Altrimenti siamo fuori dal window => reset contatore
     await supabase
       .from('libere_rate_limit')
-      .update({ 
-        last_request_at: now.toISOString(),
-        request_count: rateLimitData.request_count + 1 
-      })
+      .update({ last_request_at: now.toISOString(), request_count: 1, blocked_until: null })
       .eq('id', rateLimitData.id);
-  } else {
-    // Crea nuovo record rate limit
-    await supabase
-      .from('libere_rate_limit')
-      .insert({
-        client_ip: clientIP,
-        session_id: sessionId,
-        last_request_at: now.toISOString(),
-        request_count: 1
-      });
+
+    return { ok: true };
   }
-  
-  return true; // rate limit ok
+
+  // Nessun record: crea uno nuovo
+  await supabase
+    .from('libere_rate_limit')
+    .insert({ client_ip: clientIP, session_id: sessionId, last_request_at: now.toISOString(), request_count: 1 });
+
+  return { ok: true };
 }
 
 async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<boolean> {
@@ -212,9 +241,15 @@ export async function POST(req: Request) {
   const userAgent = req.headers.get('user-agent') || '';
   
   // Rate limiting check
-  const rateLimitOk = await checkRateLimit(supabase, session.id, clientIP, session.rate_limit_enabled, session.rate_limit_seconds);
-  if (!rateLimitOk) {
-    const seconds = session.rate_limit_seconds || 60;
+  const rateLimitRes = await checkRateLimit(
+    supabase,
+    session.id,
+    clientIP,
+    session.rate_limit_enabled,
+    session.rate_limit_seconds
+  );
+  if (!rateLimitRes.ok) {
+    const seconds = rateLimitRes.retryAfterSeconds ?? session.rate_limit_seconds ?? 60;
     return withVersion({ ok: false, error: `Troppe richieste. Riprova tra ${seconds} secondi.` }, { status: 429 });
   }
   
