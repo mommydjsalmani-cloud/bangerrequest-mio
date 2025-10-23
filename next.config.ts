@@ -86,12 +86,14 @@ const nextConfig: NextConfig = {
   // Ottimizzazioni bundle
   experimental: {
     optimizePackageImports: ['@supabase/supabase-js'],
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+
+  // Configurazione turbopack (aggiornata per Next.js 15)
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },
@@ -130,7 +132,6 @@ const nextConfig: NextConfig = {
   // Configurazione produzione
   ...(process.env.NODE_ENV === 'production' && {
     output: 'standalone', // Per deployment ottimizzato
-    swcMinify: true,
     compress: true,
   }),
 };
