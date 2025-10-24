@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   let body: unknown;
   try {
     body = await req.json();
+    console.log('🔍 Webhook ricevuto:', JSON.stringify(body, null, 2));
   } catch {
+    console.log('❌ Errore parsing JSON');
     return NextResponse.json({ ok: false, error: 'invalid payload' }, { status: 400 });
   }
 
