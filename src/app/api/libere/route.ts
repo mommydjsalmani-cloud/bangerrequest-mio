@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { sendTelegramMessage, escapeHtml, getDjPanelUrl } from '@/lib/telegram';
+import { validateMusicRequest, validateToken, sanitizeString } from '@/lib/validation';
+import { withRateLimit, RATE_LIMITS } from '@/lib/rateLimit';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -179,11 +181,22 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  // Rate limiting
+  const rateCheck = withRateLimit(req, RATE_LIMITS.MUSIC_REQUEST);
+  if (!rateCheck.allowed) {
+    return rateCheck.response;
+  }
+
   const url = new URL(req.url);
   const token = url.searchParams.get('s');
   
   if (!token) {
     return withVersion({ ok: false, error: 'Token sessione richiesto' }, { status: 400 });
+  }
+
+  // Validazione token
+  if (!validateToken(token)) {
+    return withVersion({ ok: false, error: 'Token non valido' }, { status: 400 });
   }
   
   const supabase = getSupabase();
@@ -207,22 +220,24 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Le richieste sono momentaneamente sospese' }, { status: 403 });
   }
   
-  // Parse request body
-  let body;
+  // Parse e validazione request body
+  let rawBody;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return withVersion({ ok: false, error: 'Dati richiesta non validi' }, { status: 400 });
   }
-  
-  const { title, requester_name, note, track_id, uri, artists, album, cover_url, isrc, explicit, preview_url, duration_ms, source = 'manual', event_code } = body;
-  
-  if (!title?.trim()) {
-    return withVersion({ ok: false, error: 'Titolo brano obbligatorio' }, { status: 400 });
+
+  // Validazione completa payload
+  const validation = validateMusicRequest(rawBody);
+  if (!validation.valid) {
+    return withVersion({ ok: false, error: validation.error }, { status: 400 });
   }
+
+  const body = validation.data;
   
   // Validazione codice evento se richiesto
-  const eventCodeTrimmed = event_code?.trim() || null;
+  const eventCodeTrimmed = body.event_code ? sanitizeString(body.event_code, 50) : null;
   if (session.require_event_code && !eventCodeTrimmed) {
     return withVersion({ ok: false, error: 'Codice evento mancante' }, { status: 400 });
   }
@@ -236,48 +251,35 @@ export async function POST(req: Request) {
   }
   
   // Controlla se le note sono abilitate per questa sessione
-  const finalNote = session.notes_enabled ? (note?.trim() || null) : null;
+  const finalNote = session.notes_enabled ? body.note : null;
   
   const clientIP = getClientIP(req);
   const userAgent = req.headers.get('user-agent') || '';
   
-  // Rate limiting check
-  const rateLimitRes = await checkRateLimit(
-    supabase,
-    session.id,
-    clientIP,
-    session.rate_limit_enabled,
-    session.rate_limit_seconds
-  );
-  if (!rateLimitRes.ok) {
-    const seconds = rateLimitRes.retryAfterSeconds ?? session.rate_limit_seconds ?? 60;
-    return withVersion({ ok: false, error: `Troppe richieste. Riprova tra ${seconds} secondi.` }, { status: 429 });
-  }
-  
   // Duplicate check
-  const isDuplicate = await checkDuplicateRequest(supabase, session.id, title.trim(), artists?.trim());
+  const isDuplicate = await checkDuplicateRequest(supabase, session.id, body.title, body.artists);
   if (isDuplicate) {
     return withVersion({ ok: false, error: 'Richiesta già inviata di recente' }, { status: 409 });
   }
   
-  // Crea richiesta
+  // Crea richiesta (dati già sanitizzati da validateMusicRequest)
   const requestData = {
     session_id: session.id,
-    track_id: track_id || null,
-    uri: uri || null,
-    title: title.trim(),
-    artists: artists?.trim() || null,
-    album: album?.trim() || null,
-    cover_url: cover_url || null,
-    isrc: isrc || null,
-    explicit: explicit || false,
-    preview_url: preview_url || null,
-    duration_ms: duration_ms || null,
-    requester_name: requester_name?.trim() || null,
-    note: finalNote, // Usa la nota filtrata in base alle impostazioni sessione
+    track_id: body.track_id || null,
+    uri: body.uri || null,
+    title: body.title,
+    artists: body.artists || null,
+    album: body.album || null,
+    cover_url: body.cover_url || null,
+    isrc: body.isrc || null,
+    explicit: body.explicit || false,
+    preview_url: body.preview_url || null,
+    duration_ms: body.duration_ms || null,
+    requester_name: body.requester_name || null,
+    note: finalNote,
     client_ip: clientIP,
     user_agent: userAgent,
-    source: source,
+    source: sanitizeString(body.source || 'manual', 50),
     status: 'new',
     archived: false,
     event_code: eventCodeTrimmed,
