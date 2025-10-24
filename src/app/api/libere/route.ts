@@ -294,6 +294,37 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
   }
   
+  // ========== HOOK NOTIFICHE PUSH ==========
+  try {
+    // Importa dinamicamente per evitare errori se non configurato
+    const { broadcastToDJs } = await import('@/lib/push');
+    
+    // Prepara payload notifica
+    const songTitle = newRequest.title;
+    const artist = newRequest.artists ? ` — ${newRequest.artists}` : '';
+    const requesterName = newRequest.requester_name || 'Ospite';
+    
+    const notificationPayload = {
+      title: '🎵 Nuova richiesta',
+      body: `${songTitle}${artist} (da ${requesterName})`,
+      url: '/dj',
+      icon: '/icons/notification-icon.png',
+      badge: '/icons/badge.png'
+    };
+    
+    // Invia notifica in background (non bloccare la risposta)
+    broadcastToDJs(notificationPayload).catch((error) => {
+      console.error('[Libere] Errore invio notifica push:', error);
+      // Non facciamo fallire la richiesta per errori notifiche
+    });
+    
+    console.log('[Libere] Notifica push inviata per nuova richiesta:', songTitle);
+  } catch (error) {
+    console.warn('[Libere] Sistema notifiche push non disponibile:', error);
+    // Continua normalmente se le notifiche non sono configurate
+  }
+  // ========== FINE HOOK NOTIFICHE PUSH ==========
+  
   return withVersion({ 
     ok: true, 
     message: 'Richiesta ricevuta 🎶',

@@ -1,0 +1,56 @@
+
+> bangerrequest-mio@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.3
+   - Environments: .env.production.local, .env.local, .env.production
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 15.7s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/28) ...
+   Generating static pages (7/28) 
+   Generating static pages (14/28) 
+   Generating static pages (21/28) 
+ ✓ Generating static pages (28/28)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    1.39 kB         151 kB
+├ ○ /_not-found                            187 B         150 kB
+├ ○ /admin/diagnostics                    1.2 kB         151 kB
+├ ƒ /api/debug/spotify                     162 B         150 kB
+├ ƒ /api/health                            162 B         150 kB
+├ ƒ /api/health/auth                       162 B         150 kB
+├ ƒ /api/health/supabase                   162 B         150 kB
+├ ƒ /api/homepage-sessions                 162 B         150 kB
+├ ƒ /api/libere                            162 B         150 kB
+├ ƒ /api/libere/admin                      162 B         150 kB
+├ ƒ /api/libere/migrate                    162 B         150 kB
+├ ƒ /api/libere/setup                      162 B         150 kB
+├ ƒ /api/metrics                           162 B         150 kB
+├ ƒ /api/requests                          162 B         150 kB
+├ ƒ /api/spotify/health                    162 B         150 kB
+├ ƒ /api/spotify/search                    162 B         150 kB
+├ ƒ /api/spotify/token                     162 B         150 kB
+├ ○ /dj                                    381 B         150 kB
+├ ○ /dj/libere                           8.44 kB         158 kB
+├ ○ /dj/login                             1.3 kB         151 kB
+├ ○ /instagram                             819 B         151 kB
+├ ○ /libere                              6.25 kB         156 kB
+├ ○ /privacy                               162 B         150 kB
+├ ○ /requests                            3.31 kB         153 kB
+└ ○ /termini                               162 B         150 kB
++ First Load JS shared by all             150 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ chunks/vendors-6d21edf5162fba0f.js   93.6 kB
+  └ other shared chunks (total)          1.93 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

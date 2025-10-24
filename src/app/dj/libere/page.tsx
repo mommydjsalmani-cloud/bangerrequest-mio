@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
@@ -32,6 +32,13 @@ export default function LibereAdminPanel() {
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
+  
+  // Stati per notifiche push
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [pushSubscribed, setPushSubscribed] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
+  const [isIOSPWA, setIsIOSPWA] = useState(false);
 
   // Funzione per filtrare le richieste per codice evento
   const filteredRequests = requests.filter(request => {
@@ -795,6 +802,185 @@ export default function LibereAdminPanel() {
     }
   };
   
+  // ========== FUNZIONI NOTIFICHE PUSH ==========
+  
+  // Ottieni VAPID public key
+  const getVapidKey = useCallback(async () => {
+    try {
+      const response = await fetch('/api/push/test', {
+        method: 'GET',
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.config?.fullyConfigured) {
+          // Ottieni public key dalle variabili ambiente (simulato per ora)
+          // In una implementazione reale, dovresti avere un endpoint apposito
+          setVapidPublicKey(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null);
+        }
+      }
+    } catch (error) {
+      console.error('Errore ottenimento VAPID key:', error);
+    }
+  }, [username, password]);
+  
+  // Inizializza stato notifiche push
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Controlla supporto notifiche
+    const hasNotificationSupport = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+    setPushSupported(hasNotificationSupport);
+    
+    if (hasNotificationSupport) {
+      setNotificationPermission(Notification.permission);
+    }
+    
+    // Controlla se è iOS in PWA mode
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isInStandaloneMode = (window.navigator as { standalone?: boolean }).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    setIsIOSPWA(isIOS && !isInStandaloneMode);
+    
+    // Ottieni VAPID public key se autenticato
+    if (authed && username && password) {
+      getVapidKey();
+    }
+  }, [authed, username, password, getVapidKey]);
+  
+  const enableNotifications = async () => {
+    if (!pushSupported) {
+      setError('Notifiche push non supportate in questo browser');
+      return;
+    }
+    
+    try {
+      // Richiedi permesso notifiche
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      
+      if (permission !== 'granted') {
+        setError('Permesso notifiche negato. Controlla le impostazioni del browser.');
+        return;
+      }
+      
+      // Ottieni service worker registration
+      const registration = await navigator.serviceWorker.ready;
+      
+      if (!registration) {
+        setError('Service Worker non disponibile');
+        return;
+      }
+      
+      // Verifica se già sottoscritto
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        console.log('Subscription già esistente');
+        setPushSubscribed(true);
+        return;
+      }
+      
+      // Crea nuova subscription
+      if (!vapidPublicKey) {
+        setError('Chiave VAPID non disponibile - configura le variabili ambiente');
+        return;
+      }
+      
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
+      });
+      
+      // Invia subscription al server
+      const response = await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
+          auth: arrayBufferToBase64(subscription.getKey('auth')!),
+          userAgent: navigator.userAgent
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setPushSubscribed(true);
+        setSuccess('Notifiche abilitate con successo ✓');
+      } else {
+        setError(data.error || 'Errore abilitazione notifiche');
+      }
+      
+    } catch (error) {
+      console.error('Errore abilitazione notifiche:', error);
+      setError('Errore durante l\'abilitazione delle notifiche');
+    }
+  };
+  
+  const sendTestNotification = async () => {
+    if (!pushSubscribed) {
+      setError('Prima abilita le notifiche');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await fetch('/api/push/test', {
+        method: 'POST',
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess('Notifica di test inviata ✓');
+      } else {
+        setError(data.error || 'Errore invio notifica di test');
+      }
+      
+    } catch (error) {
+      console.error('Errore test notifica:', error);
+      setError('Errore durante l\'invio della notifica di test');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Utility functions per conversioni
+  function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+  
+  function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  }
+  
+  // ========== FINE FUNZIONI NOTIFICHE PUSH ==========
+  
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
   
   // Mostra loading durante l'inizializzazione per evitare il flash della pagina di login
@@ -1290,6 +1476,120 @@ export default function LibereAdminPanel() {
                       }
                     </p>
                   </div>
+                </div>
+              </div>
+              
+              {/* Push Notifications Control */}
+              <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">🔔 Notifiche Push</h3>
+                <div className="space-y-4">
+                  
+                  {/* Stato notifiche */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">Stato Browser</div>
+                      <div className="flex items-center gap-2">
+                        {pushSupported ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ✅ Supportate
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            ❌ Non supportate
+                          </span>
+                        )}
+                        
+                        {notificationPermission === 'granted' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            🔓 Permesso concesso
+                          </span>
+                        )}
+                        
+                        {notificationPermission === 'denied' && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            🚫 Permesso negato
+                          </span>
+                        )}
+                        
+                        {pushSubscribed && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            📱 Attive
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium text-gray-700">Azioni</div>
+                      <div className="flex flex-wrap gap-2">
+                        {!pushSubscribed && notificationPermission !== 'denied' && pushSupported && (
+                          <button
+                            onClick={enableNotifications}
+                            disabled={loading}
+                            className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {loading ? '⏳ Abilitando...' : '🔔 Abilita Notifiche'}
+                          </button>
+                        )}
+                        
+                        {pushSubscribed && (
+                          <button
+                            onClick={sendTestNotification}
+                            disabled={loading}
+                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                          >
+                            {loading ? '⏳ Inviando...' : '🧪 Invia Test'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Messaggi informativi */}
+                  {notificationPermission === 'denied' && (
+                    <div className="text-sm p-3 rounded-lg border-l-4 bg-red-50 border-red-400">
+                      <div className="font-medium text-red-800 mb-1">🚫 Permesso notifiche negato</div>
+                      <div className="text-red-700">
+                        Per ricevere notifiche quando arrivano nuove richieste:
+                        <ul className="list-disc list-inside mt-1 space-y-1">
+                          <li>Clicca sull&apos;icona 🔒 nella barra dell&apos;indirizzo</li>
+                          <li>Trova &quot;Notifiche&quot; e seleziona &quot;Consenti&quot;</li>
+                          <li>Ricarica la pagina</li>
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {isIOSPWA && (
+                    <div className="text-sm p-3 rounded-lg border-l-4 bg-orange-50 border-orange-400">
+                      <div className="font-medium text-orange-800 mb-1">📱 iOS Safari</div>
+                      <div className="text-orange-700">
+                        Su Safari iOS, aggiungi questa pagina alla Home per attivare le notifiche:
+                        <br />Condividi → Aggiungi alla Home
+                      </div>
+                    </div>
+                  )}
+                  
+                  {pushSubscribed && (
+                    <div className="text-sm p-3 rounded-lg border-l-4 bg-green-50 border-green-400">
+                      <div className="font-medium text-green-800 mb-1">✅ Notifiche attive</div>
+                      <div className="text-green-700">
+                        Riceverai una notifica ogni volta che arriva una nuova richiesta musicale. 
+                        La notifica ti porterà direttamente al pannello DJ.
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!pushSupported && (
+                    <div className="text-sm p-3 rounded-lg border-l-4 bg-gray-50 border-gray-400">
+                      <div className="font-medium text-gray-800 mb-1">ℹ️ Browser non supportato</div>
+                      <div className="text-gray-700">
+                        Le notifiche push non sono supportate in questo browser. 
+                        Prova con Chrome, Firefox, Safari o Edge più recenti.
+                      </div>
+                    </div>
+                  )}
+                  
                 </div>
               </div>
               

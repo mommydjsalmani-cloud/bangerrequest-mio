@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Splash from "@/components/Splash";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,7 +41,9 @@ export default function RootLayout({
           paddingRight: 'env(safe-area-inset-right)'
         }}
       >
+        <ServiceWorkerRegistration />
         <Splash duration={1500} />
+        <ServiceWorkerRegistration />
         <div className="flex-1 w-full">
           {children}
         </div>

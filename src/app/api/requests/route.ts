@@ -84,9 +84,73 @@ export async function POST(req: Request) {
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
+    
+    // ========== HOOK NOTIFICHE PUSH ==========
+    try {
+      // Importa dinamicamente per evitare errori se non configurato
+      const { broadcastToDJs } = await import('@/lib/push');
+      
+      // Prepara payload notifica
+      const songTitle = data.title || 'Titolo non disponibile';
+      const artist = data.artists ? ` — ${data.artists}` : '';
+      const requesterName = data.requester || 'Ospite';
+      
+      const notificationPayload = {
+        title: '🎵 Nuova richiesta',
+        body: `${songTitle}${artist} (da ${requesterName})`,
+        url: '/dj',
+        icon: '/icons/notification-icon.png',
+        badge: '/icons/badge.png'
+      };
+      
+      // Invia notifica in background (non bloccare la risposta)
+      broadcastToDJs(notificationPayload).catch((error) => {
+        console.error('[Requests] Errore invio notifica push:', error);
+        // Non facciamo fallire la richiesta per errori notifiche
+      });
+      
+      console.log('[Requests] Notifica push inviata per nuova richiesta:', songTitle);
+    } catch (error) {
+      console.warn('[Requests] Sistema notifiche push non disponibile:', error);
+      // Continua normalmente se le notifiche non sono configurate
+    }
+    // ========== FINE HOOK NOTIFICHE PUSH ==========
+    
     return withVersion({ ok: true, item: data });
   } else {
     store.unshift(item);
+    
+    // ========== HOOK NOTIFICHE PUSH (IN-MEMORY) ==========
+    try {
+      // Importa dinamicamente per evitare errori se non configurato
+      const { broadcastToDJs } = await import('@/lib/push');
+      
+      // Prepara payload notifica
+      const songTitle = item.title || 'Titolo non disponibile';
+      const artist = item.artists ? ` — ${item.artists}` : '';
+      const requesterName = item.requester || 'Ospite';
+      
+      const notificationPayload = {
+        title: '🎵 Nuova richiesta',
+        body: `${songTitle}${artist} (da ${requesterName})`,
+        url: '/dj',
+        icon: '/icons/notification-icon.png',
+        badge: '/icons/badge.png'
+      };
+      
+      // Invia notifica in background (non bloccare la risposta)
+      broadcastToDJs(notificationPayload).catch((error) => {
+        console.error('[Requests In-Memory] Errore invio notifica push:', error);
+        // Non facciamo fallire la richiesta per errori notifiche
+      });
+      
+      console.log('[Requests In-Memory] Notifica push inviata per nuova richiesta:', songTitle);
+    } catch (error) {
+      console.warn('[Requests In-Memory] Sistema notifiche push non disponibile:', error);
+      // Continua normalmente se le notifiche non sono configurate
+    }
+    // ========== FINE HOOK NOTIFICHE PUSH (IN-MEMORY) ==========
+    
     return withVersion({ ok: true, item });
   }
 }

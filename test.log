@@ -1,0 +1,19 @@
+
+> bangerrequest-mio@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /workspaces/bangerrequest-mio
+
+ ✓ tests/requests.test.ts (3 tests) 11ms
+stderr | tests/health.aggregate.test.ts > Aggregated health endpoint > restituisce blocco supabase e auth
+{"timestamp":"2025-10-24T06:29:39.537Z","level":"WARN","message":"Health check failed","context":{"response":{"ok":false,"timestamp":"2025-10-24T06:29:39.537Z","version":"0.1.0","environment":"test","checks":{"environment":{"valid":true,"missing":[],"warnings":["NEXT_PUBLIC_SUPABASE_URL not set - some features may be limited","SUPABASE_SERVICE_ROLE_KEY not set - some features may be limited","SPOTIFY_CLIENT_ID not set - some features may be limited","SPOTIFY_CLIENT_SECRET not set - some features may be limited"],"nodeEnv":"test"},"database":{"ok":false,"mode":"in-memory","error":"missing_credentials","hasUrl":false,"hasServiceRole":false,"hasAnon":false},"spotify":{"ok":false,"error":"missing_credentials","hasClientId":false,"hasClientSecret":false},"auth":{"ok":true,"hasUser":true,"hasSecret":true},"system":{"node":"v22.17.0","platform":"linux","arch":"x64","memory":{"rss":88760320,"heapTotal":31232000,"heapUsed":17141864,"external":3777128,"arrayBuffers":76614},"uptime":0.46752945,"environment":"test","timestamp":"2025-10-24T06:29:39.537Z","responseTime":1}}}}}
+
+ ✓ tests/health.aggregate.test.ts (1 test) 11ms
+ ✓ tests/requests.moderation.test.ts (2 tests) 11ms
+
+ Test Files  3 passed (3)
+      Tests  6 passed (6)
+   Start at  06:29:38
+   Duration  1.41s (transform 211ms, setup 0ms, collect 594ms, tests 33ms, environment 3ms, prepare 286ms)
+
