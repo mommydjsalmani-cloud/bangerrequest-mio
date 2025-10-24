@@ -1,0 +1,18 @@
+📱 COME OTTENERE IL TOKEN DEL BOT
+
+1. Apri Telegram
+2. Cerca @BotFather 
+3. Scrivi: /token
+4. Seleziona: @bangerrequest_bot
+5. BotFather ti invierà di nuovo il token
+
+Una volta ottenuto il token:
+1. Apri il file .env.local 
+2. Sostituisci "IL_TUO_NUOVO_TOKEN_QUI" con il token vero
+3. Salva il file
+4. Torna qui e dimmi "fatto"
+
+Il token dovrebbe avere questo formato:
+1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+
+IMPORTANTE: Non condividere mai il token!
