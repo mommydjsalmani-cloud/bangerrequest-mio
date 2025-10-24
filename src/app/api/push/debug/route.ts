@@ -5,8 +5,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    
     // Debug semplice senza auth per vedere la configurazione
     const config = {
       ENABLE_PUSH_NOTIFICATIONS: !!process.env.ENABLE_PUSH_NOTIFICATIONS,
