@@ -60,7 +60,7 @@ function createConfig(): AppConfig {
       version: process.env.npm_package_version || '1.0.0',
       environment: env,
       baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 
-        (isDev ? 'http://localhost:3000' : 'https://bangerrequest.vercel.app')
+        (isDev ? 'http://localhost:3000' : 'https://bangerrequest-mio.vercel.app')
     },
     api: {
       timeout: parseInt(process.env.API_TIMEOUT || '30000'), // 30s
