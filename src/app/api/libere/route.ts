@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { sendTelegramMessage, escapeHtml, getDjPanelUrl } from '@/lib/telegram';
 
 const BUILD_TAG = 'libere-api-v1';
 
@@ -294,6 +295,37 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
   }
   
+  // ========== Telegram notification hook ==========
+  try {
+    if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
+      const songTitle = newRequest.title || '';
+      const artist = newRequest.artists || '';
+      const requesterName = newRequest.requester_name || 'Ospite';
+      const comment = newRequest.note || '';
+
+      const text = [
+        '🎵 <b>Nuova richiesta</b>',
+        `<b>Brano:</b> ${escapeHtml(String(songTitle))} — ${escapeHtml(String(artist))}`,
+        `<b>Da:</b> ${escapeHtml(String(requesterName))}`,
+        comment ? `<b>Commento:</b> “${escapeHtml(String(comment).slice(0,200))}”` : null,
+        `<a href="${escapeHtml(getDjPanelUrl())}">Apri pannello DJ</a>`,
+      ].filter(Boolean).join('\n');
+
+      await sendTelegramMessage({
+        textHtml: text,
+        inlineKeyboard: [[
+          { text: '✅ Accetta', callbackData: `accept:${newRequest.id}` },
+          { text: '❌ Rifiuta', callbackData: `reject:${newRequest.id}` }
+        ], [
+          { text: '🔎 Apri pannello', url: getDjPanelUrl() }
+        ]]
+      });
+    }
+  } catch (e) {
+    // Silenzia errori di rete/telegram per non bloccare il flusso
+    if (process.env.NODE_ENV !== 'production') console.error('[Libere] telegram hook error', e);
+  }
+
   return withVersion({ 
     ok: true, 
     message: 'Richiesta ricevuta 🎶',

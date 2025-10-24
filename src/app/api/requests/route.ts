@@ -84,7 +84,37 @@ export async function POST(req: Request) {
       const raw = error as unknown as PgErr;
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
-    
+    // Telegram notification (non bloccante)
+    try {
+      if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
+        const { sendTelegramMessage, escapeHtml, getDjPanelUrl } = await import('@/lib/telegram');
+        const songTitle = data.title || '';
+        const artist = data.artists || '';
+        const requesterName = data.requester || 'Ospite';
+        const comment = (data.note as string) || '';
+
+        const text = [
+          '🎵 <b>Nuova richiesta</b>',
+          `<b>Brano:</b> ${escapeHtml(String(songTitle))} — ${escapeHtml(String(artist))}`,
+          `<b>Da:</b> ${escapeHtml(String(requesterName))}`,
+          comment ? `<b>Commento:</b> “${escapeHtml(String(comment).slice(0,200))}”` : null,
+          `<a href="${escapeHtml(getDjPanelUrl())}">Apri pannello DJ</a>`,
+        ].filter(Boolean).join('\n');
+
+        await sendTelegramMessage({
+          textHtml: text,
+          inlineKeyboard: [[
+            { text: '✅ Accetta', callbackData: `accept:${data.id}` },
+            { text: '❌ Rifiuta', callbackData: `reject:${data.id}` }
+          ], [
+            { text: '🔎 Apri pannello', url: getDjPanelUrl() }
+          ]]
+        });
+      }
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') console.error('[Requests] telegram hook error', e);
+    }
+
     return withVersion({ ok: true, item: data });
   } else {
     store.unshift(item);
