@@ -53,18 +53,25 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Partial<RequestItem>;
+  const body = (await req.json()) as Partial<RequestItem> & { song?: string; artist?: string; name?: string; eventCode?: string };
   const now = new Date().toISOString();
   const supabase = getSupabase();
   // Se il DB in produzione ha id UUID, usiamo randomUUID quando supabase è attivo
   const generatedId = supabase ? randomUUID() : `${Date.now()}`;
+  
+  // Mappatura campi per compatibilità con il frontend
+  const title = body.title || body.song;
+  const artists = body.artists || body.artist;
+  const requester = body.requester || body.name;
+  const event_code = body.event_code || body.eventCode;
+  
   const item: RequestItem = {
     id: generatedId,
     created_at: now,
     track_id: body.track_id || 'unknown',
     uri: body.uri,
-    title: body.title,
-    artists: body.artists,
+    title: title,
+    artists: artists,
     album: body.album,
     cover_url: body.cover_url ?? null,
     isrc: body.isrc ?? null,
@@ -72,8 +79,8 @@ export async function POST(req: Request) {
     preview_url: body.preview_url ?? null,
     duration_ms: body.duration_ms,
     note: body.note,
-    event_code: body.event_code ?? null,
-    requester: body.requester ?? null,
+    event_code: event_code ?? null,
+    requester: requester ?? null,
     status: 'new',
     duplicates: 0,
   };
