@@ -4,6 +4,24 @@ import { getSupabase } from './supabase';
 export async function acceptRequest(requestId: string) {
   const supabase = getSupabase();
   if (supabase) {
+    // Prima prova nel sistema libere
+    const { data: libereRequest } = await supabase
+      .from('richieste_libere')
+      .select('id')
+      .eq('id', requestId)
+      .single();
+    
+    if (libereRequest) {
+      // È una richiesta del sistema libere
+      const { error } = await supabase
+        .from('richieste_libere')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+      if (error) throw new Error(`Accept failed (libere): ${error.message}`);
+      return { ok: true };
+    }
+    
+    // Fallback al sistema requests tradizionale
     const { error } = await supabase
       .from('requests')
       .update({ status: 'accepted' })
@@ -20,6 +38,24 @@ export async function acceptRequest(requestId: string) {
 export async function rejectRequest(requestId: string) {
   const supabase = getSupabase();
   if (supabase) {
+    // Prima prova nel sistema libere
+    const { data: libereRequest } = await supabase
+      .from('richieste_libere')
+      .select('id')
+      .eq('id', requestId)
+      .single();
+    
+    if (libereRequest) {
+      // È una richiesta del sistema libere
+      const { error } = await supabase
+        .from('richieste_libere')
+        .update({ status: 'rejected' })
+        .eq('id', requestId);
+      if (error) throw new Error(`Reject failed (libere): ${error.message}`);
+      return { ok: true };
+    }
+    
+    // Fallback al sistema requests tradizionale
     const { error } = await supabase
       .from('requests')
       .update({ status: 'rejected' })
