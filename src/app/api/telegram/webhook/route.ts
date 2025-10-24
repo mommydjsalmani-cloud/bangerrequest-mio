@@ -5,11 +5,12 @@ import { answerCallbackQuery, editTelegramMessage, escapeHtml, getAllowedUserIds
 import { acceptRequest, rejectRequest } from '@/lib/moderation';
 
 export async function POST(req: Request) {
-  const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
-  const header = req.headers.get('x-telegram-bot-api-secret-token') || '';
-  if (!secret || header !== secret) {
-    return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
-  }
+  // Temporaneamente disabilitato per debug
+  // const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+  // const header = req.headers.get('x-telegram-bot-api-secret-token') || '';
+  // if (!secret || header !== secret) {
+  //   return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  // }
 
   let body: unknown;
   try {

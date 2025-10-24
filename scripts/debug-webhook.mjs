@@ -4,7 +4,19 @@
  * Script per debuggare webhook Telegram
  */
 
-const TELEGRAM_BOT_TOKEN = '8432695702:AAEcn3epbPwg8N-2eUX1ERzJ9ME8rvZ8PpI';
+import { readFileSync } from 'fs';
+
+// Carica variabili da .env.local
+const envContent = readFileSync('.env.local', 'utf-8');
+const envVars = {};
+envContent.split('\n').forEach(line => {
+  if (line.includes('=') && !line.startsWith('#')) {
+    const [key, ...valueParts] = line.split('=');
+    envVars[key.trim()] = valueParts.join('=').trim();
+  }
+});
+
+const TELEGRAM_BOT_TOKEN = envVars.TELEGRAM_BOT_TOKEN;
 
 async function debugWebhook() {
   try {
