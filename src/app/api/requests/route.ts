@@ -65,6 +65,9 @@ export async function POST(req: Request) {
   const requester = body.requester || body.name;
   const event_code = body.event_code || body.eventCode;
   
+  // Se event_code non è valido, usa null per evitare constraint errors
+  const finalEventCode = ['default', 'test'].includes(event_code || '') ? null : event_code;
+  
   const item: RequestItem = {
     id: generatedId,
     created_at: now,
@@ -79,7 +82,7 @@ export async function POST(req: Request) {
     preview_url: body.preview_url ?? null,
     duration_ms: body.duration_ms,
     note: body.note,
-    event_code: event_code ?? null,
+    event_code: finalEventCode ?? null,
     requester: requester ?? null,
     status: 'new',
     duplicates: 0,
