@@ -47,6 +47,13 @@ export async function POST(req: Request) {
 
   const data = String(cb.data || '');
   const [action, requestId] = data.split(':');
+  
+  // Gestisci noop (bottone stato disabilitato)
+  if (action === 'noop') {
+    await answerCallbackQuery(cbId, 'Richiesta già processata');
+    return NextResponse.json({ ok: true });
+  }
+  
   if (!requestId || !['accept', 'reject'].includes(action)) {
     await answerCallbackQuery(cbId, 'Comando non valido', true);
     return NextResponse.json({ ok: true });
@@ -57,44 +64,33 @@ export async function POST(req: Request) {
     else await rejectRequest(requestId);
 
     const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
-    const statusText = action === 'accept' ? '✅ Accettata' : '❌ Rifiutata';
-    const newStatus = `\n\n<b>Stato:</b> ${statusText} da ${escapeHtml(String(who))}`;
-
-    let originalText = String(message.text || message.caption || '');
-    
-    // Rimuovi eventuali stati precedenti per evitare duplicazioni
-    // Cerca la prima occorrenza di "\n\nStato:" e taglia tutto quello che viene dopo
-    const statusIndex = originalText.indexOf('\n\n<b>Stato:</b>');
-    if (statusIndex !== -1) {
-      originalText = originalText.substring(0, statusIndex);
-    }
-    
     const chatIdVal = (chat.id ?? '') as string | number;
     const messageIdVal = Number(message.message_id || 0);
 
-    // Aggiorna il messaggio con lo stato e nuovi bottoni per cambiare idea
-    const newText = originalText + newStatus;
-    
-    // Mostra bottone opposto per permettere di cambiare idea + bottone pannello DJ
+    // Non modifichiamo il testo, solo i bottoni per mostrare lo stato
     const djPanelUrl = getDjPanelUrl();
+    
+    // Bottoni che mostrano lo stato attuale
     const newKeyboard = action === 'accept' 
       ? [
-          [{ text: '❌ Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
+          [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
+          [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
           [{ text: '🔎 Apri pannello', url: djPanelUrl }]
         ]
       : [
-          [{ text: '✅ Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
+          [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
+          [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
           [{ text: '🔎 Apri pannello', url: djPanelUrl }]
         ];
 
+    // Aggiorna solo la tastiera, non il testo
     await editTelegramMessage({ 
       chatId: chatIdVal, 
       messageId: messageIdVal, 
-      textHtml: newText, 
       inlineKeyboard: newKeyboard 
     });
 
-    await answerCallbackQuery(cbId, 'Fatto');
+    await answerCallbackQuery(cbId, `${action === 'accept' ? '✅ Accettata' : '❌ Rifiutata'} da ${who}`);
   } catch {
     await answerCallbackQuery(cbId, 'Già processata o non trovata', true);
   }
