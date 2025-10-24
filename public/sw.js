@@ -1,7 +1,6 @@
 // Service Worker per Web Push Notifications - Banger Request
 // Versione: 1.0.0
 
-const CACHE_NAME = 'banger-request-v1';
 const SW_VERSION = '1.0.0';
 
 // Listener per eventi push
@@ -105,7 +104,7 @@ self.addEventListener('notificationclick', function(event) {
 });
 
 // Listener per installazione SW
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function() {
   console.log('[SW] Service Worker installato, versione:', SW_VERSION);
   
   // Attiva immediatamente il nuovo SW
@@ -113,11 +112,11 @@ self.addEventListener('install', function(event) {
 });
 
 // Listener per attivazione SW
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function() {
   console.log('[SW] Service Worker attivato, versione:', SW_VERSION);
   
   // Prendi il controllo di tutti i client immediatamente
-  event.waitUntil(self.clients.claim());
+  self.clients.claim();
 });
 
 // Gestione messaggi dal client

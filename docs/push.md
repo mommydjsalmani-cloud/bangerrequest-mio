@@ -21,7 +21,7 @@ Sistema completo di notifiche push per Banger Request, che avvisa i DJ quando ar
 cd /workspaces/bangerrequest-mio
 npm run vapid:generate
 # oppure
-node scripts/generate-vapid-keys.js
+# Generate new keys with: node scripts/generate-vapid-keys.mjs
 ```
 
 Lo script genererà chiavi uniche e ti mostrerà le variabili ambiente da configurare.
