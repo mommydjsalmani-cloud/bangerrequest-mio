@@ -30,11 +30,11 @@ async function serverPatch(body: Record<string, unknown>) {
   }
 }
 
-export async function acceptRequest(requestId: string, _actor: { source: 'telegram'; tgUserId: number; tgUsername?: string }) {
+export async function acceptRequest(requestId: string) {
   return serverPatch({ id: requestId, action: 'accept' });
 }
 
-export async function rejectRequest(requestId: string, _actor: { source: 'telegram'; tgUserId: number; tgUsername?: string }) {
+export async function rejectRequest(requestId: string) {
   return serverPatch({ id: requestId, action: 'reject' });
 }
 

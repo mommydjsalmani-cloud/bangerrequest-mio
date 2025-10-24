@@ -53,9 +53,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const tgId = Number(from.id);
-    if (action === 'accept') await acceptRequest(requestId, { source: 'telegram', tgUserId: tgId, tgUsername: from.username });
-    else await rejectRequest(requestId, { source: 'telegram', tgUserId: tgId, tgUsername: from.username });
+    if (action === 'accept') await acceptRequest(requestId);
+    else await rejectRequest(requestId);
 
     const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
     const appended = `\n\n<b>Stato:</b> ${action === 'accept' ? '✅ Accettata' : '❌ Rifiutata'} da ${escapeHtml(String(who))}`;
