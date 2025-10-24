@@ -16,7 +16,9 @@
     "ci": "npm run lint && npm run type-check && npm run test && npm run build",
     "health": "node scripts/check_health.js",
     "clean": "rm -rf .next node_modules/.cache",
-    "update-deps": "npm update && npm audit fix"
+    "update-deps": "npm update && npm audit fix",
+    "telegram:setup": "node scripts/telegram-setup.mjs",
+    "telegram:webhook": "node scripts/set-webhook.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
