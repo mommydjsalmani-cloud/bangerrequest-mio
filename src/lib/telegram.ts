@@ -33,13 +33,23 @@ export function getDjPanelUrl(): string {
   }
   
   // Rileva automaticamente l'URL di Vercel se disponibile
-  const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL;
+  // VERCEL_URL è disponibile solo durante il build, non a runtime
+  // Usa invece la variabile custom che devi configurare su Vercel
+  const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL;
   if (vercelUrl) {
-    return `https://${vercelUrl}/dj/libere`;
+    const url = vercelUrl.startsWith('http') ? vercelUrl : `https://${vercelUrl}`;
+    return `${url}/dj/libere`;
   }
   
   // Fallback al baseUrl del config
-  return `${config.app.baseUrl.replace(/\/$/, '')}/dj/libere`;
+  const fallbackUrl = `${config.app.baseUrl.replace(/\/$/, '')}/dj/libere`;
+  
+  // Log per debug (solo in development)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Telegram] DJ Panel URL:', fallbackUrl);
+  }
+  
+  return fallbackUrl;
 }
 
 export function getAllowedUserIds(): number[] {
@@ -106,7 +116,7 @@ export async function sendTelegramMessage(opts: { textHtml: string; inlineKeyboa
   }
 }
 
-export async function editTelegramMessage(opts: { chatId: string | number; messageId: number; textHtml?: string; removeKeyboard?: boolean }): Promise<void> {
+export async function editTelegramMessage(opts: { chatId: string | number; messageId: number; textHtml?: string; removeKeyboard?: boolean; inlineKeyboard?: InlineKeyboard }): Promise<void> {
   if (!ENABLE) return;
   if (!TOKEN) return;
 
@@ -121,6 +131,16 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
   if (opts.removeKeyboard) {
     const url = `https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`;
     const body = { ...bodyBase, reply_markup: { inline_keyboard: [] } };
+    await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  } else if (opts.inlineKeyboard) {
+    const url = `https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`;
+    const keyboard = { inline_keyboard: opts.inlineKeyboard.map((row) => row.map((b) => {
+      const out: Record<string, unknown> = { text: b.text };
+      if (b.callbackData) out.callback_data = b.callbackData;
+      if (b.url) out.url = b.url;
+      return out;
+    })) };
+    const body = { ...bodyBase, reply_markup: keyboard };
     await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 }

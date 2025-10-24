@@ -57,13 +57,27 @@ export async function POST(req: Request) {
     else await rejectRequest(requestId);
 
     const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
-    const appended = `\n\n<b>Stato:</b> ${action === 'accept' ? '✅ Accettata' : '❌ Rifiutata'} da ${escapeHtml(String(who))}`;
+    const statusText = action === 'accept' ? '✅ Accettata' : '❌ Rifiutata';
+    const appended = `\n\n<b>Stato:</b> ${statusText} da ${escapeHtml(String(who))}`;
 
     const originalText = String(message.text || message.caption || '');
     const chatIdVal = (chat.id ?? '') as string | number;
     const messageIdVal = Number(message.message_id || 0);
 
-    await editTelegramMessage({ chatId: chatIdVal, messageId: messageIdVal, textHtml: (originalText || '') + appended, removeKeyboard: true });
+    // Aggiorna il messaggio con lo stato e nuovi bottoni per cambiare idea
+    const newText = (originalText || '') + appended;
+    
+    // Mostra bottone opposto per permettere di cambiare idea
+    const newKeyboard = action === 'accept' 
+      ? [[{ text: '❌ Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }]]
+      : [[{ text: '✅ Cambia idea (Accetta)', callbackData: `accept:${requestId}` }]];
+
+    await editTelegramMessage({ 
+      chatId: chatIdVal, 
+      messageId: messageIdVal, 
+      textHtml: newText, 
+      inlineKeyboard: newKeyboard 
+    });
 
     await answerCallbackQuery(cbId, 'Fatto');
   } catch {

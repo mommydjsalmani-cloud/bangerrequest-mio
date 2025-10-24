@@ -119,7 +119,6 @@ export async function POST(req: Request) {
           artist ? `<b>Artista:</b> ${escapeHtml(String(artist))}` : null,
           `<b>Da:</b> ${escapeHtml(String(who))}`,
           comment ? `<b>Commento:</b> "${escapeHtml(String(comment).slice(0,200))}"` : null,
-          `<a href="${escapeHtml(getDjPanelUrl())}">Apri pannello DJ</a>`,
         ].filter(Boolean).join('\n');
 
         await sendTelegramMessage({
