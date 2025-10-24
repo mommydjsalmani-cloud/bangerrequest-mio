@@ -27,7 +27,7 @@ export function getThreadId(): number | undefined {
 }
 
 export function getDjPanelUrl(): string {
-  return process.env.DJ_PANEL_URL?.trim() || `${config.app.baseUrl.replace(/\/$/, '')}/dj`;
+  return process.env.DJ_PANEL_URL?.trim() || `${config.app.baseUrl.replace(/\/$/, '')}/dj/libere`;
 }
 
 export function getAllowedUserIds(): number[] {

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
+import { sendTelegramMessage, escapeHtml, getDjPanelUrl } from '@/lib/telegram';
 
 type RequestItem = {
   id: string;
@@ -53,62 +54,71 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as Partial<RequestItem> & { song?: string; artist?: string; name?: string; eventCode?: string };
-  const now = new Date().toISOString();
-  const supabase = getSupabase();
-  // Se il DB in produzione ha id UUID, usiamo randomUUID quando supabase è attivo
-  const generatedId = supabase ? randomUUID() : `${Date.now()}`;
-  
-  // Mappatura campi per compatibilità con il frontend
-  const title = body.title || body.song;
-  const artists = body.artists || body.artist;
-  const requester = body.requester || body.name;
-  const event_code = body.event_code || body.eventCode;
-  
-  // Se event_code non è valido, usa null per evitare constraint errors
-  const finalEventCode = ['default', 'test'].includes(event_code || '') ? null : event_code;
-  
-  const item: RequestItem = {
-    id: generatedId,
-    created_at: now,
-    track_id: body.track_id || 'unknown',
-    uri: body.uri,
-    title: title,
-    artists: artists,
-    album: body.album,
-    cover_url: body.cover_url ?? null,
-    isrc: body.isrc ?? null,
-    explicit: !!body.explicit,
-    preview_url: body.preview_url ?? null,
-    duration_ms: body.duration_ms,
-    note: body.note,
-    event_code: finalEventCode ?? null,
-    requester: requester ?? null,
-    status: 'new',
-    duplicates: 0,
-  };
-  if (supabase) {
-    const { data, error } = await supabase!.from('requests').insert(item).select('*').single();
-    if (error) {
-      interface PgErr { code?: string; hint?: string | null; details?: string | null }
-      const raw = error as unknown as PgErr;
-      return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
+  try {
+    const body = (await req.json()) as { session_token: string; requester_name?: string; track_id?: string; uri?: string; title: string; artists: string; album?: string; cover_url?: string; isrc?: string; explicit?: boolean; preview_url?: string; duration_ms?: number; note?: string };
+    
+    if (!body.session_token || !body.title || !body.artists) {
+      return withVersion({ ok: false, error: 'missing_fields' }, { status: 400 });
     }
-    // Telegram notification (non bloccante)
+
+    const supabase = getSupabase();
+    if (!supabase) {
+      return withVersion({ ok: false, error: 'database_unavailable' }, { status: 500 });
+    }
+
+    // Trova sessione attiva tramite token
+    const { data: session, error: sessionError } = await supabase!
+      .from('sessioni_libere')
+      .select('id, status')
+      .eq('token', body.session_token)
+      .eq('archived', false)
+      .single();
+
+    if (sessionError || !session) {
+      return withVersion({ ok: false, error: 'invalid_session' }, { status: 404 });
+    }
+
+    if (session.status !== 'active') {
+      return withVersion({ ok: false, error: 'session_not_active' }, { status: 403 });
+    }
+
+    const newRequest = {
+      id: randomUUID(),
+      session_id: session.id,
+      track_id: body.track_id || null,
+      uri: body.uri || null,
+      title: body.title,
+      artists: body.artists,
+      album: body.album || null,
+      cover_url: body.cover_url || null,
+      isrc: body.isrc || null,
+      explicit: body.explicit || false,
+      preview_url: body.preview_url || null,
+      duration_ms: body.duration_ms || null,
+      note: body.note || null,
+      requester_name: body.requester_name || null,
+      status: 'new',
+      created_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabase!.from('richieste_libere').insert(newRequest).select('*').single();
+    if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
+
+    // Telegram notification hook
     try {
-      // Telegram notification sempre abilitata se token presente
-      if (process.env.TELEGRAM_BOT_TOKEN) {
-        const { sendTelegramMessage, escapeHtml, getDjPanelUrl } = await import('@/lib/telegram');
-        const songTitle = data.title || '';
+      const isTelegramEnabled = !!process.env.TELEGRAM_BOT_TOKEN?.trim();
+      if (isTelegramEnabled) {
+        const song = data.title || '';
         const artist = data.artists || '';
-        const requesterName = data.requester || 'Ospite';
-        const comment = (data.note as string) || '';
+        const who = data.requester_name || 'Anonimo';
+        const comment = data.note || '';
 
         const text = [
-          '🎵 <b>Nuova richiesta</b>',
-          `<b>Brano:</b> ${escapeHtml(String(songTitle))} — ${escapeHtml(String(artist))}`,
-          `<b>Da:</b> ${escapeHtml(String(requesterName))}`,
-          comment ? `<b>Commento:</b> “${escapeHtml(String(comment).slice(0,200))}”` : null,
+          `🎵 <b>Nuova Richiesta!</b>`,
+          `<b>Brano:</b> ${escapeHtml(String(song))}`,
+          artist ? `<b>Artista:</b> ${escapeHtml(String(artist))}` : null,
+          `<b>Da:</b> ${escapeHtml(String(who))}`,
+          comment ? `<b>Commento:</b> "${escapeHtml(String(comment).slice(0,200))}"` : null,
           `<a href="${escapeHtml(getDjPanelUrl())}">Apri pannello DJ</a>`,
         ].filter(Boolean).join('\n');
 
@@ -127,10 +137,8 @@ export async function POST(req: Request) {
     }
 
     return withVersion({ ok: true, item: data });
-  } else {
-    store.unshift(item);
-    
-    return withVersion({ ok: true, item });
+  } catch {
+    return withVersion({ ok: false, error: 'invalid_request' }, { status: 400 });
   }
 }
 

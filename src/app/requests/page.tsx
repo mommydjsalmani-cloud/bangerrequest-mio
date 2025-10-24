@@ -7,40 +7,35 @@ import { useRouter } from "next/navigation";
 export default function Requests() {
   const router = useRouter();
   const [nome, setNome] = useState<string | null>(null);
-  const [codice, setCodice] = useState<string | null>(null);
-  const [validatingCode, setValidatingCode] = useState(true);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [validatingSession, setValidatingSession] = useState(true);
 
   useEffect(() => {
-    // On mount load stored data then validate the event code
+    // Load stored name and get active session from homepage
     const storedNome = localStorage.getItem("banger_nome");
-    const storedCode = localStorage.getItem("banger_codice");
     setNome(storedNome);
-    setCodice(storedCode);
 
-    async function validate(code: string) {
+    async function loadActiveSession() {
       try {
-        const res = await fetch(`/api/events/validate?code=${encodeURIComponent(code)}`);
+        const res = await fetch('/api/homepage-sessions');
         const j = await res.json();
-        if (!res.ok || !j.valid) {
-          localStorage.removeItem("banger_codice");
-          router.replace("/?invalid=1");
+        if (!res.ok || !j.ok || !j.sessions || j.sessions.length === 0) {
+          // Nessuna sessione attiva sulla homepage
+          router.replace("/?no_session=1");
           return;
         }
+        // Usa la prima sessione attiva
+        const activeSession = j.sessions[0];
+        setSessionToken(activeSession.token);
       } catch {
-        // In caso di errore rete, meglio rimandare alla home per riprovare
         router.replace("/?retry=1");
         return;
       } finally {
-        setValidatingCode(false);
+        setValidatingSession(false);
       }
     }
 
-    if (!storedCode) {
-      router.replace("/");
-      setValidatingCode(false);
-      return;
-    }
-    validate(storedCode);
+    loadActiveSession();
   }, [router]);
 
   const [query, setQuery] = useState("");
@@ -143,12 +138,13 @@ export default function Requests() {
 
   async function confirmTrack() {
     if (!selected) return;
-    if (!codice) {
-      setMessage('Evento non valido. Torna alla home.');
+    if (!sessionToken) {
+      setMessage('Sessione non valida. Torna alla home.');
       setTimeout(() => router.replace('/'), 2500);
       return;
     }
     const payload = {
+      session_token: sessionToken,
       track_id: selected.id,
       uri: selected.uri,
       title: selected.title,
@@ -160,8 +156,7 @@ export default function Requests() {
       preview_url: selected.preview_url,
       duration_ms: selected.duration_ms,
       note,
-      event_code: codice,
-      requester: nome,
+      requester_name: nome,
     };
 
     const res = await fetch('/api/requests', {
@@ -215,10 +210,10 @@ export default function Requests() {
     setTimeout(() => setMessage(null), 3500);
   };
 
-  if (validatingCode) {
+  if (validatingSession) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center bg-black text-white p-6">
-        <div className="text-sm text-gray-300">Verifica codice evento...</div>
+        <div className="text-sm text-gray-300">Caricamento sessione...</div>
       </main>
     );
   }
@@ -226,7 +221,7 @@ export default function Requests() {
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start bg-black text-white p-4 sm:p-6">
       <div className="w-full max-w-3xl p-6 sm:p-8 bg-zinc-900 rounded-xl shadow-lg flex flex-col gap-6 mt-4 mb-8">
-        <h2 className="text-2xl font-bold mb-2">Ciao {nome ?? 'ospite'}, codice evento: {codice ?? '-'}</h2>
+        <h2 className="text-2xl font-bold mb-2">Ciao {nome ?? 'ospite'}! 🎵</h2>
 
         {!submitted && (
           <>
