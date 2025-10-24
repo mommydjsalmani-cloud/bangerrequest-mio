@@ -33,12 +33,9 @@ export default function LibereAdminPanel() {
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
   
-  // Stati per notifiche push
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
-  const [pushSubscribed, setPushSubscribed] = useState(false);
-  const [pushSupported, setPushSupported] = useState(false);
-  const [vapidPublicKey, setVapidPublicKey] = useState<string | null>(null);
-  const [isIOSPWA, setIsIOSPWA] = useState(false);
+  // Stati per notifiche email
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [djEmail, setDjEmail] = useState('');
 
   // Funzione per filtrare le richieste per codice evento
   const filteredRequests = requests.filter(request => {
@@ -801,137 +798,42 @@ export default function LibereAdminPanel() {
       setSetupLoading(false);
     }
   };
+  // ========== FUNZIONI NOTIFICHE EMAIL ==========
   
-  // ========== FUNZIONI NOTIFICHE PUSH ==========
-  
-  // Ottieni VAPID public key
-  const getVapidKey = useCallback(async () => {
+  // Carica configurazione email esistente
+  const loadEmailConfig = async () => {
+    if (!authed || !username || !password) return;
+    
     try {
-      const response = await fetch('/api/push/test', {
-        method: 'GET',
+      const response = await fetch('/api/email/config', {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
         }
       });
       
-      if (response.ok) {
-        const data = await response.json();
-        if (data.ok && data.config?.fullyConfigured) {
-          // Ottieni la public key dal server (non dalle env client)
-          setVapidPublicKey(data.vapidPublicKey || null);
-        }
+      const data = await response.json();
+      
+      if (data.ok && data.config) {
+        setEmailNotifications(data.config.enabled);
+        setDjEmail(data.config.email || '');
       }
     } catch (error) {
-      console.error('Errore ottenimento VAPID key:', error);
+      console.error('Errore caricamento config email:', error);
     }
-  }, [username, password]);
+  };
   
-  // Controlla subscription esistente
-  const checkExistingSubscription = useCallback(async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        console.log('Subscription esistente trovata:', subscription.endpoint);
-        setPushSubscribed(true);
-      } else {
-        console.log('Nessuna subscription esistente');
-        setPushSubscribed(false);
-      }
-    } catch (error) {
-      console.error('Errore controllo subscription:', error);
-      setPushSubscribed(false);
-    }
-  }, []);
-  
-  // Inizializza stato notifiche push
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Controlla supporto notifiche
-    const hasNotificationSupport = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
-    setPushSupported(hasNotificationSupport);
-    
-    if (hasNotificationSupport) {
-      setNotificationPermission(Notification.permission);
-      
-      // Controlla subscription esistente se autenticato
-      if (authed && username && password) {
-        checkExistingSubscription();
-      }
-    }
-    
-    // Controlla se è iOS in PWA mode
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isInStandaloneMode = (window.navigator as { standalone?: boolean }).standalone === true || window.matchMedia('(display-mode: standalone)').matches;
-    setIsIOSPWA(isIOS && !isInStandaloneMode);
-    
-    // Ottieni VAPID public key se autenticato
-    if (authed && username && password) {
-      getVapidKey();
-    }
-  }, [authed, username, password, getVapidKey, checkExistingSubscription]);
-  
-  const enableNotifications = async () => {
-    if (!pushSupported) {
-      setError('Notifiche push non supportate in questo browser');
+  // Funzione per aggiornare impostazioni notifiche email
+  const updateEmailNotifications = async (enabled: boolean, email: string = '') => {
+    if (!authed) {
+      setError('Non autorizzato');
       return;
     }
     
     try {
       setLoading(true);
       
-      // Richiedi permesso notifiche
-      const permission = await Notification.requestPermission();
-      setNotificationPermission(permission);
-      
-      if (permission !== 'granted') {
-        setError('Permesso notifiche negato. Controlla le impostazioni del browser.');
-        return;
-      }
-      
-      // Ottieni service worker registration
-      const registration = await navigator.serviceWorker.ready;
-      
-      if (!registration) {
-        setError('Service Worker non disponibile');
-        return;
-      }
-      
-      // Controlla se già esiste una subscription
-      let subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        console.log('Subscription già esistente, verifico con il server');
-        setPushSubscribed(true);
-        setSuccess('Notifiche già abilitate ✓');
-        return;
-      }
-      
-      // Verifica VAPID key
-      if (!vapidPublicKey) {
-        // Riprova a ottenere la chiave
-        await getVapidKey();
-        if (!vapidPublicKey) {
-          setError('Chiave VAPID non disponibile - configura le variabili ambiente sul server');
-          return;
-        }
-      }
-      
-      // Crea nuova subscription
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
-      });
-      
-      console.log('Nuova subscription creata:', subscription.endpoint);
-      
-      // Invia subscription al server
-      const response = await fetch('/api/push/subscribe', {
+      const response = await fetch('/api/email/config', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -939,87 +841,81 @@ export default function LibereAdminPanel() {
           'x-dj-secret': password
         },
         body: JSON.stringify({
-          endpoint: subscription.endpoint,
-          p256dh: arrayBufferToBase64(subscription.getKey('p256dh')!),
-          auth: arrayBufferToBase64(subscription.getKey('auth')!),
-          userAgent: navigator.userAgent
+          enabled,
+          email: email.trim()
         })
       });
       
       const data = await response.json();
       
       if (data.ok) {
-        setPushSubscribed(true);
-        setSuccess('Notifiche abilitate con successo ✓');
-        console.log('Subscription salvata sul server');
+        setEmailNotifications(enabled);
+        if (enabled && email) {
+          setDjEmail(email);
+          setSuccess(`Notifiche email abilitate per ${email} ✓`);
+        } else {
+          setSuccess('Notifiche email disabilitate ✓');
+        }
       } else {
-        setError(data.error || 'Errore abilitazione notifiche');
-        console.error('Errore server:', data.error);
+        setError(data.error || 'Errore aggiornamento notifiche email');
       }
       
     } catch (error) {
-      console.error('Errore abilitazione notifiche:', error);
-      setError(`Errore durante l'abilitazione delle notifiche: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+      console.error('Errore notifiche email:', error);
+      setError('Errore durante l\'aggiornamento delle notifiche email');
     } finally {
       setLoading(false);
     }
   };
   
-  const sendTestNotification = async () => {
-    if (!pushSubscribed) {
-      setError('Prima abilita le notifiche');
+  const sendTestEmail = async () => {
+    if (!emailNotifications || !djEmail) {
+      setError('Prima abilita le notifiche email');
       return;
     }
     
     try {
       setLoading(true);
       
-      const response = await fetch('/api/push/test', {
+      const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'x-dj-user': username,
           'x-dj-secret': password
-        }
+        },
+        body: JSON.stringify({
+          test: true,
+          title: 'Test',
+          artists: 'Sistema',
+          requesterName: 'Pannello DJ'
+        })
       });
       
       const data = await response.json();
       
       if (data.ok) {
-        setSuccess('Notifica di test inviata ✓');
+        setSuccess('Email di test inviata ✓');
       } else {
-        setError(data.error || 'Errore invio notifica di test');
+        setError(data.error || 'Errore invio email di test');
       }
       
     } catch (error) {
-      console.error('Errore test notifica:', error);
-      setError('Errore durante l\'invio della notifica di test');
+      console.error('Errore test email:', error);
+      setError('Errore durante l\'invio dell\'email di test');
     } finally {
       setLoading(false);
     }
   };
   
-  // Utility functions per conversioni
-  function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
+  // Carica configurazione email quando l'utente è autenticato
+  useEffect(() => {
+    if (authed && username && password) {
+      loadEmailConfig();
     }
-    return outputArray;
-  }
+  }, [authed, username, password]);
   
-  function arrayBufferToBase64(buffer: ArrayBuffer): string {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return window.btoa(binary);
-  }
-  
-  // ========== FINE FUNZIONI NOTIFICHE PUSH ==========
+  // ========== FINE FUNZIONI NOTIFICHE EMAIL ==========
   
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
   
@@ -1519,41 +1415,29 @@ export default function LibereAdminPanel() {
                 </div>
               </div>
               
-              {/* Push Notifications Control */}
+              {/* Email Notifications Control */}
               <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
-                <h3 className="text-lg font-semibold mb-3 text-gray-800">🔔 Notifiche Push</h3>
+                <h3 className="text-lg font-semibold mb-3 text-gray-800">� Notifiche Email</h3>
                 <div className="space-y-4">
                   
                   {/* Stato notifiche */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <div className="text-sm font-medium text-gray-700">Stato Browser</div>
+                      <div className="text-sm font-medium text-gray-700">Stato</div>
                       <div className="flex items-center gap-2">
-                        {pushSupported ? (
+                        {emailNotifications ? (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ✅ Supportate
+                            ✅ Attive
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            ❌ Non supportate
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            ❌ Disattive
                           </span>
                         )}
                         
-                        {notificationPermission === 'granted' && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            🔓 Permesso concesso
-                          </span>
-                        )}
-                        
-                        {notificationPermission === 'denied' && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            🚫 Permesso negato
-                          </span>
-                        )}
-                        
-                        {pushSubscribed && (
+                        {djEmail && (
                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            📱 Attive
+                            � {djEmail}
                           </span>
                         )}
                       </div>
@@ -1562,70 +1446,64 @@ export default function LibereAdminPanel() {
                     <div className="space-y-2">
                       <div className="text-sm font-medium text-gray-700">Azioni</div>
                       <div className="flex flex-wrap gap-2">
-                        {!pushSubscribed && notificationPermission !== 'denied' && pushSupported && (
-                          <button
-                            onClick={enableNotifications}
-                            disabled={loading}
-                            className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-                          >
-                            {loading ? '⏳ Abilitando...' : '🔔 Abilita Notifiche'}
-                          </button>
+                        {!emailNotifications && (
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="email"
+                              placeholder="tua-email@example.com"
+                              value={djEmail}
+                              onChange={(e) => setDjEmail(e.target.value)}
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            />
+                            <button
+                              onClick={() => updateEmailNotifications(true, djEmail)}
+                              disabled={loading || !djEmail.includes('@')}
+                              className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              {loading ? '⏳ Abilitando...' : '� Abilita'}
+                            </button>
+                          </div>
                         )}
                         
-                        {pushSubscribed && (
-                          <button
-                            onClick={sendTestNotification}
-                            disabled={loading}
-                            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-                          >
-                            {loading ? '⏳ Inviando...' : '🧪 Invia Test'}
-                          </button>
+                        {emailNotifications && (
+                          <>
+                            <button
+                              onClick={sendTestEmail}
+                              disabled={loading}
+                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              {loading ? '⏳ Inviando...' : '🧪 Invia Test'}
+                            </button>
+                            <button
+                              onClick={() => updateEmailNotifications(false)}
+                              disabled={loading}
+                              className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
+                            >
+                              {loading ? '⏳ Disabilitando...' : '🚫 Disabilita'}
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   {/* Messaggi informativi */}
-                  {notificationPermission === 'denied' && (
-                    <div className="text-sm p-3 rounded-lg border-l-4 bg-red-50 border-red-400">
-                      <div className="font-medium text-red-800 mb-1">🚫 Permesso notifiche negato</div>
-                      <div className="text-red-700">
-                        Per ricevere notifiche quando arrivano nuove richieste:
-                        <ul className="list-disc list-inside mt-1 space-y-1">
-                          <li>Clicca sull&apos;icona 🔒 nella barra dell&apos;indirizzo</li>
-                          <li>Trova &quot;Notifiche&quot; e seleziona &quot;Consenti&quot;</li>
-                          <li>Ricarica la pagina</li>
-                        </ul>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {isIOSPWA && (
-                    <div className="text-sm p-3 rounded-lg border-l-4 bg-orange-50 border-orange-400">
-                      <div className="font-medium text-orange-800 mb-1">📱 iOS Safari</div>
-                      <div className="text-orange-700">
-                        Su Safari iOS, aggiungi questa pagina alla Home per attivare le notifiche:
-                        <br />Condividi → Aggiungi alla Home
-                      </div>
-                    </div>
-                  )}
-                  
-                  {pushSubscribed && (
+                  {emailNotifications && djEmail && (
                     <div className="text-sm p-3 rounded-lg border-l-4 bg-green-50 border-green-400">
-                      <div className="font-medium text-green-800 mb-1">✅ Notifiche attive</div>
+                      <div className="font-medium text-green-800 mb-1">✅ Notifiche email attive</div>
                       <div className="text-green-700">
-                        Riceverai una notifica ogni volta che arriva una nuova richiesta musicale. 
-                        La notifica ti porterà direttamente al pannello DJ.
+                        Riceverai un&apos;email all&apos;indirizzo <strong>{djEmail}</strong> ogni volta che arriva una nuova richiesta musicale. 
+                        Il formato sarà: &quot;titolo brano — artista (da nome_utente)&quot;
                       </div>
                     </div>
                   )}
                   
-                  {!pushSupported && (
-                    <div className="text-sm p-3 rounded-lg border-l-4 bg-gray-50 border-gray-400">
-                      <div className="font-medium text-gray-800 mb-1">ℹ️ Browser non supportato</div>
-                      <div className="text-gray-700">
-                        Le notifiche push non sono supportate in questo browser. 
-                        Prova con Chrome, Firefox, Safari o Edge più recenti.
+                  {!emailNotifications && (
+                    <div className="text-sm p-3 rounded-lg border-l-4 bg-blue-50 border-blue-400">
+                      <div className="font-medium text-blue-800 mb-1">ℹ️ Notifiche email disattive</div>
+                      <div className="text-blue-700">
+                        Inserisci il tuo indirizzo email per ricevere notifiche quando arrivano nuove richieste musicali.
+                        Molto più semplice e affidabile delle notifiche push!
                       </div>
                     </div>
                   )}
