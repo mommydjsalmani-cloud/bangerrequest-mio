@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { answerCallbackQuery, editTelegramMessage, escapeHtml, getAllowedUserIds, getDjPanelUrl } from '@/lib/telegram';
+import { answerCallbackQuery, editTelegramMessage, getAllowedUserIds, getDjPanelUrl } from '@/lib/telegram';
 import { acceptRequest, rejectRequest } from '@/lib/moderation';
 
 export async function POST(req: Request) {
