@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { answerCallbackQuery, editTelegramMessage, escapeHtml, getAllowedUserIds } from '@/lib/telegram';
+import { answerCallbackQuery, editTelegramMessage, escapeHtml, getAllowedUserIds, getDjPanelUrl } from '@/lib/telegram';
 import { acceptRequest, rejectRequest } from '@/lib/moderation';
 
 export async function POST(req: Request) {
@@ -67,10 +67,17 @@ export async function POST(req: Request) {
     // Aggiorna il messaggio con lo stato e nuovi bottoni per cambiare idea
     const newText = (originalText || '') + appended;
     
-    // Mostra bottone opposto per permettere di cambiare idea
+    // Mostra bottone opposto per permettere di cambiare idea + bottone pannello DJ
+    const djPanelUrl = getDjPanelUrl();
     const newKeyboard = action === 'accept' 
-      ? [[{ text: '❌ Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }]]
-      : [[{ text: '✅ Cambia idea (Accetta)', callbackData: `accept:${requestId}` }]];
+      ? [
+          [{ text: '❌ Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
+          [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+        ]
+      : [
+          [{ text: '✅ Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
+          [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+        ];
 
     await editTelegramMessage({ 
       chatId: chatIdVal, 
