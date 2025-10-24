@@ -32,14 +32,18 @@ function withVersion<T>(data: T, init?: { status?: number }) {
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const eventCode = url.searchParams.get('event_code');
+  const sessionToken = url.searchParams.get('session_token');
   const status = url.searchParams.get('status');
   const id = url.searchParams.get('id');
   const supabase = getSupabase();
   if (supabase) {
-    let q = supabase!.from('requests').select('*').order('created_at', { ascending: false });
+    let q = supabase!.from('richieste_libere').select('*').order('created_at', { ascending: false });
     if (id) q = q.eq('id', id);
-    if (eventCode) q = q.eq('event_code', eventCode);
+    if (sessionToken) {
+      // Trova session_id dal token
+      const { data: session } = await supabase!.from('sessioni_libere').select('id').eq('token', sessionToken).single();
+      if (session) q = q.eq('session_id', session.id);
+    }
     if (status) q = q.eq('status', status);
     const { data, error } = await q;
     if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
@@ -47,7 +51,6 @@ export async function GET(req: Request) {
   } else {
     let list = store;
     if (id) list = list.filter((r) => r.id === id);
-    if (eventCode) list = list.filter((r) => r.event_code === eventCode);
     if (status) list = list.filter((r) => r.status === status);
     return withVersion({ ok: true, requests: list });
   }
@@ -160,23 +163,23 @@ export async function PATCH(req: Request) {
     if (supabase) {
       if (body.action === 'merge') {
         if (body.mergeWithId) {
-          const { data: target, error: e1 } = await supabase!.from('requests').select('*').eq('id', body.mergeWithId).single();
+          const { data: target, error: e1 } = await supabase!.from('richieste_libere').select('*').eq('id', body.mergeWithId).single();
           if (e1 || !target) return withVersion({ ok: false, error: 'merge_target_not_found' }, { status: 404 });
-          const { error: e2 } = await supabase!.from('requests').delete().eq('id', body.id);
+          const { error: e2 } = await supabase!.from('richieste_libere').delete().eq('id', body.id);
           if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
-          const { data, error: e3 } = await supabase!.from('requests').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
+          const { data, error: e3 } = await supabase!.from('richieste_libere').update({ duplicates: (target.duplicates || 0) + 1 }).eq('id', body.mergeWithId).select('*').single();
           if (e3) return withVersion({ ok: false, error: e3.message }, { status: 500 });
           return withVersion({ ok: true, mergedInto: body.mergeWithId, target: data });
         } else {
-          const { data, error } = await supabase!.from('requests').select('*').eq('id', body.id).single();
+          const { data, error } = await supabase!.from('richieste_libere').select('*').eq('id', body.id).single();
           if (error || !data) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
-          const { data: upd, error: e2 } = await supabase!.from('requests').update({ duplicates: (data.duplicates || 0) + 1 }).eq('id', body.id).select('*').single();
+          const { data: upd, error: e2 } = await supabase!.from('richieste_libere').update({ duplicates: (data.duplicates || 0) + 1 }).eq('id', body.id).select('*').single();
           if (e2) return withVersion({ ok: false, error: e2.message }, { status: 500 });
           return withVersion({ ok: true, item: upd });
         }
       }
       if (body.action === 'cancel') {
-        const { data, error } = await supabase!.from('requests').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
+        const { data, error } = await supabase!.from('richieste_libere').update({ status: 'cancelled' }).eq('id', body.id).select('*').single();
         if (error || !data) return withVersion({ ok: false, error: error?.message || 'not_found' }, { status: 404 });
         return withVersion({ ok: true, item: data });
       }
@@ -187,7 +190,7 @@ export async function PATCH(req: Request) {
       };
       const patch = map[body.action];
       if (!patch) return withVersion({ ok: false, error: 'invalid_action' }, { status: 400 });
-      const { data, error } = await supabase!.from('requests').update(patch).eq('id', body.id).select('*').single();
+      const { data, error } = await supabase!.from('richieste_libere').update(patch).eq('id', body.id).select('*').single();
       if (error || !data) return withVersion({ ok: false, error: error?.message || 'not_found' }, { status: 404 });
       return withVersion({ ok: true, item: data });
     }
