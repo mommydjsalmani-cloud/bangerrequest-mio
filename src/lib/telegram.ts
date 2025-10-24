@@ -27,7 +27,19 @@ export function getThreadId(): number | undefined {
 }
 
 export function getDjPanelUrl(): string {
-  return process.env.DJ_PANEL_URL?.trim() || `${config.app.baseUrl.replace(/\/$/, '')}/dj/libere`;
+  // Priorità: variabile d'ambiente esplicita > URL Vercel automatico > config baseUrl
+  if (process.env.DJ_PANEL_URL?.trim()) {
+    return process.env.DJ_PANEL_URL.trim();
+  }
+  
+  // Rileva automaticamente l'URL di Vercel se disponibile
+  const vercelUrl = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_VERCEL_URL;
+  if (vercelUrl) {
+    return `https://${vercelUrl}/dj/libere`;
+  }
+  
+  // Fallback al baseUrl del config
+  return `${config.app.baseUrl.replace(/\/$/, '')}/dj/libere`;
 }
 
 export function getAllowedUserIds(): number[] {
