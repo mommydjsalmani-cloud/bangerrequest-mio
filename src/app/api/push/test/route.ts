@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
         hasVapidSubject,
         fullyConfigured: isFullyConfigured
       },
+      vapidPublicKey: isFullyConfigured ? process.env.VAPID_PUBLIC_KEY?.trim() : null,
       djUser: headerUser,
       timestamp: new Date().toISOString()
     });

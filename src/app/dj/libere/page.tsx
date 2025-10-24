@@ -818,15 +818,35 @@ export default function LibereAdminPanel() {
       if (response.ok) {
         const data = await response.json();
         if (data.ok && data.config?.fullyConfigured) {
-          // Ottieni public key dalle variabili ambiente (simulato per ora)
-          // In una implementazione reale, dovresti avere un endpoint apposito
-          setVapidPublicKey(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null);
+          // Ottieni la public key dal server (non dalle env client)
+          setVapidPublicKey(data.vapidPublicKey || null);
         }
       }
     } catch (error) {
       console.error('Errore ottenimento VAPID key:', error);
     }
   }, [username, password]);
+  
+  // Controlla subscription esistente
+  const checkExistingSubscription = useCallback(async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        console.log('Subscription esistente trovata:', subscription.endpoint);
+        setPushSubscribed(true);
+      } else {
+        console.log('Nessuna subscription esistente');
+        setPushSubscribed(false);
+      }
+    } catch (error) {
+      console.error('Errore controllo subscription:', error);
+      setPushSubscribed(false);
+    }
+  }, []);
   
   // Inizializza stato notifiche push
   useEffect(() => {
@@ -838,6 +858,11 @@ export default function LibereAdminPanel() {
     
     if (hasNotificationSupport) {
       setNotificationPermission(Notification.permission);
+      
+      // Controlla subscription esistente se autenticato
+      if (authed && username && password) {
+        checkExistingSubscription();
+      }
     }
     
     // Controlla se è iOS in PWA mode
@@ -849,7 +874,7 @@ export default function LibereAdminPanel() {
     if (authed && username && password) {
       getVapidKey();
     }
-  }, [authed, username, password, getVapidKey]);
+  }, [authed, username, password, getVapidKey, checkExistingSubscription]);
   
   const enableNotifications = async () => {
     if (!pushSupported) {
@@ -858,6 +883,8 @@ export default function LibereAdminPanel() {
     }
     
     try {
+      setLoading(true);
+      
       // Richiedi permesso notifiche
       const permission = await Notification.requestPermission();
       setNotificationPermission(permission);
@@ -875,24 +902,33 @@ export default function LibereAdminPanel() {
         return;
       }
       
-      // Verifica se già sottoscritto
-      const existingSubscription = await registration.pushManager.getSubscription();
-      if (existingSubscription) {
-        console.log('Subscription già esistente');
+      // Controlla se già esiste una subscription
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (subscription) {
+        console.log('Subscription già esistente, verifico con il server');
         setPushSubscribed(true);
+        setSuccess('Notifiche già abilitate ✓');
         return;
+      }
+      
+      // Verifica VAPID key
+      if (!vapidPublicKey) {
+        // Riprova a ottenere la chiave
+        await getVapidKey();
+        if (!vapidPublicKey) {
+          setError('Chiave VAPID non disponibile - configura le variabili ambiente sul server');
+          return;
+        }
       }
       
       // Crea nuova subscription
-      if (!vapidPublicKey) {
-        setError('Chiave VAPID non disponibile - configura le variabili ambiente');
-        return;
-      }
-      
-      const subscription = await registration.pushManager.subscribe({
+      subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource
       });
+      
+      console.log('Nuova subscription creata:', subscription.endpoint);
       
       // Invia subscription al server
       const response = await fetch('/api/push/subscribe', {
@@ -915,13 +951,17 @@ export default function LibereAdminPanel() {
       if (data.ok) {
         setPushSubscribed(true);
         setSuccess('Notifiche abilitate con successo ✓');
+        console.log('Subscription salvata sul server');
       } else {
         setError(data.error || 'Errore abilitazione notifiche');
+        console.error('Errore server:', data.error);
       }
       
     } catch (error) {
       console.error('Errore abilitazione notifiche:', error);
-      setError('Errore durante l\'abilitazione delle notifiche');
+      setError(`Errore durante l'abilitazione delle notifiche: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`);
+    } finally {
+      setLoading(false);
     }
   };
   
