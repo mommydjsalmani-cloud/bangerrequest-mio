@@ -85,71 +85,9 @@ export async function POST(req: Request) {
       return withVersion({ ok: false, error: error.message, details: { code: raw.code, hint: raw.hint, details: raw.details } }, { status: 500 });
     }
     
-    // ========== HOOK NOTIFICHE EMAIL ==========
-    try {
-      // Invia notifica email in background (non bloccare la risposta)
-      const songTitle = data.title || 'Titolo non disponibile';
-      const artist = data.artists || '';
-      const requesterName = data.requester || 'Ospite';
-      
-      // Chiama API di invio email
-      fetch('/api/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: songTitle,
-          artists: artist,
-          requesterName: requesterName,
-          test: false
-        })
-      }).catch((error) => {
-        console.error('[Requests] Errore invio notifica email:', error);
-        // Non facciamo fallire la richiesta per errori notifiche
-      });
-      
-      console.log('[Requests] Notifica email inviata per nuova richiesta:', songTitle);
-    } catch (error) {
-      console.warn('[Requests] Sistema notifiche email non disponibile:', error);
-      // Continua normalmente se le notifiche non sono configurate
-    }
-    // ========== FINE HOOK NOTIFICHE EMAIL ==========
-    
     return withVersion({ ok: true, item: data });
   } else {
     store.unshift(item);
-    
-    // ========== HOOK NOTIFICHE EMAIL (IN-MEMORY) ==========
-    try {
-      // Invia notifica email in background (non bloccare la risposta)
-      const songTitle = item.title || 'Titolo non disponibile';
-      const artist = item.artists || '';
-      const requesterName = item.requester || 'Ospite';
-      
-      // Chiama API di invio email
-      fetch('/api/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: songTitle,
-          artists: artist,
-          requesterName: requesterName,
-          test: false
-        })
-      }).catch((error) => {
-        console.error('[Requests In-Memory] Errore invio notifica email:', error);
-        // Non facciamo fallire la richiesta per errori notifiche
-      });
-      
-      console.log('[Requests In-Memory] Notifica email inviata per nuova richiesta:', songTitle);
-    } catch (error) {
-      console.warn('[Requests In-Memory] Sistema notifiche email non disponibile:', error);
-      // Continua normalmente se le notifiche non sono configurate
-    }
-    // ========== FINE HOOK NOTIFICHE EMAIL (IN-MEMORY) ==========
     
     return withVersion({ ok: true, item });
   }

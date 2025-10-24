@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
@@ -33,10 +33,6 @@ export default function LibereAdminPanel() {
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
   
-  // Stati per notifiche email
-  const [emailNotifications, setEmailNotifications] = useState(false);
-  const [djEmail, setDjEmail] = useState('');
-
   // Funzione per filtrare le richieste per codice evento
   const filteredRequests = requests.filter(request => {
     if (!eventCodeFilter.trim()) return true;
@@ -798,124 +794,6 @@ export default function LibereAdminPanel() {
       setSetupLoading(false);
     }
   };
-  // ========== FUNZIONI NOTIFICHE EMAIL ==========
-  
-  // Carica configurazione email esistente
-  const loadEmailConfig = async () => {
-    if (!authed || !username || !password) return;
-    
-    try {
-      const response = await fetch('/api/email/config', {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
-        }
-      });
-      
-      const data = await response.json();
-      
-      if (data.ok && data.config) {
-        setEmailNotifications(data.config.enabled);
-        setDjEmail(data.config.email || '');
-      }
-    } catch (error) {
-      console.error('Errore caricamento config email:', error);
-    }
-  };
-  
-  // Funzione per aggiornare impostazioni notifiche email
-  const updateEmailNotifications = async (enabled: boolean, email: string = '') => {
-    if (!authed) {
-      setError('Non autorizzato');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      const response = await fetch('/api/email/config', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          enabled,
-          email: email.trim()
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.ok) {
-        setEmailNotifications(enabled);
-        if (enabled && email) {
-          setDjEmail(email);
-          setSuccess(`Notifiche email abilitate per ${email} ✓`);
-        } else {
-          setSuccess('Notifiche email disabilitate ✓');
-        }
-      } else {
-        setError(data.error || 'Errore aggiornamento notifiche email');
-      }
-      
-    } catch (error) {
-      console.error('Errore notifiche email:', error);
-      setError('Errore durante l\'aggiornamento delle notifiche email');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const sendTestEmail = async () => {
-    if (!emailNotifications || !djEmail) {
-      setError('Prima abilita le notifiche email');
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      const response = await fetch('/api/email/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          test: true,
-          title: 'Test',
-          artists: 'Sistema',
-          requesterName: 'Pannello DJ'
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.ok) {
-        setSuccess('Email di test inviata ✓');
-      } else {
-        setError(data.error || 'Errore invio email di test');
-      }
-      
-    } catch (error) {
-      console.error('Errore test email:', error);
-      setError('Errore durante l\'invio dell\'email di test');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Carica configurazione email quando l'utente è autenticato
-  useEffect(() => {
-    if (authed && username && password) {
-      loadEmailConfig();
-    }
-  }, [authed, username, password]);
-  
-  // ========== FINE FUNZIONI NOTIFICHE EMAIL ==========
   
   const publicUrl = currentSession ? generatePublicUrl(currentSession.token) : '';
   
@@ -1412,102 +1290,6 @@ export default function LibereAdminPanel() {
                       }
                     </p>
                   </div>
-                </div>
-              </div>
-              
-              {/* Email Notifications Control */}
-              <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
-                <h3 className="text-lg font-semibold mb-3 text-gray-800">� Notifiche Email</h3>
-                <div className="space-y-4">
-                  
-                  {/* Stato notifiche */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-gray-700">Stato</div>
-                      <div className="flex items-center gap-2">
-                        {emailNotifications ? (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ✅ Attive
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            ❌ Disattive
-                          </span>
-                        )}
-                        
-                        {djEmail && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            � {djEmail}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium text-gray-700">Azioni</div>
-                      <div className="flex flex-wrap gap-2">
-                        {!emailNotifications && (
-                          <div className="flex gap-2 items-center">
-                            <input
-                              type="email"
-                              placeholder="tua-email@example.com"
-                              value={djEmail}
-                              onChange={(e) => setDjEmail(e.target.value)}
-                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                            <button
-                              onClick={() => updateEmailNotifications(true, djEmail)}
-                              disabled={loading || !djEmail.includes('@')}
-                              className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                              {loading ? '⏳ Abilitando...' : '� Abilita'}
-                            </button>
-                          </div>
-                        )}
-                        
-                        {emailNotifications && (
-                          <>
-                            <button
-                              onClick={sendTestEmail}
-                              disabled={loading}
-                              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                              {loading ? '⏳ Inviando...' : '🧪 Invia Test'}
-                            </button>
-                            <button
-                              onClick={() => updateEmailNotifications(false)}
-                              disabled={loading}
-                              className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg text-sm font-medium transition-colors"
-                            >
-                              {loading ? '⏳ Disabilitando...' : '🚫 Disabilita'}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Messaggi informativi */}
-                  {emailNotifications && djEmail && (
-                    <div className="text-sm p-3 rounded-lg border-l-4 bg-green-50 border-green-400">
-                      <div className="font-medium text-green-800 mb-1">✅ Notifiche email attive</div>
-                      <div className="text-green-700">
-                        Riceverai un&apos;email all&apos;indirizzo <strong>{djEmail}</strong> ogni volta che arriva una nuova richiesta musicale. 
-                        Il formato sarà: &quot;titolo brano — artista (da nome_utente)&quot;
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!emailNotifications && (
-                    <div className="text-sm p-3 rounded-lg border-l-4 bg-blue-50 border-blue-400">
-                      <div className="font-medium text-blue-800 mb-1">ℹ️ Notifiche email disattive</div>
-                      <div className="text-blue-700">
-                        Inserisci il tuo indirizzo email per ricevere notifiche quando arrivano nuove richieste musicali.
-                        Molto più semplice e affidabile delle notifiche push!
-                      </div>
-                    </div>
-                  )}
-                  
                 </div>
               </div>
               

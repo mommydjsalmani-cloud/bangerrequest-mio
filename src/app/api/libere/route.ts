@@ -294,37 +294,6 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: 'Errore salvamento richiesta' }, { status: 500 });
   }
   
-  // ========== HOOK NOTIFICHE EMAIL ==========
-  try {
-    // Invia notifica email in background (non bloccare la risposta)
-    const songTitle = newRequest.title;
-    const artist = newRequest.artists || '';
-    const requesterName = newRequest.requester_name || 'Ospite';
-    
-    // Chiama API di invio email
-    fetch('/api/email/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: songTitle,
-        artists: artist,
-        requesterName: requesterName,
-        test: false
-      })
-    }).catch((error) => {
-      console.error('[Libere] Errore invio notifica email:', error);
-      // Non facciamo fallire la richiesta per errori notifiche
-    });
-    
-    console.log('[Libere] Notifica email inviata per nuova richiesta:', songTitle);
-  } catch (error) {
-    console.warn('[Libere] Sistema notifiche email non disponibile:', error);
-    // Continua normalmente se le notifiche non sono configurate
-  }
-  // ========== FINE HOOK NOTIFICHE EMAIL ==========
-  
   return withVersion({ 
     ok: true, 
     message: 'Richiesta ricevuta 🎶',

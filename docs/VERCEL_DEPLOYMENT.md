@@ -121,28 +121,6 @@ Torna su Vercel → Settings → Environment Variables e aggiungi le chiavi Supa
 
 ### 1. Test Configurazione
 
-Accedi a: `https://tuo-app.vercel.app/api/push/test`
-
-Con headers:
-```
-x-dj-user: il_tuo_username_dj
-x-dj-secret: la_tua_password_sicura
-```
-
-Dovresti vedere:
-```json
-{
-  "ok": true,
-  "config": {
-    "pushEnabled": true,
-    "hasVapidPublic": true,
-    "hasVapidPrivate": true,
-    "hasVapidSubject": true,
-    "fullyConfigured": true
-  }
-}
-```
-
 ### 2. Test DJ Panel
 
 1. Vai su `https://tuo-app.vercel.app/dj/libere`
