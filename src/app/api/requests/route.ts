@@ -96,7 +96,8 @@ export async function POST(req: Request) {
     }
     // Telegram notification (non bloccante)
     try {
-      if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
+      // Telegram notification sempre abilitata se token presente
+      if (process.env.TELEGRAM_BOT_TOKEN) {
         const { sendTelegramMessage, escapeHtml, getDjPanelUrl } = await import('@/lib/telegram');
         const songTitle = data.title || '';
         const artist = data.artists || '';
