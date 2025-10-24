@@ -58,14 +58,22 @@ export async function POST(req: Request) {
 
     const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
     const statusText = action === 'accept' ? '✅ Accettata' : '❌ Rifiutata';
-    const appended = `\n\n<b>Stato:</b> ${statusText} da ${escapeHtml(String(who))}`;
+    const newStatus = `\n\n<b>Stato:</b> ${statusText} da ${escapeHtml(String(who))}`;
 
-    const originalText = String(message.text || message.caption || '');
+    let originalText = String(message.text || message.caption || '');
+    
+    // Rimuovi eventuali stati precedenti per evitare duplicazioni
+    // Cerca la prima occorrenza di "\n\nStato:" e taglia tutto quello che viene dopo
+    const statusIndex = originalText.indexOf('\n\n<b>Stato:</b>');
+    if (statusIndex !== -1) {
+      originalText = originalText.substring(0, statusIndex);
+    }
+    
     const chatIdVal = (chat.id ?? '') as string | number;
     const messageIdVal = Number(message.message_id || 0);
 
     // Aggiorna il messaggio con lo stato e nuovi bottoni per cambiare idea
-    const newText = (originalText || '') + appended;
+    const newText = originalText + newStatus;
     
     // Mostra bottone opposto per permettere di cambiare idea + bottone pannello DJ
     const djPanelUrl = getDjPanelUrl();
