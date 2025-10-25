@@ -475,7 +475,7 @@ function RichiesteLibereContent() {
   
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-6">
-      <div className="w-full max-w-4xl space-y-6 mt-4 mb-8">
+      <div className="w-full max-w-4xl space-y-4 mt-4 mb-8">
         
         {/* Header Personalizzato */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl py-3 px-4 border border-white/20 shadow-xl text-center">
@@ -488,13 +488,13 @@ function RichiesteLibereContent() {
         </div>
 
         {message && (
-          <div className="bg-green-500/20 border border-green-500/50 text-green-200 p-4 rounded-xl text-center backdrop-blur-lg">
+          <div className="bg-green-500/20 border border-green-500/50 text-green-200 py-3 px-4 rounded-lg text-center backdrop-blur-lg">
             {message}
           </div>
         )}
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-200 p-4 rounded-xl text-center backdrop-blur-lg">
+          <div className="bg-red-500/20 border border-red-500/50 text-red-200 py-3 px-4 rounded-lg text-center backdrop-blur-lg">
             {error}
           </div>
         )}
@@ -529,9 +529,9 @@ function RichiesteLibereContent() {
 
             {/* Risultati Ricerca con Cards Moderne */}
             {results.length > 0 && (
-              <div className="space-y-3">
-                <label className="block text-lg font-semibold">🎶 Risultati da Spotify</label>
-                <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
+              <div className="space-y-2">
+                <label className="block text-base font-semibold">🎶 Risultati da Spotify</label>
+                <div className="grid grid-cols-1 gap-1.5 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
                     const shouldHide = isCollapsed && selected?.id !== track.id;
@@ -618,14 +618,14 @@ function RichiesteLibereContent() {
             )}
 
             {query && !searching && results.length === 0 && (
-              <div className="text-center py-12">
-                <div className="text-6xl mb-4">🔍</div>
-                <div className="bg-white/10 backdrop-blur rounded-xl p-6 border border-white/20 max-w-md mx-auto">
-                  <h3 className="text-xl font-bold text-white mb-3">Nessun risultato trovato</h3>
-                  <div className="bg-purple-500/20 rounded-lg p-3 mb-4">
+              <div className="text-center py-8">
+                <div className="text-5xl mb-3">🔍</div>
+                <div className="bg-white/10 backdrop-blur rounded-xl py-4 px-4 border border-white/20 max-w-md mx-auto">
+                  <h3 className="text-lg font-bold text-white mb-2">Nessun risultato trovato</h3>
+                  <div className="bg-purple-500/20 rounded-lg py-2 px-3 mb-3">
                     <p className="text-purple-200 font-medium">&quot;{query}&quot;</p>
                   </div>
-                  <div className="space-y-2 text-gray-300">
+                  <div className="space-y-1.5 text-gray-300 text-sm">
                     <p className="flex items-center gap-2">
                       <span>💡</span>
                       <span>Prova con termini diversi</span>
@@ -641,11 +641,11 @@ function RichiesteLibereContent() {
 
             {/* Conferma Selezione */}
             {selected && (
-              <div className="bg-white/20 backdrop-blur-lg rounded-lg p-4 border border-purple-300/30">
-                <h3 className="text-lg font-semibold mb-3 text-purple-200">
+              <div className="bg-white/20 backdrop-blur-lg rounded-lg py-3 px-4 border border-purple-300/30">
+                <h3 className="text-base font-semibold mb-2 text-purple-200">
                   ✨ Conferma la tua richiesta
                 </h3>
-                <div className="flex items-center gap-4 mb-4">
+                <div className="flex items-center gap-3 mb-3">
                   <Image 
                     src={selected.cover_url || '/file.svg'} 
                     alt={selected.title || 'cover'} 
@@ -653,9 +653,9 @@ function RichiesteLibereContent() {
                     height={48} 
                     className="w-12 h-12 rounded-lg object-cover shadow-lg" 
                   />
-                  <div>
-                    <div className="font-semibold text-white">{selected.title}</div>
-                    <div className="text-gray-300 text-sm">{selected.artists}</div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-white truncate">{selected.title}</div>
+                    <div className="text-gray-300 text-sm truncate">{selected.artists}</div>
                   </div>
                 </div>
                 
@@ -664,8 +664,8 @@ function RichiesteLibereContent() {
                     value={note} 
                     onChange={(e) => setNote(e.target.value)} 
                     placeholder="Aggiungi una nota o dedica (opzionale)..." 
-                    className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-4" 
-                    rows={3} 
+                    className="w-full py-2 px-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-300 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-sm mb-3" 
+                    rows={2} 
                   />
                 )}
                 
