@@ -75,7 +75,7 @@ export default function Home() {
           {!loading && homepageSessions.length > 0 && (
             <div className="space-y-4 mb-8">
               <h2 className="text-lg font-semibold text-gray-300 text-center">
-                🎶 Sessioni Richieste Libere Attive
+                🎶 Sessioni Attive
               </h2>
               {homepageSessions.map((session) => (
                 <div key={session.id} className="flex gap-2">
