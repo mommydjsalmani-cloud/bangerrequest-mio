@@ -391,9 +391,8 @@ function RichiesteLibereContent() {
               className="w-auto h-16 object-contain"
             />
           </div>
-          <div className="text-5xl mb-6">🎵</div>
           <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-            Benvenuto nella Musica!
+            Benvenuto!
           </h1>
           <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-6 border border-white/20">
             <p className="text-gray-200 text-base leading-relaxed">
