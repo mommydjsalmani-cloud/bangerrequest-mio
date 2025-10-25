@@ -3,27 +3,6 @@ import { randomUUID } from 'crypto';
 import { getSupabase } from '@/lib/supabase';
 import { sendTelegramMessage, escapeHtml, getDjPanelUrl } from '@/lib/telegram';
 
-type RequestItem = {
-  id: string;
-  created_at: string;
-  track_id: string;
-  uri?: string;
-  title?: string;
-  artists?: string;
-  album?: string;
-  cover_url?: string | null;
-  isrc?: string | null;
-  explicit?: boolean;
-  preview_url?: string | null;
-  duration_ms?: number;
-  note?: string;
-  event_code?: string | null;
-  requester?: string | null;
-  status: 'new' | 'accepted' | 'rejected' | 'muted' | 'cancelled';
-  duplicates?: number; // how many times merged/duplicated
-};
-
-const store: RequestItem[] = [];
 const BUILD_TAG = 'requests-diagnostics-v1';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
@@ -48,11 +27,6 @@ export async function GET(req: Request) {
     const { data, error } = await q;
     if (error) return withVersion({ ok: false, error: error.message }, { status: 500 });
     return withVersion({ ok: true, requests: data || [] });
-  } else {
-    let list = store;
-    if (id) list = list.filter((r) => r.id === id);
-    if (status) list = list.filter((r) => r.status === status);
-    return withVersion({ ok: true, requests: list });
   }
 }
 
@@ -183,7 +157,7 @@ export async function PATCH(req: Request) {
         if (error || !data) return withVersion({ ok: false, error: error?.message || 'not_found' }, { status: 404 });
         return withVersion({ ok: true, item: data });
       }
-      const map: Record<'accept'|'reject'|'mute', Partial<RequestItem>> = {
+      const map: Record<'accept'|'reject'|'mute', { status: 'accepted' | 'rejected' | 'muted' }> = {
         accept: { status: 'accepted' },
         reject: { status: 'rejected' },
         mute: { status: 'muted' },
@@ -194,39 +168,6 @@ export async function PATCH(req: Request) {
       if (error || !data) return withVersion({ ok: false, error: error?.message || 'not_found' }, { status: 404 });
       return withVersion({ ok: true, item: data });
     }
-
-    // fallback in-memory
-    const idx = store.findIndex((r) => r.id === body.id);
-  if (idx === -1) return withVersion({ ok: false, error: 'not_found' }, { status: 404 });
-    const item = store[idx];
-    switch (body.action) {
-      case 'accept':
-        item.status = 'accepted';
-        break;
-      case 'reject':
-        item.status = 'rejected';
-        break;
-      case 'mute':
-        item.status = 'muted';
-        break;
-      case 'cancel':
-        item.status = 'cancelled';
-        break;
-      case 'merge': {
-        const target = body.mergeWithId ? store.find((r) => r.id === body.mergeWithId) : null;
-        if (target) {
-          target.duplicates = (target.duplicates || 0) + 1;
-          store.splice(idx, 1);
-          return NextResponse.json({ ok: true, mergedInto: target.id, target });
-        } else {
-          item.duplicates = (item.duplicates || 0) + 1;
-        }
-        break;
-      }
-      default:
-        return withVersion({ ok: false, error: 'invalid_action' }, { status: 400 });
-    }
-    return withVersion({ ok: true, item });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
     return withVersion({ ok: false, error: message }, { status: 400 });
