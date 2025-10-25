@@ -531,7 +531,7 @@ function RichiesteLibereContent() {
             {results.length > 0 && (
               <div className="space-y-3">
                 <label className="block text-lg font-semibold">🎶 Risultati da Spotify</label>
-                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
                     const shouldHide = isCollapsed && selected?.id !== track.id;
@@ -539,7 +539,7 @@ function RichiesteLibereContent() {
                     return (
                       <div 
                         key={track.id} 
-                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg p-4 border transition-all duration-500 cursor-pointer ${
+                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg py-2 px-3 border transition-all duration-500 cursor-pointer ${
                           selected?.id === track.id 
                             ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400' 
                             : 'border-white/20 hover:border-white/40'
@@ -553,15 +553,15 @@ function RichiesteLibereContent() {
                         }}
                         onClick={() => handleTrackSelection(track)}
                       >
-                      <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-3">
                         {/* Cover Art */}
                         <div className="relative flex-shrink-0">
                           <Image 
                             src={track.cover_url || '/file.svg'} 
                             alt={track.title || 'cover'} 
-                            width={64} 
-                            height={64} 
-                            className="w-16 h-16 rounded-lg object-cover shadow-lg" 
+                            width={48} 
+                            height={48} 
+                            className="w-12 h-12 rounded-lg object-cover shadow-lg" 
                           />
                           {selected?.id === track.id && (
                             <div className="absolute inset-0 bg-purple-500/30 rounded-lg flex items-center justify-center">
@@ -574,40 +574,28 @@ function RichiesteLibereContent() {
 
                         {/* Track Info */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start gap-2 mb-1">
-                            <h3 className="font-bold text-lg sm:text-base text-white drop-shadow-sm leading-tight">
+                          <div className="flex items-center gap-1.5">
+                            <h3 className="font-semibold text-base text-white drop-shadow-sm truncate leading-tight">
                               {track.title}
                             </h3>
                             {track.explicit && (
-                              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded uppercase font-bold flex-shrink-0 mt-0.5">
+                              <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded uppercase font-bold flex-shrink-0">
                                 E
                               </span>
                             )}
                           </div>
-                          <p className="text-gray-300 text-base sm:text-sm truncate mb-1 font-medium">
-                            {track.artists}
+                          <p className="text-gray-300 text-sm truncate font-medium leading-tight">
+                            {track.artists} • {track.album}
                           </p>
-                          <div className="flex items-center justify-between">
-                            <p className="text-gray-400 text-sm sm:text-xs truncate">
-                              {track.album}
-                            </p>
-                            <span className="text-gray-400 text-sm sm:text-xs">
-                              {formatDuration(track.duration_ms || 0)}
-                            </span>
-                          </div>
                         </div>
 
-                        {/* Actions */}
-                        <div className="flex flex-col gap-2 items-end">
-                          {/* Preview Audio */}
-                          {track.preview_url && (
-                            <audio 
-                              controls 
-                              src={track.preview_url} 
-                              className="w-32 h-8" 
-                              preload="none"
-                              onClick={(e) => e.stopPropagation()}
-                            />
+                        {/* Actions - Mobile: stacked, Desktop: inline */}
+                        <div className="flex flex-col sm:flex-row gap-2 items-end sm:items-center flex-shrink-0">
+                          {/* Duration */}
+                          {track.duration_ms && (
+                            <span className="text-gray-400 text-xs sm:text-sm whitespace-nowrap">
+                              {formatDuration(track.duration_ms)}
+                            </span>
                           )}
                           
                           {/* Open in Spotify Button */}
