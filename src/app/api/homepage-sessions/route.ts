@@ -32,7 +32,7 @@ export async function GET() {
       .limit(2);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: 'query_failed' }, { status: 500 });
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ 
@@ -42,7 +42,8 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({ 
       ok: false, 
-      error: 'server_error'
+      error: 'Errore recupero sessioni homepage',
+      details: error instanceof Error ? error.message : 'Errore sconosciuto'
     }, { status: 500 });
   }
 }

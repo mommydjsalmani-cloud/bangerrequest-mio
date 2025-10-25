@@ -3,16 +3,8 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { answerCallbackQuery, editTelegramMessage, getAllowedUserIds, getDjPanelUrl } from '@/lib/telegram';
 import { acceptRequest, rejectRequest } from '@/lib/moderation';
-import { validateUUID } from '@/lib/validation';
-import { withRateLimit, RATE_LIMITS } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
-  // Rate limiting per webhook Telegram
-  const rateCheck = withRateLimit(req, RATE_LIMITS.TELEGRAM_WEBHOOK);
-  if (!rateCheck.allowed) {
-    return rateCheck.response;
-  }
-
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
   const header = req.headers.get('x-telegram-bot-api-secret-token') || '';
   if (!secret || header !== secret) {
@@ -62,12 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   
-  if (!requestId || !validateUUID(requestId)) {
-    await answerCallbackQuery(cbId, 'ID richiesta non valido', true);
-    return NextResponse.json({ ok: true });
-  }
-
-  if (!['accept', 'reject'].includes(action)) {
+  if (!requestId || !['accept', 'reject'].includes(action)) {
     await answerCallbackQuery(cbId, 'Comando non valido', true);
     return NextResponse.json({ ok: true });
   }
