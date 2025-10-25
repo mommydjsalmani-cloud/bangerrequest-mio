@@ -16,6 +16,7 @@ type HomepageSession = {
 export default function Home() {
   const [homepageSessions, setHomepageSessions] = useState<HomepageSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrSession, setQrSession] = useState<HomepageSession | null>(null);
 
   useEffect(() => {
     const fetchHomepageSessions = async () => {
@@ -35,6 +36,15 @@ export default function Home() {
 
     fetchHomepageSessions();
   }, []);
+
+  const generatePublicUrl = (token: string) => {
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${baseUrl}/libere?s=${token}`;
+  };
+
+  const generateQRCodeUrl = (url: string) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
+  };
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white px-4">
@@ -68,20 +78,28 @@ export default function Home() {
                 🎶 Sessioni Richieste Libere Attive
               </h2>
               {homepageSessions.map((session) => (
-                <Link 
-                  key={session.id}
-                  href={`/libere?s=${session.token}`}
-                  className="block w-full bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-5 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg relative"
-                >
-                  <div className="flex items-center justify-between">
-                    <span>🎵 {session.name}</span>
-                    {session.status === 'paused' && (
-                      <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-full">
-                        IN PAUSA
-                      </span>
-                    )}
-                  </div>
-                </Link>
+                <div key={session.id} className="flex gap-2">
+                  <Link 
+                    href={`/libere?s=${session.token}`}
+                    className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-5 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg relative"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>🎵 {session.name}</span>
+                      {session.status === 'paused' && (
+                        <span className="text-xs bg-yellow-500 text-black px-2 py-1 rounded-full">
+                          IN PAUSA
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => setQrSession(session)}
+                    className="bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white font-bold px-4 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+                    title="Mostra QR Code"
+                  >
+                    📱
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -120,6 +138,54 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      {qrSession && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setQrSession(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl p-6 max-w-md w-full space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-800">
+                QR Code - {qrSession.name}
+              </h3>
+              <button
+                onClick={() => setQrSession(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="bg-gray-50 p-6 rounded-lg border-2 border-gray-300">
+              <Image 
+                src={generateQRCodeUrl(generatePublicUrl(qrSession.token))} 
+                alt="QR Code" 
+                width={400}
+                height={400}
+                className="mx-auto border-4 border-white rounded-xl shadow-lg w-full h-auto" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm text-gray-600 text-center font-medium">
+                Scansiona per accedere alle richieste
+              </p>
+              <a 
+                href={generateQRCodeUrl(generatePublicUrl(qrSession.token))}
+                download={`qr-${qrSession.name}.png`}
+                className="block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-center"
+              >
+                💾 Scarica QR Code
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
