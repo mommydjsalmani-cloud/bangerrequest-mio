@@ -1249,39 +1249,41 @@ export default function LibereAdminPanel() {
                     <label className="block text-sm font-medium text-gray-700">
                       Codice Evento Corrente
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <input
                         type="text"
                         value={currentEventCodeInput}
                         onChange={(e) => setCurrentEventCodeInput(e.target.value.toUpperCase())}
                         placeholder="es. EVENTO2025"
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-black"
+                        className="w-full sm:flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 font-mono text-sm text-black"
                       />
-                      <button
-                        onClick={() => {
-                          adminAction('set_current_event_code', {
-                            current_event_code: currentEventCodeInput.trim() || null
-                          });
-                        }}
-                        disabled={loading}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
-                      >
-                        Salva
-                      </button>
-                      {currentSession?.current_event_code && (
+                      <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            setCurrentEventCodeInput('');
                             adminAction('set_current_event_code', {
-                              current_event_code: null
+                              current_event_code: currentEventCodeInput.trim() || null
                             });
                           }}
                           disabled={loading}
-                          className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
+                          className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
                         >
-                          Rimuovi
+                          Salva
                         </button>
-                      )}
+                        {currentSession?.current_event_code && (
+                          <button
+                            onClick={() => {
+                              setCurrentEventCodeInput('');
+                              adminAction('set_current_event_code', {
+                                current_event_code: null
+                              });
+                            }}
+                            disabled={loading}
+                            className="flex-1 sm:flex-none px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 text-sm font-medium"
+                          >
+                            Rimuovi
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-xs text-gray-500">
                       {currentSession?.current_event_code 
