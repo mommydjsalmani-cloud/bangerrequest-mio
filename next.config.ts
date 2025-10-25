@@ -6,7 +6,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.scdn.co' },
       { protocol: 'https', hostname: 'mosaic.scdn.co' },
-      { protocol: 'https', hostname: 'seeded-session-images.scdn.co' }
+      { protocol: 'https', hostname: 'seeded-session-images.scdn.co' },
+      { protocol: 'https', hostname: 'api.qrserver.com' }
     ],
     // Ottimizzazioni performance
     formats: ['image/webp', 'image/avif'],
