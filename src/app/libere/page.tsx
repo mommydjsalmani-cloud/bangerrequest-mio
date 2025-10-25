@@ -475,7 +475,7 @@ function RichiesteLibereContent() {
   
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-6">
-      <div className="w-full max-w-4xl space-y-4 mt-4 mb-8">
+  <div className="w-full max-w-4xl space-y-3 mt-4 mb-8">
         
         {/* Header Personalizzato */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl py-3 px-4 border border-white/20 shadow-xl text-center">
@@ -500,20 +500,20 @@ function RichiesteLibereContent() {
         )}
 
         {!submitted ? (
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl py-4 px-4 border border-white/20 shadow-xl space-y-4">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl py-3 px-3 border border-white/20 shadow-xl space-y-3">
             {/* Ricerca Migliorata */}
             <div className="space-y-2">
-              <label className="block text-base font-semibold">🔍 Cerca la tua canzone</label>
+              <label className="block text-sm font-semibold">🔍 Cerca la tua canzone</label>
               <div className="relative">
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   type="text"
                   placeholder="🎵 Cerca la tua canzone preferita..."
-                  className="w-full py-3 pl-10 pr-14 rounded-lg bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400/50 text-base transition-all duration-300 shadow-lg"
+                  className="w-full py-2 pl-9 pr-12 rounded-lg bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400/50 text-sm transition-all duration-300 shadow-lg"
                   autoFocus
                 />
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-pink-400 text-lg">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-pink-400 text-base">
                   🎵
                 </div>
                 {searching && (
@@ -531,7 +531,7 @@ function RichiesteLibereContent() {
             {results.length > 0 && (
               <div className="space-y-2">
                 <label className="block text-base font-semibold">🎶 Risultati da Spotify</label>
-                <div className="grid grid-cols-1 gap-1.5 max-h-96 overflow-y-auto">
+                <div className="grid grid-cols-1 gap-1 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
                     const shouldHide = isCollapsed && selected?.id !== track.id;
@@ -539,7 +539,7 @@ function RichiesteLibereContent() {
                     return (
                       <div 
                         key={track.id} 
-                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg py-2 px-3 border transition-all duration-500 cursor-pointer ${
+                        className={`group relative bg-white/10 hover:bg-white/20 rounded-lg py-1.5 px-2 border transition-all duration-300 cursor-pointer ${
                           selected?.id === track.id 
                             ? 'border-purple-400 bg-purple-500/20 ring-2 ring-purple-400' 
                             : 'border-white/20 hover:border-white/40'
