@@ -381,8 +381,8 @@ function RichiesteLibereContent() {
   if (showOnboarding) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-6">
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 text-center max-w-md w-full border border-white/20 shadow-xl">
-          <div className="mb-4 flex justify-center">
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center max-w-md w-full border border-white/20 shadow-xl">
+          <div className="mb-3 flex justify-center">
             <Image 
               src="/Simbolo_Bianco.png" 
               alt="Banger Request Logo" 
@@ -391,11 +391,11 @@ function RichiesteLibereContent() {
               className="w-auto h-16 object-contain"
             />
           </div>
-          <h1 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold mb-3 bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
             Benvenuto!
           </h1>
-          <div className="bg-white/10 backdrop-blur rounded-lg p-4 mb-6 border border-white/20">
-            <p className="text-gray-200 text-base leading-relaxed">
+          <div className="bg-white/10 backdrop-blur rounded-lg py-3 px-4 mb-5 border border-white/20">
+            <p className="text-gray-200 text-sm leading-relaxed">
               {session?.require_event_code 
                 ? "✨ Inserisci il tuo nome e il codice evento per iniziare il viaggio musicale. Il DJ sta aspettando le tue richieste!"
                 : "✨ Inserisci il tuo nome per iniziare il viaggio musicale. Il DJ sta aspettando le tue richieste!"
@@ -403,21 +403,21 @@ function RichiesteLibereContent() {
             </p>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             <input
               type="text"
               placeholder="Come ti chiami?"
               value={onboardingName}
               onChange={(e) => setOnboardingName(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && (!session?.require_event_code || getEventCodeStatus().isValid) && completeOnboarding()}
-              className="w-full p-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
+              className="w-full py-2.5 px-3 rounded-lg bg-white/20 backdrop-blur text-white placeholder-gray-400 border border-white/30 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent text-center"
               autoFocus
               maxLength={50}
             />
             
             {/* Campo Codice Evento - Design migliorato */}
             {session && session.require_event_code && (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="text-center">
                   <label className="block text-sm font-medium text-white mb-2 flex items-center justify-center gap-2">
                     🎫 <span>Codice Evento</span>
@@ -428,11 +428,11 @@ function RichiesteLibereContent() {
                     value={eventCode}
                     onChange={(e) => setEventCode(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && onboardingName.trim() && getEventCodeStatus().isValid && completeOnboarding()}
-                    className="w-full p-4 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-lg tracking-wider transition-all duration-300 shadow-lg"
+                    className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400/50 text-center font-mono text-base tracking-wider transition-all duration-300 shadow-lg"
                     maxLength={50}
                   />
                 </div>
-                <div className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all duration-300 ${
+                <div className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg transition-all duration-300 ${
                   getEventCodeStatus().type === 'success' 
                     ? 'bg-green-500/20 border border-green-400/30 text-green-200' 
                     : getEventCodeStatus().type === 'error'
@@ -441,7 +441,7 @@ function RichiesteLibereContent() {
                     ? 'bg-blue-500/20 border border-blue-400/30 text-blue-200'
                     : 'bg-amber-500/20 border border-amber-400/30 text-amber-200'
                 }`}>
-                  <span className="text-lg">
+                  <span className="text-base">
                     {getEventCodeStatus().type === 'success' ? '✅' : 
                      getEventCodeStatus().type === 'error' ? '❌' :
                      getEventCodeStatus().type === 'info' ? 'ℹ️' : '⚠️'}
@@ -456,14 +456,14 @@ function RichiesteLibereContent() {
             <button
               onClick={completeOnboarding}
               disabled={!onboardingName.trim() || (session?.require_event_code && !getEventCodeStatus().isValid)}
-              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+              className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-2.5 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
             >
               🎉 Inizia a Richiedere!
             </button>
           </div>
           
-          <div className="mt-8 bg-white/5 backdrop-blur rounded-lg p-4 border border-white/10">
-            <div className="flex items-center justify-center gap-2 text-gray-300 text-sm">
+          <div className="mt-6 bg-white/5 backdrop-blur rounded-lg py-2.5 px-3 border border-white/10">
+            <div className="flex items-center justify-center gap-2 text-gray-300 text-xs">
               <span className="text-blue-400">💾</span>
               <span>Il tuo nome verrà salvato per questa sessione</span>
             </div>
