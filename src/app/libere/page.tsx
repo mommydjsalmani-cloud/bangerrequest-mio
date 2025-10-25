@@ -478,11 +478,11 @@ function RichiesteLibereContent() {
       <div className="w-full max-w-4xl space-y-6 mt-4 mb-8">
         
         {/* Header Personalizzato */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl py-3 px-4 border border-white/20 shadow-xl text-center">
+          <h1 className="text-xl font-bold mb-1">
             🎵 Ciao {requesterName}!
           </h1>
-          <p className="text-gray-300 text-sm sm:text-base">
+          <p className="text-gray-300 text-sm">
             {session?.name ? `Stai richiedendo musica per: ${session.name}` : 'Richiedi la tua musica preferita al DJ'}
           </p>
         </div>
