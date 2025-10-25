@@ -1317,14 +1317,24 @@ export default function LibereAdminPanel() {
                 </div>
                 
                 {showQR && (
-                  <div className="text-center">
+                  <div className="text-center bg-gray-50 p-6 rounded-lg border-2 border-gray-300">
                     <Image 
                       src={generateQRCodeUrl(publicUrl)} 
                       alt="QR Code" 
-                      width={300}
-                      height={300}
-                      className="mx-auto border rounded-lg" 
+                      width={400}
+                      height={400}
+                      className="mx-auto border-4 border-white rounded-xl shadow-lg" 
                     />
+                    <div className="mt-4 space-y-2">
+                      <p className="text-sm text-gray-600 font-medium">Scansiona per accedere alle richieste</p>
+                      <a 
+                        href={generateQRCodeUrl(publicUrl)}
+                        download="qr-code-richieste.png"
+                        className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        💾 Scarica QR Code
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>

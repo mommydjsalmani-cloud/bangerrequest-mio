@@ -118,11 +118,10 @@ export function sanitizeInput(text: string): string {
   return text.trim().replace(/\s+/g, ' ').substring(0, 200);
 }
 
-// Generazione QR code URL (placeholder - richiede libreria esterna)
+// Generazione QR code URL con API esterna
 export function generateQRCodeUrl(url: string): string {
-  // Utilizzare una libreria come qrcode-generator o API esterna
-  // Per ora placeholder
-  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}`;
+  // API gratuita qrserver.com - dimensione 500x500 per migliore qualità
+  return `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(url)}`;
 }
 
 // Generazione link pubblico
