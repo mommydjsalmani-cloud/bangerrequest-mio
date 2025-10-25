@@ -500,27 +500,27 @@ function RichiesteLibereContent() {
         )}
 
         {!submitted ? (
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl space-y-6">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl py-4 px-4 border border-white/20 shadow-xl space-y-4">
             {/* Ricerca Migliorata */}
-            <div className="space-y-3">
-              <label className="block text-lg font-semibold">🔍 Cerca la tua canzone</label>
+            <div className="space-y-2">
+              <label className="block text-base font-semibold">🔍 Cerca la tua canzone</label>
               <div className="relative">
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   type="text"
                   placeholder="🎵 Cerca la tua canzone preferita..."
-                  className="w-full p-4 pl-12 pr-14 rounded-xl bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400/50 text-base transition-all duration-300 shadow-lg"
+                  className="w-full py-3 pl-10 pr-14 rounded-lg bg-gradient-to-r from-white/15 to-white/10 backdrop-blur-lg text-white placeholder-gray-300 border-2 border-white/20 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-pink-400/50 text-base transition-all duration-300 shadow-lg"
                   autoFocus
                 />
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400 text-xl">
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-pink-400 text-lg">
                   🎵
                 </div>
                 {searching && (
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 border-2 border-pink-400 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-pink-400 text-sm font-medium">Cerco...</span>
+                      <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-pink-400 text-xs font-medium">Cerco...</span>
                     </div>
                   </div>
                 )}
