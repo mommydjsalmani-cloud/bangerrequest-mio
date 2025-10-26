@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 
 export default function LibereAdminPanel() {
@@ -888,13 +889,13 @@ export default function LibereAdminPanel() {
                 {eventMode ? '⚙️ Vista Completa' : '🎧 Modalità Evento'}
               </button>
               
-              <a
+              <Link
                 href="/"
                 className="px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 transition-colors backdrop-blur-sm font-medium inline-flex items-center gap-2"
                 title="Vai alla homepage"
               >
                 🏠 Home
-              </a>
+              </Link>
               
               {selectedSessionId && (
                 <button
