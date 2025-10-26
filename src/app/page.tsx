@@ -39,7 +39,7 @@ export default function Home() {
 
   const generatePublicUrl = (token: string) => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/libere?s=${token}`;
+    return `${baseUrl}/richieste?s=${token}`;
   };
 
   const generateQRCodeUrl = (url: string) => {
@@ -80,7 +80,7 @@ export default function Home() {
               {homepageSessions.map((session) => (
                 <div key={session.id} className="flex gap-2">
                   <Link 
-                    href={`/libere?s=${session.token}`}
+                    href={`/richieste?s=${session.token}`}
                     className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white font-bold py-5 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg relative"
                   >
                     <div className="flex items-center justify-between">

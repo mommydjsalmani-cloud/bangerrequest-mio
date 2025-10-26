@@ -127,7 +127,7 @@ export function generateQRCodeUrl(url: string): string {
 // Generazione link pubblico
 export function generatePublicUrl(token: string, baseUrl?: string): string {
   const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/libere?s=${token}`;
+  return `${base}/richieste?s=${token}`;
 }
 
 // Status mapping per UI
