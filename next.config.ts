@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Base path per deployment sotto /richieste
+  basePath: '/richieste',
+  
   // Configurazione immagini
   images: {
     remotePatterns: [
