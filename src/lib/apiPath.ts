@@ -68,11 +68,9 @@ export function routePath(path: string): string {
 export function publicPath(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   
-  // Per i file statici usiamo SOLO la variabile d'ambiente build-time
-  // perché Next.js elabora le immagini durante la build
-  if (BUILD_BASE_PATH) {
-    return `${BUILD_BASE_PATH}${normalizedPath}`;
-  }
+  // Hardcoded basePath per file statici perché viene processato a build-time
+  // Deve corrispondere al basePath in next.config.ts
+  const BASE_PATH = '/richiedi';
   
-  return normalizedPath;
+  return `${BASE_PATH}${normalizedPath}`;
 }
