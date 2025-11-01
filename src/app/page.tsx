@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { apiPath } from "@/lib/apiPath";
+import { apiPath, publicPath } from "@/lib/apiPath";
 
 type HomepageSession = {
   id: string;
@@ -54,7 +54,7 @@ export default function Home() {
         <div>
           <div className="mb-4 flex justify-center">
             <Image 
-              src="/Simbolo_Bianco.png" 
+              src={publicPath("/Simbolo_Bianco.png")}
               alt="Banger Request Logo" 
               width={150} 
               height={150} 
