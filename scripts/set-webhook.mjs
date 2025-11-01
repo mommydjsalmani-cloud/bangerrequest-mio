@@ -22,9 +22,12 @@ if (!SECRET) {
 }
 
 async function setWebhook() {
-  const webhookUrl = `${DOMAIN.replace(/\/$/, '')}/api/telegram/webhook`;
+  // Supporta basePath configurabile (default: /richiedi)
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/richiedi';
+  const webhookUrl = `${DOMAIN.replace(/\/$/, '')}${basePath}/api/telegram/webhook`;
   
   console.log('🔗 Impostazione webhook Telegram...');
+  console.log(`   BasePath: ${basePath}`);
   console.log(`   URL: ${webhookUrl}`);
   console.log(`   Secret: ${SECRET.substring(0, 8)}...`);
   
@@ -74,8 +77,9 @@ async function main() {
   await setWebhook();
   await getWebhookInfo();
   
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/richiedi';
   console.log('\n🧪 Test webhook:');
-  console.log(`   curl -X POST "${DOMAIN}/api/notify/test" \\`);
+  console.log(`   curl -X POST "${DOMAIN}${basePath}/api/notify/test" \\`);
   console.log(`        -H "x-dj-user: ${process.env.DJ_PANEL_USER || 'DJ_USER'}" \\`);
   console.log(`        -H "x-dj-secret: ${process.env.DJ_PANEL_SECRET || 'DJ_SECRET'}"`);
 }
