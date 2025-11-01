@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from 'next/image';
 import { useRouter } from "next/navigation";
+import { apiPath } from '@/lib/apiPath';
 
 export default function Requests() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function Requests() {
 
     async function loadActiveSession() {
       try {
-        const res = await fetch('/api/homepage-sessions');
+        const res = await fetch(apiPath('/api/homepage-sessions'));
         const j = await res.json();
         if (!res.ok || !j.ok || !j.sessions || j.sessions.length === 0) {
           // Nessuna sessione attiva sulla homepage
@@ -76,7 +77,7 @@ export default function Requests() {
         return;
       }
       setLoading(true);
-      fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`)
+      fetch(apiPath(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`))
         .then((r) => r.json())
         .then((data) => {
           setResults(data.tracks || []);
@@ -105,7 +106,7 @@ export default function Requests() {
     let mounted = true;
     async function check() {
       try {
-        const r = await fetch(`/api/requests?id=${encodeURIComponent(id)}`);
+        const r = await fetch(apiPath(`/api/requests?id=${encodeURIComponent(id)}`));
         const j = await r.json();
         const item = j.requests?.[0];
         if (!mounted || !item) return;
@@ -159,7 +160,7 @@ export default function Requests() {
       requester_name: nome,
     };
 
-    const res = await fetch('/api/requests', {
+    const res = await fetch(apiPath('/api/requests'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -300,7 +301,7 @@ export default function Requests() {
                 onClick={async ()=>{
                   if (!lastRequestId) return;
                   try {
-                    const r = await fetch('/api/requests', { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ id: lastRequestId, action: 'cancel' }) });
+                    const r = await fetch(apiPath('/api/requests'), { method: 'PATCH', headers: { 'Content-Type':'application/json' }, body: JSON.stringify({ id: lastRequestId, action: 'cancel' }) });
                     const j = await r.json();
                     if (j.ok) {
                       setLastRequestStatus('cancelled');

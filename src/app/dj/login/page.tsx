@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { apiPath } from '@/lib/apiPath';
 
 export default function DJLogin() {
   const [username, setUsername] = useState('');
@@ -36,7 +37,7 @@ export default function DJLogin() {
     
     try {
       // Test delle credenziali con l'API libere admin
-      const res = await fetch('/api/libere/admin?action=sessions', { 
+      const res = await fetch(apiPath('/api/libere/admin?action=sessions'), { 
         headers: { 
           'x-dj-secret': password.trim(), 
           'x-dj-user': username.trim() 

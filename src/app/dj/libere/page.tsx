@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
+import { apiPath } from '@/lib/apiPath';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -77,7 +78,7 @@ export default function LibereAdminPanel() {
           setPassword(savedPassword);
           
           // Verifica credenziali caricando le sessioni
-          const response = await fetch('/api/libere/admin?action=sessions', {
+          const response = await fetch(apiPath('/api/libere/admin?action=sessions'), {
             headers: {
               'x-dj-user': savedUser,
               'x-dj-secret': savedPassword
@@ -119,7 +120,7 @@ export default function LibereAdminPanel() {
     setSuccess(null);
     
     try {
-      const response = await fetch('/api/libere/migrate', {
+      const response = await fetch(apiPath('/api/libere/migrate'), {
         method: 'POST',
         headers: {
           'x-dj-user': username,
@@ -155,7 +156,7 @@ export default function LibereAdminPanel() {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout di 10 secondi
     
     try {
-      const response = await fetch(`/api/libere/admin?session_id=${sessionId}`, {
+      const response = await fetch(apiPath(`/api/libere/admin?session_id=${sessionId}`), {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
@@ -229,7 +230,7 @@ export default function LibereAdminPanel() {
       controllerRef.current = controller;
       
       try {
-        const response = await fetch(`/api/libere/admin?session_id=${selectedSessionId}`, {
+        const response = await fetch(apiPath(`/api/libere/admin?session_id=${selectedSessionId}`), {
           headers: {
             'x-dj-user': username,
             'x-dj-secret': password
@@ -303,7 +304,7 @@ export default function LibereAdminPanel() {
     const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout di 10 secondi
     
     try {
-      const response = await fetch(`/api/libere/admin?session_id=${sessionId}&archived=true`, {
+      const response = await fetch(apiPath(`/api/libere/admin?session_id=${sessionId}&archived=true`), {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
@@ -368,7 +369,7 @@ export default function LibereAdminPanel() {
     const timeoutId = setTimeout(() => controller.abort(), 15000); // Timeout di 15 secondi per operazioni admin
     
     try {
-      const response = await fetch('/api/libere/admin', {
+      const response = await fetch(apiPath('/api/libere/admin'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -419,7 +420,7 @@ export default function LibereAdminPanel() {
           setShowCreateSession(false);
           
           // Ricarica lista sessioni
-          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+          const sessionsResponse = await fetch(apiPath('/api/libere/admin?action=sessions'), {
             headers: {
               'x-dj-user': username,
               'x-dj-secret': password
@@ -438,7 +439,7 @@ export default function LibereAdminPanel() {
           }
         } else if (action === 'delete_session') {
           // Ricarica lista sessioni e resetta selezione
-          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+          const sessionsResponse = await fetch(apiPath('/api/libere/admin?action=sessions'), {
             headers: {
               'x-dj-user': username,
               'x-dj-secret': password
@@ -498,7 +499,7 @@ export default function LibereAdminPanel() {
     setSuccess(null);
 
     try {
-      const response = await fetch('/api/homepage-sessions', {
+      const response = await fetch(apiPath('/api/homepage-sessions'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -518,7 +519,7 @@ export default function LibereAdminPanel() {
         setSuccess(data.message);
         // Ricarica la lista delle sessioni per aggiornare l'indicatore Home
         try {
-          const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+          const sessionsResponse = await fetch(apiPath('/api/libere/admin?action=sessions'), {
             headers: {
               'x-dj-user': username,
               'x-dj-secret': password
@@ -554,7 +555,7 @@ export default function LibereAdminPanel() {
     const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout di 8 secondi
     
     try {
-      const response = await fetch('/api/libere/admin', {
+      const response = await fetch(apiPath('/api/libere/admin'), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -632,7 +633,7 @@ export default function LibereAdminPanel() {
     setSuccess(null);
 
     try {
-      const response = await fetch('/api/libere/admin', {
+      const response = await fetch(apiPath('/api/libere/admin'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -655,7 +656,7 @@ export default function LibereAdminPanel() {
       setSuccess('Sessione eliminata con successo ✓');
 
       // Ricarica lista sessioni e resetta selezione
-      const sessionsResponse = await fetch('/api/libere/admin?action=sessions', {
+      const sessionsResponse = await fetch(apiPath('/api/libere/admin?action=sessions'), {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
@@ -740,7 +741,7 @@ export default function LibereAdminPanel() {
     setSuccess(null);
     
     try {
-      const response = await fetch('/api/libere/setup', {
+      const response = await fetch(apiPath('/api/libere/setup'), {
         method: 'POST',
         headers: {
           'x-dj-user': username,
@@ -765,7 +766,7 @@ export default function LibereAdminPanel() {
           const savedPassword = sessionStorage.getItem('dj_secret');
           
           if (savedUser && savedPassword) {
-            const response = await fetch('/api/libere/admin?action=sessions', {
+            const response = await fetch(apiPath('/api/libere/admin?action=sessions'), {
               headers: {
                 'x-dj-user': savedUser,
                 'x-dj-secret': savedPassword

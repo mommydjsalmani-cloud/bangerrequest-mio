@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
+import { apiPath } from '@/lib/apiPath';
 import Image from 'next/image';
 
 type SpotifyTrack = {
@@ -109,7 +110,7 @@ function RichiesteLibereContent() {
     
     const loadSession = async () => {
       try {
-        const response = await fetch(`/api/libere?s=${token}`);
+        const response = await fetch(apiPath(`/api/libere?s=${token}`));
         const data = await response.json();
         
         if (!data.ok) {
@@ -160,7 +161,7 @@ function RichiesteLibereContent() {
 
     const checkSessionConfig = async () => {
       try {
-        const response = await fetch(`/api/libere?s=${token}`);
+        const response = await fetch(apiPath(`/api/libere?s=${token}`));
         if (response.ok) {
           const data = await response.json();
           if (data.ok && data.session) {
@@ -187,7 +188,7 @@ function RichiesteLibereContent() {
 
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/libere?s=${token}&request_id=${lastRequestId}`);
+        const response = await fetch(apiPath(`/api/libere?s=${token}&request_id=${lastRequestId}`));
         if (response.ok) {
           const data = await response.json();
           if (data.ok && data.status !== lastRequestStatus) {
@@ -217,7 +218,7 @@ function RichiesteLibereContent() {
       }
       setSearching(true);
       setIsCollapsed(false); // Reset collapse quando cerchi
-      fetch(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`)
+      fetch(apiPath(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`))
         .then((r) => r.json())
         .then((data) => {
           setResults(data.tracks || []);
@@ -314,7 +315,7 @@ function RichiesteLibereContent() {
         event_code: eventCode.trim() || undefined
       };
       
-      const response = await fetch(`/api/libere?s=${token}`, {
+      const response = await fetch(apiPath(`/api/libere?s=${token}`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

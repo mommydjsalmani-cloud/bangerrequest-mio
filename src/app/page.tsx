@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { apiPath } from "@/lib/apiPath";
 
 type HomepageSession = {
   id: string;
@@ -21,7 +22,7 @@ export default function Home() {
   useEffect(() => {
     const fetchHomepageSessions = async () => {
       try {
-        const response = await fetch('/api/homepage-sessions');
+        const response = await fetch(apiPath('/api/homepage-sessions'));
         const data = await response.json();
         
         if (data.ok && data.sessions) {

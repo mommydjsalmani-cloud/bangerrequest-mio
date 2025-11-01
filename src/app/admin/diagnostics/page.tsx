@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { apiPath } from '@/lib/apiPath';
 
 type Health = {
   ok: boolean;
@@ -19,7 +20,7 @@ export default function DiagnosticsPage() {
 
   useEffect(() => {
     let aborted = false;
-    fetch('/api/health/supabase').then(r => r.json()).then(j => { if (!aborted){ setData(j); setLoading(false);} }).catch(e => { if(!aborted){ setErr(e.message); setLoading(false);} });
+    fetch(apiPath('/api/health/supabase')).then(r => r.json()).then(j => { if (!aborted){ setData(j); setLoading(false);} }).catch(e => { if(!aborted){ setErr(e.message); setLoading(false);} });
     return () => { aborted = true; };
   }, []);
 
