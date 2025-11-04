@@ -44,7 +44,7 @@ export default function Footer() {
             <h3 className="text-lg font-bold mb-4">Contatti</h3>
             <ul className="space-y-2 text-gray-400 text-sm">
               <li>Email: info@mommydj.com</li>
-              <li>Tel: +39 123 456 7890</li>
+              <li>Tel: +39 346 212 2933</li>
             </ul>
           </div>
         </div>
