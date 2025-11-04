@@ -140,7 +140,7 @@ export default function Header() {
                 </svg>
               </a>
               <a
-                href="https://wa.me/393393959595"
+                href="https://wa.me/393462122933"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-accent transition-colors p-2"

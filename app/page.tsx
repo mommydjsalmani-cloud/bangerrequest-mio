@@ -212,8 +212,8 @@ export default function Home() {
                 </div>
                 <div>
                   <h3 className="font-display text-xl text-white mb-2">WhatsApp</h3>
-                  <a href="https://wa.me/393123456789" className="font-sans text-[#4169e1] hover:underline text-lg">
-                    +39 312 345 6789
+                  <a href="https://wa.me/393462122933" className="font-sans text-[#4169e1] hover:underline text-lg">
+                    +39 346 212 2933
                   </a>
                 </div>
               </div>

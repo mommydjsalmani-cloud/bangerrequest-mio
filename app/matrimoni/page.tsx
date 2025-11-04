@@ -276,7 +276,7 @@ export default function Matrimoni() {
               Richiedi informazioni
             </Link>
             <a
-              href="https://wa.me/393123456789"
+              href="https://wa.me/393462122933"
               target="_blank"
               rel="noopener noreferrer"
               className="font-sans inline-block border-2 border-accent text-accent hover:bg-accent hover:text-white px-8 md:px-12 py-3 md:py-4 rounded-full font-semibold transition-colors uppercase tracking-wider text-xs md:text-sm"

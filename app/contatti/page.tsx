@@ -119,7 +119,7 @@ export default function Contatti() {
                   <div>
                     <h3 className="font-bold mb-2 text-white">WhatsApp</h3>
                     <a 
-                      href="https://wa.me/391234567890" 
+                      href="https://wa.me/393462122933" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-lg font-bold transition-colors text-sm shadow-sm"
