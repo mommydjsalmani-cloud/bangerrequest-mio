@@ -151,7 +151,7 @@ export default function Header() {
                 </svg>
               </a>
               <a
-                href="https://instagram.com/mommydj"
+                href="https://instagram.com/mommymusicentertainment"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-300 hover:text-accent transition-colors p-2"
