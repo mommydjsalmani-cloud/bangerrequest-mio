@@ -28,8 +28,8 @@ jobs:
         run: |
           # Get the production URL from Vercel deployment
           PROD_URL="https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app"
-          # If the app uses a basePath, set it here (must match next.config.ts)
-          BASE_PATH="/richiedi"
+          # Note: basePath /richiedi is configured in next.config.ts but may not be active on this deployment
+          # API routes NEVER use basePath on Vercel (they're always at /api/*)
           # Vercel Protection Bypass for CI/CD (requires VERCEL_PROTECTION_BYPASS secret)
           BYPASS_PARAM=""
           if [ -n "${{ secrets.VERCEL_PROTECTION_BYPASS }}" ]; then
@@ -37,9 +37,12 @@ jobs:
           fi
           
           echo "🔍 Checking health endpoints..."
+          echo "Production URL: ${PROD_URL}"
+          echo ""
           
-          # Check main health endpoint (respect basePath)
-          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${BASE_PATH}/api/health${BYPASS_PARAM}" || echo "000")
+          # Check main health endpoint (API routes don't use basePath)
+          echo "Checking ${PROD_URL}/api/health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/api/health${BYPASS_PARAM}" || echo "000")
           if [ "$response" = "200" ]; then
             echo "✅ Main health check passed"
           else
@@ -48,7 +51,8 @@ jobs:
           fi
           
           # Check Supabase health
-          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${BASE_PATH}/api/health/supabase${BYPASS_PARAM}" || echo "000")
+          echo "Checking ${PROD_URL}/api/health/supabase..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/api/health/supabase${BYPASS_PARAM}" || echo "000")
           if [ "$response" = "200" ]; then
             echo "✅ Supabase health check passed"
           else
@@ -56,15 +60,17 @@ jobs:
           fi
           
           # Check Spotify health
-          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${BASE_PATH}/api/spotify/health${BYPASS_PARAM}" || echo "000")
+          echo "Checking ${PROD_URL}/api/spotify/health..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/api/spotify/health${BYPASS_PARAM}" || echo "000")
           if [ "$response" = "200" ]; then
             echo "✅ Spotify health check passed"
           else
             echo "⚠️ Spotify health check failed (HTTP $response)"
           fi
           
-          # Check main page loads (basePath root)
-          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}${BASE_PATH}/${BYPASS_PARAM}" || echo "000")
+          # Check main page loads (check root since basePath may not be active)
+          echo "Checking ${PROD_URL}/..."
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/${BYPASS_PARAM}" || echo "000")
           if [ "$response" = "200" ]; then
             echo "✅ Homepage loads successfully"
           else
@@ -72,10 +78,12 @@ jobs:
             exit 1
           fi
           
+          echo ""
           echo "🎉 Health check completed successfully!"
           
       - name: 📊 Run detailed health check
         run: |
+          # API routes don't use basePath on Vercel
           node scripts/check_health.cjs https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
           
       - name: 💬 Notify on failure

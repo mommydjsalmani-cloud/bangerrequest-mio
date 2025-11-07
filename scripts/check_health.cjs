@@ -2,7 +2,7 @@ const http = require('node:http');
 const https = require('node:https');
 const { URL } = require('node:url');
 
-const url = process.argv[2] || 'http://localhost:3000/api/health/supabase';
+const url = process.argv[2] || 'http://localhost:3000/api/health';
 
 function makeRequest(url) {
   return new Promise((resolve, reject) => {
@@ -43,6 +43,7 @@ function makeRequest(url) {
 
 async function main() {
   try {
+    console.log('Checking', url);
     const result = await makeRequest(url);
     console.log('STATUS', result.status);
     console.log('BODY', result.body);
