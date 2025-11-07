@@ -15,23 +15,48 @@ export default function Contatti() {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form data:', formData);
-    setIsSubmitted(true);
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        nome: '',
-        email: '',
-        telefono: '',
-        tipoEvento: '',
-        data: '',
-        location: '',
-        messaggio: '',
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-    }, 3000);
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Errore durante l\'invio');
+      }
+
+      setIsSubmitted(true);
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          nome: '',
+          email: '',
+          telefono: '',
+          tipoEvento: '',
+          data: '',
+          location: '',
+          messaggio: '',
+        });
+      }, 5000);
+    } catch (err) {
+      console.error('Error submitting form:', err);
+      setError(err instanceof Error ? err.message : 'Errore durante l\'invio. Riprova più tardi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -171,6 +196,12 @@ export default function Contatti() {
                   </div>
                 )}
 
+                {error && (
+                  <div className="bg-red-900 border border-red-600 text-red-200 px-4 py-3 rounded mb-6">
+                    <strong>Errore:</strong> {error}
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
                     <label htmlFor="nome" className="block text-sm font-bold mb-2 text-white">
@@ -183,7 +214,8 @@ export default function Contatti() {
                       required
                       value={formData.nome}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium"
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="Mario Rossi"
                     />
                   </div>
@@ -200,7 +232,8 @@ export default function Contatti() {
                         required
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium"
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="email@esempio.it"
                       />
                     </div>
@@ -215,7 +248,8 @@ export default function Contatti() {
                         name="telefono"
                         value={formData.telefono}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium"
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="+39 346 212 2933"
                       />
                     </div>
@@ -232,7 +266,8 @@ export default function Contatti() {
                         required
                         value={formData.tipoEvento}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white font-medium"
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <option value="">Seleziona...</option>
                         <option value="matrimonio">Matrimonio</option>
@@ -256,7 +291,8 @@ export default function Contatti() {
                         name="data"
                         value={formData.data}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white font-medium"
+                        disabled={isLoading}
+                        className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -272,7 +308,8 @@ export default function Contatti() {
                       placeholder="es. Milano"
                       value={formData.location}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium"
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
 
@@ -286,16 +323,18 @@ export default function Contatti() {
                       rows={4}
                       value={formData.messaggio}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium"
+                      disabled={isLoading}
+                      className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="Raccontami del tuo evento..."
                     ></textarea>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full bg-accent hover:bg-accent-hover text-white px-8 py-4 rounded-lg font-bold transition-colors text-base shadow-md hover:shadow-lg"
+                    disabled={isLoading}
+                    className="w-full bg-accent hover:bg-accent-hover text-white px-8 py-4 rounded-lg font-bold transition-colors text-base shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Invia richiesta
+                    {isLoading ? 'Invio in corso...' : 'Invia richiesta'}
                   </button>
                 </form>
               </div>
