@@ -9,8 +9,8 @@ export async function POST(request: Request) {
     const { nome, email, telefono, tipoEvento, data, location, messaggio } = body;
 
     const { data: emailData, error } = await resend.emails.send({
-      from: 'Mommy DJ Richieste <onboarding@resend.dev>', // Questo andrà cambiato con il tuo dominio verificato
-      to: ['mommydjsalmani@gmail.com'], // Temporaneo per test - cambiare con dominio verificato
+      from: 'Mommy DJ Richieste <onboarding@resend.dev>',
+      to: ['mommydjsalmani@gmail.com'],
       subject: `Nuova richiesta: ${tipoEvento || 'Informazioni'}`,
       html: `
         <!DOCTYPE html>
