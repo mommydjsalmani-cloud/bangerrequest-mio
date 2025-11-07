@@ -17,7 +17,7 @@ function detectRuntimeBasePath(): string {
         // Se esiste un segmento non vuoto, consideriamolo come possibile basePath
         return `/${first}`;
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }
