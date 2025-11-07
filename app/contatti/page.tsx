@@ -85,8 +85,8 @@ export default function Contatti() {
                   </div>
                   <div>
                     <h3 className="font-bold mb-2 text-white">Email</h3>
-                    <a href="mailto:info@djmommy.it" className="text-accent hover:underline font-medium text-base">
-                      info@djmommy.it
+                    <a href="mailto:info@mommydj.com" className="text-accent hover:underline font-medium text-base">
+                      info@mommydj.com
                     </a>
                   </div>
                 </div>
