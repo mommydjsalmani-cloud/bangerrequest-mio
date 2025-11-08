@@ -92,7 +92,7 @@ export default function Contatti() {
       </section>
 
       {/* Contact Info + Form */}
-      <section className="py-12 md:py-16 bg-black">
+      <section id="contatti" className="py-12 md:py-16 bg-black">
         <div className="container-custom max-w-5xl px-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
             {/* Left: Contact Info */}
