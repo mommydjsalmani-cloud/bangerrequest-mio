@@ -154,35 +154,6 @@ export default function Contatti() {
                   </div>
                 </div>
               </div>
-
-              {/* Zone coperte */}
-              <div className="mt-12 card bg-gray-800 border-2 border-gray-700 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 text-accent flex-shrink-0">
-                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M32 12L32 40M32 40L28 36M32 40L36 36" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="32" cy="12" r="6" fill="currentColor"/>
-                      <circle cx="32" cy="12" r="3" fill="white"/>
-                      <path d="M20 48C20 48 24 40 32 40C40 40 44 48 44 48" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </div>
-                  <h3 className="font-bold text-white">Zone coperte</h3>
-                </div>
-                <p className="mb-4 font-semibold text-white">
-                  Opero principalmente in Lombardia e nelle regioni limitrofe:
-                </p>
-                <ul className="space-y-2 text-sm text-gray-300">
-                  <li className="font-medium">• Milano e provincia</li>
-                  <li className="font-medium">• Bergamo e provincia</li>
-                  <li className="font-medium">• Brescia e provincia</li>
-                  <li className="font-medium">• Como e Lecco</li>
-                  <li className="font-medium">• Emilia Romagna (Bologna, Modena, Parma)</li>
-                  <li className="font-medium">• Piemonte (Torino, Alessandria, Novara)</li>
-                </ul>
-                <p className="text-sm mt-4 font-medium text-gray-400">
-                  Per eventi in altre zone, contattami per valutare la fattibilità.
-                </p>
-              </div>
             </div>
 
             {/* Right: Form */}

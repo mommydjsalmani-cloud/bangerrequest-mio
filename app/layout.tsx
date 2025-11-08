@@ -19,10 +19,10 @@ const michroma = Michroma({
 });
 
 export const metadata: Metadata = {
-  title: "Mommy DJ - DJ per Matrimoni ed Eventi in Italia e Svizzera",
+  title: "Mommy DJ - Musica e Regia per Matrimoni ed Eventi privati",
   description: "DJ professionista per matrimoni, eventi privati e aziendali. 20 anni di esperienza, app richieste live, coordinamento con planner e fornitori.",
   openGraph: {
-    title: "Mommy DJ - DJ per Matrimoni ed Eventi",
+    title: "Mommy DJ - Musica e Regia per Matrimoni ed Eventi privati",
     description: "DJ professionista per matrimoni, eventi privati e aziendali in Italia e Svizzera.",
     type: "website",
   },
