@@ -303,7 +303,7 @@ export default function Contatti() {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-accent hover:bg-accent-hover text-white px-8 py-4 rounded-lg font-bold transition-colors text-base shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-[#4169e1] hover:bg-[#3557c7] text-white px-8 py-4 rounded-lg font-bold transition-all duration-300 text-base shadow-lg hover:shadow-[#4169e1]/50 border-2 border-[#4169e1] hover:border-[#3557c7] transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     {isLoading ? 'Invio in corso...' : 'Invia richiesta'}
                   </button>
