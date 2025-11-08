@@ -175,7 +175,7 @@ export default function Service() {
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-xs font-bold text-white mb-1">Sopralluogo</h3>
+              <h3 className="text-xs font-bold text-white mb-1 normal-case">Sopralluogo</h3>
               <p className="text-[10px] text-gray-400 font-medium leading-tight">
                 Analisi spazi
               </p>
@@ -187,7 +187,7 @@ export default function Service() {
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-xs font-bold text-white mb-1">Progettazione</h3>
+              <h3 className="text-xs font-bold text-white mb-1 normal-case">Progettazione</h3>
               <p className="text-[10px] text-gray-400 font-medium leading-tight">
                 Setup su misura
               </p>
@@ -199,7 +199,7 @@ export default function Service() {
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-xs font-bold text-white mb-1">Installazione</h3>
+              <h3 className="text-xs font-bold text-white mb-1 normal-case">Installazione</h3>
               <p className="text-[10px] text-gray-400 font-medium leading-tight">
                 Montaggio e test
               </p>
