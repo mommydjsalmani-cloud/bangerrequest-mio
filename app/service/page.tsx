@@ -166,7 +166,7 @@ export default function Service() {
           <p className="text-lg text-gray-300 mb-8 leading-relaxed font-medium">
             Ogni evento è unico e richiede un setup audio/luci su misura. Prima dell'evento effettuo sempre un sopralluogo per valutare gli spazi e progettare la configurazione ottimale.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
               <div className="w-10 h-10 text-accent mx-auto mb-3">
                 <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
@@ -175,8 +175,8 @@ export default function Service() {
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[10px] font-bold text-white mb-1 break-words leading-tight">Sopralluogo</h3>
-              <p className="text-[9px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[8px] font-bold text-white mb-1">Sopralluogo</h3>
+              <p className="text-[7px] text-gray-400 font-medium leading-tight">
                 Analisi spazi
               </p>
             </div>
@@ -187,8 +187,8 @@ export default function Service() {
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[10px] font-bold text-white mb-1 break-words leading-tight">Progettazione</h3>
-              <p className="text-[9px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[8px] font-bold text-white mb-1">Progettazione</h3>
+              <p className="text-[7px] text-gray-400 font-medium leading-tight">
                 Setup su misura
               </p>
             </div>
@@ -199,8 +199,8 @@ export default function Service() {
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-[10px] font-bold text-white mb-1 break-words leading-tight">Installazione</h3>
-              <p className="text-[9px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[8px] font-bold text-white mb-1">Installazione</h3>
+              <p className="text-[7px] text-gray-400 font-medium leading-tight">
                 Montaggio e test
               </p>
             </div>
