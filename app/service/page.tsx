@@ -175,8 +175,8 @@ export default function Service() {
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[9px] md:text-[11px] font-bold text-white mb-1 tracking-wide">Sopralluogo</h3>
-              <p className="text-[8px] md:text-[10px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[9px] font-bold text-white mb-1 tracking-wide">Sopralluogo</h3>
+              <p className="text-[8px] text-gray-400 font-medium leading-tight">
                 Analisi
               </p>
             </div>
@@ -187,8 +187,8 @@ export default function Service() {
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[9px] md:text-[11px] font-bold text-white mb-1 tracking-wide">Progettazione</h3>
-              <p className="text-[8px] md:text-[10px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[9px] font-bold text-white mb-1 tracking-wide">Progettazione</h3>
+              <p className="text-[8px] text-gray-400 font-medium leading-tight">
                 Setup
               </p>
             </div>
@@ -199,8 +199,8 @@ export default function Service() {
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-[9px] md:text-[11px] font-bold text-white mb-1 tracking-wide">Installazione</h3>
-              <p className="text-[8px] md:text-[10px] text-gray-400 font-medium leading-tight">
+              <h3 className="text-[9px] font-bold text-white mb-1 tracking-wide">Installazione</h3>
+              <p className="text-[8px] text-gray-400 font-medium leading-tight">
                 Montaggio
               </p>
             </div>
