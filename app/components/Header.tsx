@@ -16,6 +16,7 @@ export default function Header() {
     { href: '/eventi-privati', label: 'Eventi Privati' },
     // { href: '/recensioni', label: 'Recensioni' }, // Temporaneamente nascosto
     { href: '/richiedi', label: 'Richiedi Canzone', highlight: true },
+    { href: '/service', label: 'Service' },
     { href: '/contatti', label: 'Contatti' },
   ];
 
