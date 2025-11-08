@@ -175,9 +175,9 @@ export default function Service() {
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Sopralluogo</h3>
-              <p className="text-xs text-gray-400 font-medium">
-                Analisi degli spazi e delle esigenze specifiche
+              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Sopralluogo</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Analisi spazi ed esigenze
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-6">
@@ -187,9 +187,9 @@ export default function Service() {
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Progettazione</h3>
-              <p className="text-xs text-gray-400 font-medium">
-                Setup audio/luci su misura per la tua location
+              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Progettazione</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Setup su misura
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-6">
@@ -199,9 +199,9 @@ export default function Service() {
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Installazione</h3>
-              <p className="text-xs text-gray-400 font-medium">
-                Montaggio e test prima dell'inizio dell'evento
+              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Installazione</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Montaggio e test
               </p>
             </div>
           </div>
