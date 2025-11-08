@@ -167,40 +167,40 @@ export default function Service() {
             Ogni evento è unico e richiede un setup audio/luci su misura. Prima dell'evento effettuo sempre un sopralluogo per valutare gli spazi e progettare la configurazione ottimale.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-            <div className="card bg-gray-800 border-2 border-gray-700 p-6">
-              <div className="w-12 h-12 text-accent mx-auto mb-4">
+            <div className="card bg-gray-800 border-2 border-gray-700 p-4">
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
                 <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                   <circle cx="32" cy="32" r="3" fill="currentColor"/>
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Sopralluogo</h3>
-              <p className="text-xs text-gray-400 font-medium leading-tight">
-                Analisi spazi ed esigenze
+              <h3 className="text-[11px] font-bold text-white mb-1 uppercase tracking-wider">Sopralluogo</h3>
+              <p className="text-[10px] text-gray-400 font-medium leading-tight">
+                Analisi spazi
               </p>
             </div>
-            <div className="card bg-gray-800 border-2 border-gray-700 p-6">
-              <div className="w-12 h-12 text-accent mx-auto mb-4">
+            <div className="card bg-gray-800 border-2 border-gray-700 p-4">
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
                 <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="16" y="20" width="32" height="24" rx="2" strokeWidth="2.5"/>
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Progettazione</h3>
-              <p className="text-xs text-gray-400 font-medium leading-tight">
+              <h3 className="text-[11px] font-bold text-white mb-1 uppercase tracking-wider">Progettazione</h3>
+              <p className="text-[10px] text-gray-400 font-medium leading-tight">
                 Setup su misura
               </p>
             </div>
-            <div className="card bg-gray-800 border-2 border-gray-700 p-6">
-              <div className="w-12 h-12 text-accent mx-auto mb-4">
+            <div className="card bg-gray-800 border-2 border-gray-700 p-4">
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
                 <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 38L28 46L44 30" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Installazione</h3>
-              <p className="text-xs text-gray-400 font-medium leading-tight">
+              <h3 className="text-[11px] font-bold text-white mb-1 uppercase tracking-wider">Installazione</h3>
+              <p className="text-[10px] text-gray-400 font-medium leading-tight">
                 Montaggio e test
               </p>
             </div>
