@@ -175,9 +175,9 @@ export default function Service() {
                   <path d="M32 32L45 19" strokeWidth="2.5" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[1.6px] font-bold text-white mb-1">Sopralluogo</h3>
-              <p className="text-[1.4px] text-gray-400 font-medium leading-tight">
-                Analisi spazi
+              <h3 className="text-sm font-bold text-white mb-1">Analisi</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Sopralluogo location
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
@@ -187,9 +187,9 @@ export default function Service() {
                   <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
-              <h3 className="text-[1.6px] font-bold text-white mb-1">Progettazione</h3>
-              <p className="text-[1.4px] text-gray-400 font-medium leading-tight">
-                Setup su misura
+              <h3 className="text-sm font-bold text-white mb-1">Setup</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Progetto su misura
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
@@ -199,9 +199,9 @@ export default function Service() {
                   <circle cx="32" cy="32" r="20" strokeWidth="2.5"/>
                 </svg>
               </div>
-              <h3 className="text-[1.6px] font-bold text-white mb-1">Installazione</h3>
-              <p className="text-[1.4px] text-gray-400 font-medium leading-tight">
-                Montaggio e test
+              <h3 className="text-sm font-bold text-white mb-1">Montaggio</h3>
+              <p className="text-xs text-gray-400 font-medium leading-tight">
+                Test e ottimizzazione
               </p>
             </div>
           </div>
