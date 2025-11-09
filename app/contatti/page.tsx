@@ -15,6 +15,7 @@ export default function Contatti() {
     data: '',
     location: '',
     messaggio: '',
+    website: '', // Honeypot field - deve rimanere vuoto
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -62,6 +63,7 @@ export default function Contatti() {
           data: '',
           location: '',
           messaggio: '',
+          website: '',
         });
       }, 5000);
     } catch (err) {
@@ -294,6 +296,22 @@ export default function Contatti() {
                       onChange={handleChange}
                       disabled={isLoading}
                       className="w-full px-4 py-3 border-2 border-gray-600 rounded-lg focus:ring-2 focus:ring-accent focus:border-accent bg-gray-900 text-white placeholder-gray-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Honeypot field - invisibile agli utenti, visibile ai bot */}
+                  <div className="absolute -left-[9999px]" aria-hidden="true">
+                    <label htmlFor="website">
+                      Website (lasciare vuoto)
+                    </label>
+                    <input
+                      type="text"
+                      id="website"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleChange}
+                      tabIndex={-1}
+                      autoComplete="off"
                     />
                   </div>
 

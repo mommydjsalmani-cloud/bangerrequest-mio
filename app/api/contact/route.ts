@@ -35,7 +35,11 @@ const contactSchema = z.object({
     .optional()
     .transform(val => val || ''),
   recaptchaToken: z.string()
-    .min(1, 'Token reCAPTCHA mancante')
+    .min(1, 'Token reCAPTCHA mancante'),
+  website: z.string()
+    .max(0, 'Honeypot field deve essere vuoto') // Deve essere vuoto (honeypot)
+    .optional()
+    .transform(val => val || '')
 });
 
 // Funzione per sanitizzare HTML e prevenire XSS
@@ -107,7 +111,19 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const { nome, email, telefono, tipoEvento, data, location, messaggio, recaptchaToken } = validationResult.data;
+    const { nome, email, telefono, tipoEvento, data, location, messaggio, recaptchaToken, website } = validationResult.data;
+
+    // HONEYPOT CHECK - Se il campo "website" è compilato, è un bot
+    if (website && website.trim().length > 0) {
+      console.warn('[CONTACT_HONEYPOT_TRIGGERED]', { 
+        ip, 
+        email, 
+        websiteValue: website,
+        timestamp: new Date().toISOString() 
+      });
+      // Rispondi con successo per non far capire al bot che è stato bloccato
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
 
     // Verifica reCAPTCHA
     const recaptchaResult = await verifyRecaptcha(recaptchaToken, ip);
