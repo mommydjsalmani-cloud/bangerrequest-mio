@@ -196,7 +196,7 @@ export default function Header() {
                 fill="none"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="3.5"
+                strokeWidth="2"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
               >
@@ -241,7 +241,7 @@ export default function Header() {
                   className="absolute top-6 right-6 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-accent rounded p-2 transition-colors"
                   aria-label="Chiudi menu"
                 >
-                  <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-6 h-6" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
                     <path d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>

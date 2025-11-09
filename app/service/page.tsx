@@ -69,19 +69,19 @@ export default function Service() {
             <div className="flex items-center justify-center">
               <div className="card bg-gray-800 border-2 border-gray-700 p-8 w-full">
                 <div className="w-full h-64 text-accent flex items-center justify-center">
-                  <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="3.5" className="w-full h-full">
+                  <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
                     {/* Speaker */}
                     <rect x="60" y="20" width="80" height="160" rx="8" strokeWidth="3"/>
                     <circle cx="100" cy="60" r="20" strokeWidth="3"/>
-                    <circle cx="100" cy="60" r="15" strokeWidth="3.5" opacity="0.5"/>
+                    <circle cx="100" cy="60" r="15" strokeWidth="2" opacity="0.5"/>
                     <circle cx="100" cy="140" r="35" strokeWidth="3"/>
-                    <circle cx="100" cy="140" r="25" strokeWidth="3.5" opacity="0.5"/>
-                    <circle cx="100" cy="140" r="15" strokeWidth="3.5" opacity="0.3"/>
+                    <circle cx="100" cy="140" r="25" strokeWidth="2" opacity="0.5"/>
+                    <circle cx="100" cy="140" r="15" strokeWidth="2" opacity="0.3"/>
                     {/* Sound waves */}
-                    <path d="M 150 60 Q 165 60 165 75 Q 165 90 150 90" strokeWidth="3.5" strokeLinecap="round"/>
-                    <path d="M 155 60 Q 175 60 175 75 Q 175 90 155 90" strokeWidth="3.5" strokeLinecap="round" opacity="0.7"/>
-                    <path d="M 50 60 Q 35 60 35 75 Q 35 90 50 90" strokeWidth="3.5" strokeLinecap="round"/>
-                    <path d="M 45 60 Q 25 60 25 75 Q 25 90 45 90" strokeWidth="3.5" strokeLinecap="round" opacity="0.7"/>
+                    <path d="M 150 60 Q 165 60 165 75 Q 165 90 150 90" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M 155 60 Q 175 60 175 75 Q 175 90 155 90" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
+                    <path d="M 50 60 Q 35 60 35 75 Q 35 90 50 90" strokeWidth="2.5" strokeLinecap="round"/>
+                    <path d="M 45 60 Q 25 60 25 75 Q 25 90 45 90" strokeWidth="2.5" strokeLinecap="round" opacity="0.7"/>
                   </svg>
                 </div>
                 <p className="text-center text-gray-300 mt-6 font-semibold">
@@ -101,12 +101,12 @@ export default function Service() {
             <div className="flex items-center justify-center lg:order-1">
               <div className="card bg-gray-800 border-2 border-gray-700 p-8 w-full">
                 <div className="w-full h-64 text-accent flex items-center justify-center">
-                  <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="3.5" className="w-full h-full">
+                  <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="2" className="w-full h-full">
                     {/* Moving head light */}
                     <rect x="70" y="140" width="60" height="20" rx="4" strokeWidth="3"/>
                     <rect x="85" y="120" width="30" height="25" rx="3" strokeWidth="3"/>
                     <path d="M 85 120 L 70 60 L 130 60 L 115 120" strokeWidth="3" fill="currentColor" opacity="0.1"/>
-                    <circle cx="100" cy="125" r="8" strokeWidth="3.5" fill="currentColor"/>
+                    <circle cx="100" cy="125" r="8" strokeWidth="2" fill="currentColor"/>
                     {/* Light beams */}
                     <path d="M 100 60 L 70 20" strokeWidth="3" strokeLinecap="round" opacity="0.6"/>
                     <path d="M 100 60 L 100 15" strokeWidth="3" strokeLinecap="round" opacity="0.8"/>
@@ -168,11 +168,13 @@ export default function Service() {
           </p>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
-              <div className="w-12 h-12 text-accent mx-auto mb-3">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
-                  <circle cx="32" cy="32" r="20" strokeWidth="3.5"/>
-                  <circle cx="32" cy="32" r="3" fill="currentColor"/>
-                  <path d="M32 32L45 19" strokeWidth="3.5" strokeLinecap="round"/>
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
+                {/* Icona Sopralluogo - Occhio che osserva */}
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <ellipse cx="32" cy="32" rx="24" ry="16" strokeLinejoin="round"/>
+                  <circle cx="32" cy="32" r="10" strokeWidth="2.5"/>
+                  <circle cx="32" cy="32" r="5" fill="currentColor"/>
+                  <path d="M8 32C8 32 16 20 32 20C48 20 56 32 56 32" strokeLinecap="round" strokeWidth="2" opacity="0.3"/>
                 </svg>
               </div>
               <h3 className="font-display font-semibold text-white mb-1 leading-tight px-1" style={{fontSize: '0.65rem', letterSpacing: '0.01em'}}>Sopralluogo</h3>
@@ -181,10 +183,13 @@ export default function Service() {
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
-              <div className="w-12 h-12 text-accent mx-auto mb-3">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
-                  <rect x="16" y="20" width="32" height="24" rx="2" strokeWidth="3.5"/>
-                  <path d="M24 28h16M24 32h12M24 36h16" strokeWidth="3.5" strokeLinecap="round"/>
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
+                {/* Icona Progettazione - Matita su documento */}
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="14" y="12" width="30" height="40" rx="2" strokeLinejoin="round"/>
+                  <path d="M20 20h18M20 26h14M20 32h18M20 38h12" strokeWidth="2" strokeLinecap="round" opacity="0.4"/>
+                  <path d="M42 28L38 32L42 36L46 32L42 28Z" fill="currentColor" opacity="0.8"/>
+                  <path d="M38 32L32 38L32 42L36 42L42 36" strokeLinejoin="round" strokeWidth="2"/>
                 </svg>
               </div>
               <h3 className="font-display font-semibold text-white mb-1 leading-tight px-1" style={{fontSize: '0.65rem', letterSpacing: '0.01em'}}>Progettazione</h3>
@@ -193,10 +198,15 @@ export default function Service() {
               </p>
             </div>
             <div className="card bg-gray-800 border-2 border-gray-700 p-4">
-              <div className="w-12 h-12 text-accent mx-auto mb-3">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
-                  <path d="M20 38L28 46L44 30" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-                  <circle cx="32" cy="32" r="20" strokeWidth="3.5"/>
+              <div className="w-10 h-10 text-accent mx-auto mb-3">
+                {/* Icona Installazione - Strumenti (chiave inglese + cacciavite) */}
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M16 22L22 28L38 12L32 6L16 22Z" strokeLinejoin="round" fill="currentColor" opacity="0.2"/>
+                  <path d="M16 22L22 28L38 12L32 6L16 22Z" strokeLinejoin="round"/>
+                  <circle cx="20" cy="24" r="2" fill="currentColor"/>
+                  <path d="M48 32L42 38L48 44L54 38L48 32Z" strokeLinejoin="round" fill="currentColor" opacity="0.2"/>
+                  <path d="M48 32L42 38L48 44L54 38L48 32Z" strokeLinejoin="round"/>
+                  <rect x="46" y="50" width="4" height="8" rx="1" fill="currentColor" opacity="0.6"/>
                 </svg>
               </div>
               <h3 className="font-display font-semibold text-white mb-1 leading-tight px-1" style={{fontSize: '0.65rem', letterSpacing: '0.01em'}}>Installazione</h3>
