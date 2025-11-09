@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
 export default function Contatti() {
+  const { executeRecaptcha } = useGoogleReCaptcha();
+  
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -24,12 +27,22 @@ export default function Contatti() {
     setError('');
 
     try {
+      // Genera token reCAPTCHA
+      if (!executeRecaptcha) {
+        throw new Error('reCAPTCHA non disponibile');
+      }
+
+      const recaptchaToken = await executeRecaptcha('contact_form');
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          recaptchaToken,
+        }),
       });
 
       const result = await response.json();

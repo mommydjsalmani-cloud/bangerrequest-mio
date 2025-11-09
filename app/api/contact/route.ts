@@ -33,7 +33,9 @@ const contactSchema = z.object({
   messaggio: z.string()
     .max(5000, 'Messaggio troppo lungo')
     .optional()
-    .transform(val => val || '')
+    .transform(val => val || ''),
+  recaptchaToken: z.string()
+    .min(1, 'Token reCAPTCHA mancante')
 });
 
 // Funzione per sanitizzare HTML e prevenire XSS
@@ -52,6 +54,35 @@ const SPAM_KEYWORDS = ['viagra', 'casino', 'bitcoin', 'crypto', 'forex', 'loan',
 function containsSpam(text: string): boolean {
   const lowerText = text.toLowerCase();
   return SPAM_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
+// Verifica token reCAPTCHA v3
+async function verifyRecaptcha(token: string, ip: string): Promise<{ success: boolean; score: number; error?: string }> {
+  const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+
+  if (!secretKey) {
+    console.error('[RECAPTCHA_ERROR] Secret key non configurata');
+    return { success: false, score: 0, error: 'CAPTCHA non configurato' };
+  }
+
+  try {
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${secretKey}&response=${token}&remoteip=${ip}`,
+    });
+
+    const data = await response.json();
+
+    return {
+      success: data.success && data.score >= 0.5,
+      score: data.score || 0,
+      error: data['error-codes']?.[0],
+    };
+  } catch (error) {
+    console.error('[RECAPTCHA_VERIFY_ERROR]', error);
+    return { success: false, score: 0, error: 'Errore verifica CAPTCHA' };
+  }
 }
 
 export async function POST(request: Request) {
@@ -76,7 +107,31 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const { nome, email, telefono, tipoEvento, data, location, messaggio } = validationResult.data;
+    const { nome, email, telefono, tipoEvento, data, location, messaggio, recaptchaToken } = validationResult.data;
+
+    // Verifica reCAPTCHA
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken, ip);
+    
+    if (!recaptchaResult.success) {
+      console.warn('[CONTACT_RECAPTCHA_FAILED]', {
+        ip,
+        score: recaptchaResult.score,
+        error: recaptchaResult.error,
+        timestamp: new Date().toISOString()
+      });
+      return NextResponse.json({ 
+        error: 'Verifica sicurezza fallita. Riprova.',
+        code: 'RECAPTCHA_FAILED'
+      }, { status: 403 });
+    }
+
+    // Log score per monitoraggio
+    console.log('[CONTACT_RECAPTCHA_SCORE]', {
+      ip,
+      email,
+      score: recaptchaResult.score,
+      timestamp: new Date().toISOString()
+    });
 
     // Check spam keywords
     if (containsSpam(`${nome} ${messaggio}`)) {
