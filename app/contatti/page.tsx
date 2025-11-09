@@ -116,11 +116,12 @@ export default function Contatti() {
               
               <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 text-accent flex-shrink-0">
-                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="8" y="16" width="48" height="32" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M8 20L32 36L56 20" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M8 44L24 32M56 44L40 32" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
+                  <div className="w-12 h-12 text-accent flex-shrink-0">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
+                      {/* Busta email più chiara */}
+                      <rect x="8" y="18" width="48" height="32" rx="3" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M8 22L32 38L56 22" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4"/>
+                      <path d="M8 46L24 34M56 46L40 34" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" opacity="0.6"/>
                     </svg>
                   </div>
                   <div>
@@ -132,12 +133,13 @@ export default function Contatti() {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 text-accent flex-shrink-0">
-                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="16" y="12" width="32" height="40" rx="4" strokeLinecap="round" strokeLinejoin="round"/>
-                      <circle cx="32" cy="46" r="2" fill="currentColor"/>
-                      <rect x="20" y="16" width="24" height="24" rx="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.3"/>
-                      <path d="M24 22H40M24 26H40M24 30H36" strokeLinecap="round" opacity="0.5"/>
+                  <div className="w-12 h-12 text-accent flex-shrink-0">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
+                      {/* Telefono classico più riconoscibile */}
+                      <rect x="18" y="10" width="28" height="44" rx="5" strokeLinecap="round" strokeLinejoin="round"/>
+                      <circle cx="32" cy="48" r="3" fill="currentColor"/>
+                      <line x1="26" y1="16" x2="38" y2="16" strokeLinecap="round" strokeWidth="4"/>
+                      <rect x="22" y="20" width="20" height="22" rx="2" opacity="0.15" fill="currentColor"/>
                     </svg>
                   </div>
                   <div>
@@ -149,11 +151,12 @@ export default function Contatti() {
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 text-accent flex-shrink-0">
-                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="12" y="12" width="40" height="40" rx="8" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M20 28L28 36L44 20" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3"/>
-                      <circle cx="32" cy="32" r="16" opacity="0.1" fill="currentColor"/>
+                  <div className="w-12 h-12 text-accent flex-shrink-0">
+                    <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
+                      {/* Logo WhatsApp riconoscibile */}
+                      <circle cx="32" cy="32" r="22" strokeWidth="4"/>
+                      <path d="M32 18C24 18 18 24 18 32C18 34.5 18.7 36.8 20 38.8L18 46L25.5 44C27.4 45.2 29.6 46 32 46C40 46 46 40 46 32C46 24 40 18 32 18Z" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M38 34C38 34 36 36 34 36C32 36 29 34 27 32C25 30 24 27 25 26C26 25 27 25 28 26L29 28" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3"/>
                     </svg>
                   </div>
                   <div>

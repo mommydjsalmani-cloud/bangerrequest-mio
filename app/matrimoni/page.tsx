@@ -11,7 +11,7 @@ export default function Matrimoni() {
       id: 0,
       title: "Accoglienza & Cerimonia",
       icon: (
-        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
           {/* Chiesa con campanile */}
           <path d="M32 8L44 20V54H20V20L32 8Z" strokeLinecap="round" strokeLinejoin="round"/>
           <rect x="28" y="44" width="8" height="10" strokeLinecap="round" strokeLinejoin="round"/>
@@ -27,7 +27,7 @@ export default function Matrimoni() {
       id: 1,
       title: "Aperitivo",
       icon: (
-        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
           {/* Calice champagne */}
           <path d="M20 12L22 28C22 34 26 38 32 38C38 38 42 34 44 28L46 12Z" strokeLinecap="round" strokeLinejoin="round"/>
           <line x1="32" y1="38" x2="32" y2="52" strokeLinecap="round"/>
@@ -46,15 +46,15 @@ export default function Matrimoni() {
       id: 2,
       title: "Dinner Set",
       icon: (
-        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
           {/* Piatto con posate */}
           <circle cx="32" cy="32" r="16" strokeLinecap="round" strokeLinejoin="round"/>
           <circle cx="32" cy="32" r="12" strokeLinecap="round" strokeLinejoin="round" opacity="0.3"/>
           {/* Forchetta */}
           <path d="M14 20V34M11 20V28M17 20V28" strokeLinecap="round"/>
-          <line x1="14" y1="28" x2="14" y2="44" strokeLinecap="round" strokeWidth="2.5"/>
+          <line x1="14" y1="28" x2="14" y2="44" strokeLinecap="round" strokeWidth="3.5"/>
           {/* Coltello */}
-          <line x1="50" y1="20" x2="50" y2="44" strokeLinecap="round" strokeWidth="2.5"/>
+          <line x1="50" y1="20" x2="50" y2="44" strokeLinecap="round" strokeWidth="3.5"/>
           <path d="M48 20L52 20L52 26L48 26Z" fill="currentColor"/>
         </svg>
       ),
@@ -65,16 +65,16 @@ export default function Matrimoni() {
       id: 3,
       title: "Party Finale",
       icon: (
-        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-full h-full" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
           {/* Console DJ */}
           <rect x="12" y="24" width="40" height="24" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
           {/* Piatti */}
-          <circle cx="22" cy="36" r="7" strokeWidth="1.5"/>
-          <circle cx="42" cy="36" r="7" strokeWidth="1.5"/>
+          <circle cx="22" cy="36" r="7" strokeWidth="3"/>
+          <circle cx="42" cy="36" r="7" strokeWidth="3"/>
           <circle cx="22" cy="36" r="2" fill="currentColor"/>
           <circle cx="42" cy="36" r="2" fill="currentColor"/>
           {/* Slider */}
-          <line x1="32" y1="28" x2="32" y2="38" strokeLinecap="round" strokeWidth="1.5"/>
+          <line x1="32" y1="28" x2="32" y2="38" strokeLinecap="round" strokeWidth="3"/>
           <rect x="30" y="31" width="4" height="3" rx="0.5" fill="currentColor"/>
           {/* Onde sonore */}
           <path d="M8 36C8 36 6 32 6 28C6 24 8 20 8 20" strokeLinecap="round" opacity="0.5"/>
@@ -103,11 +103,11 @@ export default function Matrimoni() {
       <section className="relative py-16 md:py-32 bg-gradient-to-b from-black via-gray-900 to-black">
         <div className="container-custom text-center">
           <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 text-accent">
-            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
               {/* Fedi nuziali intrecciate */}
-              <circle cx="26" cy="32" r="12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"/>
-              <circle cx="38" cy="32" r="12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5"/>
-              <path d="M26 20V24M38 20V24" strokeLinecap="round" strokeWidth="2"/>
+              <circle cx="26" cy="32" r="12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5"/>
+              <circle cx="38" cy="32" r="12" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5"/>
+              <path d="M26 20V24M38 20V24" strokeLinecap="round" strokeWidth="3.5"/>
               <circle cx="26" cy="32" r="8" opacity="0.3" strokeLinecap="round" strokeLinejoin="round"/>
               <circle cx="38" cy="32" r="8" opacity="0.3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -150,7 +150,7 @@ export default function Matrimoni() {
                     : 'border-gray-700 bg-gray-800/50 text-gray-400 hover:border-gray-600 hover:text-gray-300'
                 }`}
               >
-                <div className="w-10 h-10 md:w-14 md:h-14">{phase.icon}</div>
+                <div className="w-12 h-12 md:w-14 md:h-14">{phase.icon}</div>
                 <h3 className="font-display font-semibold leading-[1.1] px-1" style={{fontSize: '0.65rem', letterSpacing: '0.01em'}}>{phase.title}</h3>
               </button>
             ))}
@@ -198,9 +198,9 @@ export default function Matrimoni() {
           <div className="bg-gray-800 border border-gray-700 p-6 md:p-10 rounded-2xl">
             <div className="text-center mb-4 md:mb-6">
               <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 text-accent">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                   {/* Globo terrestre */}
-                  <circle cx="32" cy="32" r="22" strokeWidth="2"/>
+                  <circle cx="32" cy="32" r="22" strokeWidth="3.5"/>
                   {/* Meridiani */}
                   <ellipse cx="32" cy="32" rx="10" ry="22" opacity="0.4"/>
                   <ellipse cx="32" cy="32" rx="22" ry="10" opacity="0.4"/>
@@ -208,7 +208,7 @@ export default function Matrimoni() {
                   <path d="M14 20C14 20 20 22 32 22C44 22 50 20 50 20" strokeLinecap="round"/>
                   <path d="M14 44C14 44 20 42 32 42C44 42 50 44 50 44" strokeLinecap="round"/>
                   {/* Pin location */}
-                  <path d="M32 24L32 28M28 30L32 28L36 30" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"/>
+                  <path d="M32 24L32 28M28 30L32 28L36 30" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5"/>
                   <circle cx="32" cy="30" r="3" fill="currentColor"/>
                 </svg>
               </div>
@@ -235,14 +235,14 @@ export default function Matrimoni() {
           <div className="bg-gray-800 border border-gray-700 p-6 md:p-10 rounded-2xl">
             <div className="text-center mb-4 md:mb-6">
               <div className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 text-accent">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                   {/* Smartphone */}
-                  <rect x="18" y="8" width="28" height="48" rx="3" strokeWidth="2"/>
+                  <rect x="18" y="8" width="28" height="48" rx="3" strokeWidth="3.5"/>
                   <circle cx="32" cy="52" r="2" fill="currentColor"/>
                   {/* Note musicali */}
-                  <circle cx="26" cy="24" r="3" strokeWidth="1.5"/>
-                  <circle cx="38" cy="28" r="3" strokeWidth="1.5"/>
-                  <path d="M29 24V16L41 14V28" strokeWidth="1.5" strokeLinecap="round"/>
+                  <circle cx="26" cy="24" r="3" strokeWidth="3"/>
+                  <circle cx="38" cy="28" r="3" strokeWidth="3"/>
+                  <path d="M29 24V16L41 14V28" strokeWidth="3" strokeLinecap="round"/>
                   {/* Onde audio */}
                   <path d="M24 36H40M22 40H42M26 44H38" strokeLinecap="round" opacity="0.4"/>
                 </svg>

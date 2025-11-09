@@ -20,13 +20,13 @@ export default function EventiPrivati() {
       <section className="relative py-16 md:py-32 bg-gradient-to-b from-black via-gray-900 to-black">
         <div className="container-custom text-center px-4">
           <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 text-accent">
-            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
               {/* Palloncini party */}
-              <circle cx="24" cy="28" r="10" strokeWidth="2"/>
-              <circle cx="40" cy="24" r="10" strokeWidth="2"/>
-              <circle cx="32" cy="18" r="8" strokeWidth="2"/>
+              <circle cx="24" cy="28" r="10" strokeWidth="3.5"/>
+              <circle cx="40" cy="24" r="10" strokeWidth="3.5"/>
+              <circle cx="32" cy="18" r="8" strokeWidth="3.5"/>
               <path d="M24 38L24 52M40 34L40 52M32 26L32 52" strokeLinecap="round"/>
-              <path d="M20 52L28 52M36 52L44 52M28 52L36 52" strokeLinecap="round" strokeWidth="2"/>
+              <path d="M20 52L28 52M36 52L44 52M28 52L36 52" strokeLinecap="round" strokeWidth="3.5"/>
               {/* Coriandoli */}
               <circle cx="14" cy="42" r="1.5" fill="currentColor"/>
               <circle cx="50" cy="38" r="1.5" fill="currentColor"/>
@@ -49,7 +49,7 @@ export default function EventiPrivati() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 max-w-4xl mx-auto">
             <div className="bg-gray-800 border border-gray-700 p-8 rounded-xl">
               <div className="w-12 h-12 text-accent mb-4">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                   {/* Torta compleanno */}
                   <rect x="16" y="32" width="32" height="16" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <rect x="20" y="24" width="24" height="8" rx="1" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
@@ -70,7 +70,7 @@ export default function EventiPrivati() {
             </div>
             <div className="bg-gray-800 border border-gray-700 p-8 rounded-xl">
               <div className="w-12 h-12 text-accent mb-4">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                   {/* Edificio aziendale */}
                   <rect x="16" y="12" width="32" height="40" rx="2" strokeLinecap="round" strokeLinejoin="round"/>
                   <path d="M24 12V8H40V12" strokeLinecap="round" strokeLinejoin="round"/>
@@ -142,7 +142,7 @@ export default function EventiPrivati() {
         <div className="container-custom max-w-4xl">
           <div className="text-center mb-12">
             <div className="w-16 h-16 mx-auto mb-6 text-accent">
-              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                 <rect x="16" y="20" width="32" height="32"/>
                 <path d="M16 20L24 12L40 12L48 20" strokeLinecap="round" strokeLinejoin="round"/>
                 <rect x="22" y="28" width="6" height="6"/>

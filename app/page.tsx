@@ -158,7 +158,7 @@ export default function Home() {
           <div className="text-center mb-16">
             <div className="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 mb-6 px-4">
               <div className="w-12 h-12 md:w-14 md:h-14 text-accent flex-shrink-0">
-                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="3.5">
                   <circle cx="32" cy="32" r="20"/>
                   <circle cx="32" cy="32" r="12"/>
                   <path d="M12 32L8 32M56 32L52 32M32 12L32 8M32 56L32 52" strokeLinecap="round"/>
