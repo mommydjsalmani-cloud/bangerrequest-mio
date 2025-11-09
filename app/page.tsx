@@ -175,7 +175,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
               <a
                 href="#contatti"
-                className="font-sans font-semibold px-10 py-4 bg-[#4169e1] text-white rounded-full hover:bg-[#3557c7] transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-[#4169e1]/50 text-center"
+                className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-[#4169e1] to-blue-600 hover:from-blue-600 hover:to-[#4169e1] text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wide"
               >
                 Richiedi informazioni
               </a>
@@ -183,7 +183,7 @@ export default function Home() {
                 href="https://wa.me/393123456789"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-sans font-semibold px-10 py-4 border-2 border-[#4169e1] text-[#4169e1] rounded-full hover:bg-[#4169e1] hover:text-white transition-all duration-300 text-center"
+                className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wide"
               >
                 Invia richiesta WhatsApp
               </a>

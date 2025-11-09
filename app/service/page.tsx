@@ -225,10 +225,10 @@ export default function Service() {
           <p className="text-lg text-gray-300 mb-8 leading-relaxed font-medium">
             Contattami per discutere delle esigenze audio/luci del tuo evento e ricevere un preventivo personalizzato.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <Link
               href="/contatti"
-              className="font-sans font-semibold px-10 py-4 bg-[#4169e1] text-white rounded-full hover:bg-[#3557c7] transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-[#4169e1]/50"
+              className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-[#4169e1] to-blue-600 hover:from-blue-600 hover:to-[#4169e1] text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wide"
             >
               Richiedi informazioni
             </Link>
@@ -236,7 +236,7 @@ export default function Service() {
               href="https://wa.me/393462122933"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-sans font-semibold px-10 py-4 border-2 border-white/20 text-white rounded-full hover:border-[#4169e1] hover:text-[#4169e1] transition-all duration-300"
+              className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wide"
             >
               Scrivimi su WhatsApp
             </a>
