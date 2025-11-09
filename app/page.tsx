@@ -26,7 +26,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <a
               href="#contatti"
-              className="font-sans font-bold px-12 py-5 bg-gradient-to-r from-[#4169e1] to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-[#4169e1] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl border-2 border-white/30 uppercase tracking-wide text-sm"
+              className="font-sans font-bold px-12 py-5 bg-gradient-to-r from-[#4169e1] to-blue-600 text-white rounded-full hover:from-blue-600 hover:to-[#4169e1] transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wide text-sm"
             >
               Verifica disponibilità
             </a>

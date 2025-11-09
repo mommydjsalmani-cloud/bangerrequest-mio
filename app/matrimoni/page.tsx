@@ -120,7 +120,7 @@ export default function Matrimoni() {
           <div className="mt-8 md:mt-10 px-4">
             <a
               href="#contatti"
-              className="font-sans inline-block bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm md:text-base shadow-lg hover:shadow-2xl hover:scale-105 border-2 border-white/20"
+              className="font-sans inline-block bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-14 py-4 md:py-5 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm md:text-base shadow-lg hover:shadow-2xl hover:scale-105"
             >
               Verifica disponibilità
             </a>
