@@ -4,6 +4,63 @@ import { z } from 'zod';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// ============================================
+// RATE LIMITING IN-MEMORY
+// ============================================
+// Mappa: IP → array di timestamp delle richieste
+const requestsByIP = new Map<string, number[]>();
+
+// Configurazione rate limiting
+const RATE_LIMIT_MAX_REQUESTS = 5; // Max 5 richieste
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000; // in 10 minuti
+
+// Pulizia periodica della memoria (ogni ora rimuove IP inattivi)
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of requestsByIP.entries()) {
+    const recentRequests = timestamps.filter(time => now - time < RATE_LIMIT_WINDOW_MS);
+    if (recentRequests.length === 0) {
+      requestsByIP.delete(ip); // Rimuovi IP inattivo
+    } else {
+      requestsByIP.set(ip, recentRequests); // Aggiorna con solo richieste recenti
+    }
+  }
+}, 60 * 60 * 1000); // Ogni ora
+
+function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const requests = requestsByIP.get(ip) || [];
+  
+  // Filtra solo richieste nella finestra temporale
+  const recentRequests = requests.filter(time => now - time < RATE_LIMIT_WINDOW_MS);
+  
+  // Controlla se ha superato il limite
+  if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const oldestRequest = Math.min(...recentRequests);
+    const resetAt = oldestRequest + RATE_LIMIT_WINDOW_MS;
+    
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt
+    };
+  }
+  
+  // Aggiungi questa richiesta
+  recentRequests.push(now);
+  requestsByIP.set(ip, recentRequests);
+  
+  return {
+    allowed: true,
+    remaining: RATE_LIMIT_MAX_REQUESTS - recentRequests.length,
+    resetAt: now + RATE_LIMIT_WINDOW_MS
+  };
+}
+
+// ============================================
+// VALIDAZIONE
+// ============================================
+
 // Schema di validazione rigoroso
 const contactSchema = z.object({
   nome: z.string()
@@ -92,6 +149,34 @@ async function verifyRecaptcha(token: string, ip: string): Promise<{ success: bo
 export async function POST(request: Request) {
   const startTime = Date.now();
   const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+
+  // ============================================
+  // RATE LIMITING CHECK
+  // ============================================
+  const rateLimitResult = checkRateLimit(ip);
+  
+  if (!rateLimitResult.allowed) {
+    const resetIn = Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000 / 60); // minuti
+    console.warn('[CONTACT_RATE_LIMIT_EXCEEDED]', { 
+      ip, 
+      resetIn: `${resetIn} minuti`,
+      timestamp: new Date().toISOString() 
+    });
+    
+    return NextResponse.json({ 
+      error: `Troppe richieste. Riprova tra ${resetIn} minuti.`,
+      code: 'RATE_LIMIT_EXCEEDED',
+      retryAfter: resetIn
+    }, { 
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+        'X-RateLimit-Remaining': '0',
+        'X-RateLimit-Reset': new Date(rateLimitResult.resetAt).toISOString(),
+        'Retry-After': (resetIn * 60).toString() // secondi
+      }
+    });
+  }
 
   try {
     const body = await request.json();
@@ -261,7 +346,13 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString() 
     });
 
-    return NextResponse.json({ success: true, data: emailData });
+    return NextResponse.json({ success: true, data: emailData }, {
+      headers: {
+        'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+        'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+        'X-RateLimit-Reset': new Date(rateLimitResult.resetAt).toISOString()
+      }
+    });
   } catch (error) {
     console.error('[CONTACT_SERVER_ERROR]', { ip, error, timestamp: new Date().toISOString() });
     return NextResponse.json({ error: 'Errore durante l\'invio della richiesta' }, { status: 500 });
