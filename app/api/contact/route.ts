@@ -1,17 +1,102 @@
 import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Schema di validazione rigoroso
+const contactSchema = z.object({
+  nome: z.string()
+    .min(2, 'Nome troppo corto')
+    .max(100, 'Nome troppo lungo')
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Nome contiene caratteri non validi'),
+  email: z.string()
+    .email('Email non valida')
+    .max(255, 'Email troppo lunga')
+    .refine(email => !email.includes('+tag'), 'Email con tag non consentita'),
+  telefono: z.string()
+    .max(20, 'Telefono troppo lungo')
+    .optional()
+    .transform(val => val || ''),
+  tipoEvento: z.string()
+    .max(100, 'Tipo evento troppo lungo')
+    .optional()
+    .transform(val => val || ''),
+  data: z.string()
+    .max(50, 'Data troppo lunga')
+    .optional()
+    .transform(val => val || ''),
+  location: z.string()
+    .max(200, 'Location troppo lunga')
+    .optional()
+    .transform(val => val || ''),
+  messaggio: z.string()
+    .max(5000, 'Messaggio troppo lungo')
+    .optional()
+    .transform(val => val || '')
+});
+
+// Funzione per sanitizzare HTML e prevenire XSS
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Blacklist di parole spam comuni
+const SPAM_KEYWORDS = ['viagra', 'casino', 'bitcoin', 'crypto', 'forex', 'loan', 'pills', 'seo services'];
+
+function containsSpam(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return SPAM_KEYWORDS.some(keyword => lowerText.includes(keyword));
+}
+
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+
   try {
     const body = await request.json();
-    const { nome, email, telefono, tipoEvento, data, location, messaggio } = body;
+    
+    // Validazione con zod
+    const validationResult = contactSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      console.warn('[CONTACT_VALIDATION_FAILED]', {
+        ip,
+        errors: validationResult.error.issues,
+        timestamp: new Date().toISOString()
+      });
+      return NextResponse.json({ 
+        error: 'Dati non validi', 
+        details: validationResult.error.issues 
+      }, { status: 400 });
+    }
+
+    const { nome, email, telefono, tipoEvento, data, location, messaggio } = validationResult.data;
+
+    // Check spam keywords
+    if (containsSpam(`${nome} ${messaggio}`)) {
+      console.warn('[CONTACT_SPAM_DETECTED]', { ip, nome, email, timestamp: new Date().toISOString() });
+      return NextResponse.json({ error: 'Richiesta bloccata' }, { status: 403 });
+    }
+
+    // Sanitizza tutti i campi per l'email HTML
+    const safeNome = escapeHtml(nome);
+    const safeEmail = escapeHtml(email);
+    const safeTelefono = escapeHtml(telefono);
+    const safeTipoEvento = escapeHtml(tipoEvento);
+    const safeData = escapeHtml(data);
+    const safeLocation = escapeHtml(location);
+    const safeMessaggio = escapeHtml(messaggio);
 
     const { data: emailData, error } = await resend.emails.send({
       from: 'Mommy DJ Richieste <onboarding@resend.dev>',
       to: ['mommydjsalmani@gmail.com'],
-      subject: `Nuova richiesta: ${tipoEvento || 'Informazioni'}`,
+      subject: `Nuova richiesta: ${safeTipoEvento || 'Informazioni'}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -35,44 +120,44 @@ export async function POST(request: Request) {
               <div class="content">
                 <div class="field">
                   <div class="label">👤 Nome:</div>
-                  <div class="value">${nome}</div>
+                  <div class="value">${safeNome}</div>
                 </div>
                 
                 <div class="field">
                   <div class="label">📧 Email:</div>
-                  <div class="value"><a href="mailto:${email}">${email}</a></div>
+                  <div class="value"><a href="mailto:${safeEmail}">${safeEmail}</a></div>
                 </div>
                 
                 <div class="field">
                   <div class="label">📱 Telefono:</div>
-                  <div class="value"><a href="tel:${telefono}">${telefono}</a></div>
+                  <div class="value"><a href="tel:${safeTelefono}">${safeTelefono}</a></div>
                 </div>
                 
-                ${tipoEvento ? `
+                ${safeTipoEvento ? `
                 <div class="field">
                   <div class="label">🎉 Tipo Evento:</div>
-                  <div class="value">${tipoEvento}</div>
+                  <div class="value">${safeTipoEvento}</div>
                 </div>
                 ` : ''}
                 
-                ${data ? `
+                ${safeData ? `
                 <div class="field">
                   <div class="label">📅 Data:</div>
-                  <div class="value">${data}</div>
+                  <div class="value">${safeData}</div>
                 </div>
                 ` : ''}
                 
-                ${location ? `
+                ${safeLocation ? `
                 <div class="field">
                   <div class="label">📍 Location:</div>
-                  <div class="value">${location}</div>
+                  <div class="value">${safeLocation}</div>
                 </div>
                 ` : ''}
                 
-                ${messaggio ? `
+                ${safeMessaggio ? `
                 <div class="field">
                   <div class="label">💬 Messaggio:</div>
-                  <div class="value" style="white-space: pre-wrap;">${messaggio}</div>
+                  <div class="value" style="white-space: pre-wrap;">${safeMessaggio}</div>
                 </div>
                 ` : ''}
                 
@@ -81,6 +166,7 @@ export async function POST(request: Request) {
                 <div style="font-size: 12px; color: #666;">
                   <p>Richiesta ricevuta dal sito mommydj.com</p>
                   <p>Data e ora: ${new Date().toLocaleString('it-IT')}</p>
+                  <p>IP: ${ip}</p>
                 </div>
               </div>
             </div>
@@ -90,13 +176,23 @@ export async function POST(request: Request) {
     });
 
     if (error) {
-      console.error('Error sending email:', error);
+      console.error('[CONTACT_EMAIL_ERROR]', { ip, error, timestamp: new Date().toISOString() });
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    // Log successo
+    const duration = Date.now() - startTime;
+    console.log('[CONTACT_SUCCESS]', { 
+      ip, 
+      email: safeEmail, 
+      tipoEvento: safeTipoEvento,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString() 
+    });
+
     return NextResponse.json({ success: true, data: emailData });
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('[CONTACT_SERVER_ERROR]', { ip, error, timestamp: new Date().toISOString() });
     return NextResponse.json({ error: 'Errore durante l\'invio della richiesta' }, { status: 500 });
   }
 }
