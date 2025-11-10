@@ -25,11 +25,17 @@ export function routePath(path: string): string {
 
 /**
  * Costruisce il path completo per file statici in /public
- * Next.js gestisce automaticamente il basePath per le immagini,
- * quindi restituiamo semplicemente il path normalizzato
+ * Next.js NON aggiunge automaticamente il basePath ai file in /public,
+ * quindi dobbiamo farlo manualmente
  * @param path - Il path del file statico (es. '/logo.png')
- * @returns Il path normalizzato
+ * @returns Il path completo includendo il basePath se configurato
  */
 export function publicPath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  
+  // Hardcoded basePath per file statici perché viene processato a build-time
+  // Deve corrispondere al basePath in next.config.ts
+  const staticBasePath = '/richiedi';
+  
+  return `${staticBasePath}${normalizedPath}`;
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
-import { apiPath } from '@/lib/apiPath';
+import { apiPath, publicPath } from '@/lib/apiPath';
 import Image from 'next/image';
 
 type SpotifyTrack = {
@@ -385,7 +385,7 @@ function RichiesteLibereContent() {
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 text-center max-w-md w-full border border-white/20 shadow-xl">
           <div className="mb-3 flex justify-center">
             <Image
-              src="/Simbolo_Bianco.png"
+              src={publicPath("/Simbolo_Bianco.png")}
               alt="Banger Request Logo"
               width={80}
               height={80}
