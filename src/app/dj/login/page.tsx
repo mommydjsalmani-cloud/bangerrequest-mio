@@ -14,15 +14,26 @@ export default function DJLogin() {
   // Controlla se l'utente è già autenticato
   useEffect(() => {
     try {
+      // Verifica che sessionStorage sia disponibile
+      if (typeof window === 'undefined' || !window.sessionStorage) {
+        console.warn('SessionStorage non disponibile');
+        return;
+      }
+      
       const savedUser = sessionStorage.getItem('dj_user');
       const savedPassword = sessionStorage.getItem('dj_secret');
       
+      console.log('Check auth:', { hasUser: !!savedUser, hasPassword: !!savedPassword });
+      
       if (savedUser && savedPassword) {
         // Utente già autenticato, reindirizza direttamente al pannello
+        console.log('Redirect to /dj/libere');
         router.push('/dj/libere');
         return;
       }
-    } catch {}
+    } catch (error) {
+      console.error('Errore check autenticazione:', error);
+    }
   }, [router]);
 
   const login = async (e: React.FormEvent) => {

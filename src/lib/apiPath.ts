@@ -35,7 +35,8 @@ export function publicPath(path: string): string {
   
   // Hardcoded basePath per file statici perché viene processato a build-time
   // Deve corrispondere al basePath in next.config.ts
-  const staticBasePath = '/richiedi';
+  // Solo in produzione, in sviluppo usa la root
+  const staticBasePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
   
-  return `${staticBasePath}${normalizedPath}`;
+  return staticBasePath ? `${staticBasePath}${normalizedPath}` : normalizedPath;
 }

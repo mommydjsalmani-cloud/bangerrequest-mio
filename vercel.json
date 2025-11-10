@@ -6,68 +6,7 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
-    },
-    "src/app/api/health/**/*.ts": {
-      "maxDuration": 10
-    },
-    "src/app/api/spotify/**/*.ts": {
-      "maxDuration": 15
     }
   },
-  "regions": ["cdg1"],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, x-dj-user, x-dj-secret"
-        },
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex"
-        }
-      ]
-    },
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/health",
-      "destination": "/api/health"
-    },
-    {
-      "source": "/status",
-      "destination": "/api/health"
-    }
-  ],
-  "trailingSlash": false,
-  "cleanUrls": true,
-  "github": {
-    "silent": true
-  }
+  "regions": ["cdg1"]
 }

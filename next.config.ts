@@ -2,7 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Base path per deployment sotto /richiedi su mommydj.com
-  basePath: '/richiedi',
+  // Solo in produzione, in sviluppo locale usa la root
+  basePath: process.env.NODE_ENV === 'production' ? '/richiedi' : '',
   
   // Configurazione immagini
   images: {

@@ -19,20 +19,15 @@ This directory contains health check scripts for monitoring the application stat
 ## Usage Examples
 
 ```bash
-# Check production health - main endpoint (ES Module)
-node scripts/check_health.js https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health
+# Check production health (ES Module)
+node scripts/check_health.js https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
 
-# Check production health - Supabase (CommonJS - more compatible)
+# Check production health (CommonJS - more compatible)
 node scripts/check_health.cjs https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
 
-# Check local development (uses default: http://localhost:3000/api/health)
-node scripts/check_health.cjs
-
-# Full production health check test
-bash scripts/test-production-health.sh
+# Check local development
+node scripts/check_health.cjs http://localhost:3000/api/health
 ```
-
-**Important**: API routes on Vercel do NOT use the `basePath` configuration. Always use `/api/*` paths directly, not `/richiedi/api/*`.
 
 ## Output Format
 
