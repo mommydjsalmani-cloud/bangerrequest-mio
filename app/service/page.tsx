@@ -219,16 +219,16 @@ export default function Service() {
       </section>
 
       {/* CTA */}
-      <section className="py-12 md:py-16 bg-gradient-to-br from-gray-900 to-black">
+      <section className="py-12 md:py-20 bg-gradient-to-br from-gray-900 to-black">
         <div className="container-custom max-w-3xl px-4 text-center">
-          <h2 className="mb-6 text-white">Vuoi saperne di più?</h2>
-          <p className="text-lg text-gray-300 mb-8 leading-relaxed font-medium">
+          <h2 className="font-display mb-4 md:mb-6 text-white">Vuoi saperne di più?</h2>
+          <p className="font-sans text-gray-400 mb-8 md:mb-10 leading-relaxed">
             Contattami per discutere delle esigenze audio/luci del tuo evento e ricevere un preventivo personalizzato.
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center">
             <Link
               href="/contatti"
-              className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-[#4169e1] to-blue-600 hover:from-blue-600 hover:to-[#4169e1] text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wide"
+              className="font-sans inline-block bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
             >
               Richiedi informazioni
             </Link>
@@ -236,7 +236,7 @@ export default function Service() {
               href="https://wa.me/393462122933"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-sans font-bold px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wide"
+              className="font-sans inline-block bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
             >
               Scrivimi su WhatsApp
             </a>
