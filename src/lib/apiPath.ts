@@ -1,17 +1,21 @@
 /**
  * Utility per costruire i path delle API
- * Semplificato: senza basePath dato che l'app è servita alla root
+ * In produzione aggiunge il basePath /richiedi, in sviluppo usa la root
  */
+
+// BasePath deve corrispondere a quello in next.config.ts
+const BASE_PATH = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
 
 /**
  * Costruisce il path completo per una chiamata API
  * @param path - Il path relativo dell'API (es. '/api/health' oppure `/api/requests?id=...`)
- * @returns Il path normalizzato
+ * @returns Il path normalizzato con basePath se necessario
  * 
  * Usalo così: fetch(apiPath('/api/...'), { options })
  */
 export function apiPath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return BASE_PATH ? `${BASE_PATH}${normalizedPath}` : normalizedPath;
 }
 
 /**
@@ -20,7 +24,8 @@ export function apiPath(path: string): string {
  * quindi questa funzione è utile principalmente per redirect programmatici
  */
 export function routePath(path: string): string {
-  return path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return BASE_PATH ? `${BASE_PATH}${normalizedPath}` : normalizedPath;
 }
 
 /**
@@ -32,11 +37,5 @@ export function routePath(path: string): string {
  */
 export function publicPath(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  
-  // Hardcoded basePath per file statici perché viene processato a build-time
-  // Deve corrispondere al basePath in next.config.ts
-  // Solo in produzione, in sviluppo usa la root
-  const staticBasePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
-  
-  return staticBasePath ? `${staticBasePath}${normalizedPath}` : normalizedPath;
+  return BASE_PATH ? `${BASE_PATH}${normalizedPath}` : normalizedPath;
 }
