@@ -68,9 +68,11 @@ export function routePath(path: string): string {
 export function publicPath(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   
-  // Hardcoded basePath per file statici perché viene processato a build-time
-  // Deve corrispondere al basePath in next.config.ts
-  const staticBasePath = '/richiedi';
-  
-  return `${staticBasePath}${normalizedPath}`;
+  // Preferiamo la variabile d'ambiente (build-time) se presente
+  // Altrimenti deduciamo il basePath a runtime (utile per deployment che non
+  // forniscono NEXT_PUBLIC_BASE_PATH). In assenza di entrambi, non preponiamo
+  // alcun segmento.
+  const base = BUILD_BASE_PATH || (typeof window !== 'undefined' ? detectRuntimeBasePath() : '');
+
+  return `${base}${normalizedPath}`;
 }
