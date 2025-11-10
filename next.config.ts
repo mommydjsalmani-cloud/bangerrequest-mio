@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Base path per deployment sotto /richiedi su mommydj.com
+  basePath: '/richiedi',
+  
   // Configurazione immagini
   images: {
     remotePatterns: [
