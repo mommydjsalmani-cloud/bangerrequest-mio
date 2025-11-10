@@ -181,18 +181,28 @@ export default function EventiPrivati() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-gray-900">
+      <section className="py-12 md:py-20 bg-gray-900">
         <div className="container-custom text-center max-w-2xl">
-          <h2 className="font-display mb-6 text-white">Chiedi un preventivo</h2>
-          <p className="font-sans text-gray-400 mb-10 leading-relaxed">
+          <h2 className="font-display mb-4 md:mb-6 text-white px-4">Chiedi un preventivo</h2>
+          <p className="font-sans text-gray-400 mb-8 md:mb-10 leading-relaxed px-4">
             Ogni evento è diverso. Raccontami la tua idea e ti preparo una proposta chiara.
           </p>
-          <Link
-            href="/contatti"
-            className="font-sans inline-block bg-accent hover:bg-accent-hover text-white px-12 py-4 rounded-full font-semibold transition-colors uppercase tracking-wider text-sm"
-          >
-            Contattami ora
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center px-4">
+            <Link
+              href="/contatti"
+              className="font-sans inline-block bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
+            >
+              Richiedi informazioni
+            </Link>
+            <a
+              href="https://wa.me/393462122933"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-sans inline-block bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
+            >
+              Scrivimi su WhatsApp
+            </a>
+          </div>
         </div>
       </section>
     </div>
