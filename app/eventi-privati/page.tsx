@@ -190,7 +190,7 @@ export default function EventiPrivati() {
           <div className="flex flex-col sm:flex-row gap-4 md:gap-6 justify-center px-4">
             <Link
               href="/contatti"
-              className="font-sans inline-block bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
+              className="font-sans inline-block w-full sm:w-auto bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
             >
               Richiedi informazioni
             </Link>
@@ -198,7 +198,7 @@ export default function EventiPrivati() {
               href="https://wa.me/393462122933"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-sans inline-block bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
+              className="font-sans inline-block w-full sm:w-auto bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white px-10 md:px-12 py-4 rounded-full font-bold transition-all duration-300 uppercase tracking-wider text-sm shadow-xl hover:shadow-2xl hover:scale-105"
             >
               Scrivimi su WhatsApp
             </a>
