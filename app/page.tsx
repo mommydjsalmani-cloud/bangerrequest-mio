@@ -173,60 +173,48 @@ export default function Home() {
 
           <div className="bg-black/50 border border-[#4169e1]/30 rounded-2xl p-8 md:p-12">
             <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
-              <a
-                href="#contatti"
-                className="font-sans font-bold w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-[#4169e1] to-blue-600 hover:from-blue-600 hover:to-[#4169e1] text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wide"
+              <Link
+                href="/contatti"
+                className="font-sans font-bold w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wider text-sm"
               >
                 Richiedi informazioni
-              </a>
+              </Link>
               <a
-                href="https://wa.me/393123456789"
+                href="https://wa.me/393462122933"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-sans font-bold w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wide"
+                className="font-sans font-bold w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-500 text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl text-center uppercase tracking-wider text-sm"
               >
-                Invia richiesta WhatsApp
+                Scrivimi su WhatsApp
               </a>
             </div>
 
             <div className="space-y-6 pt-8 border-t border-gray-800">
               <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-[#4169e1] flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-1">
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
                   <h3 className="font-display text-xl text-white mb-2">Email</h3>
-                  <a href="mailto:info@mommydj.com" className="font-sans text-[#4169e1] hover:underline text-lg">
+                  <a href="mailto:info@mommydj.com" className="font-sans text-accent hover:underline text-lg">
                     info@mommydj.com
                   </a>
                 </div>
               </div>
 
               <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-[#4169e1] flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center flex-shrink-0 mt-1">
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                   </svg>
                 </div>
                 <div>
                   <h3 className="font-display text-xl text-white mb-2">WhatsApp</h3>
-                  <a href="https://wa.me/393462122933" className="font-sans text-[#4169e1] hover:underline text-lg">
+                  <a href="https://wa.me/393462122933" className="font-sans text-accent hover:underline text-lg">
                     +39 346 212 2933
                   </a>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-4">
-                <div className="w-6 h-6 rounded-full bg-[#4169e1] flex items-center justify-center flex-shrink-0 mt-1">
-                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-display text-xl text-white mb-2">Zona di Copertura</h3>
-                  <p className="font-sans text-gray-300 text-lg">Italia Nord · Ticino · Canton Vallese</p>
                 </div>
               </div>
             </div>
