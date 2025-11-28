@@ -331,6 +331,28 @@ export default function Contatti() {
                   >
                     {isLoading ? 'Invio in corso...' : 'Invia richiesta'}
                   </button>
+
+                  <p className="text-xs text-gray-400 text-center mt-4">
+                    Questo sito è protetto da reCAPTCHA e si applicano la{' '}
+                    <a 
+                      href="https://policies.google.com/privacy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      Privacy Policy
+                    </a>
+                    {' '}e i{' '}
+                    <a 
+                      href="https://policies.google.com/terms" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-accent hover:underline"
+                    >
+                      Termini di Servizio
+                    </a>
+                    {' '}di Google.
+                  </p>
                 </form>
               </div>
             </div>
