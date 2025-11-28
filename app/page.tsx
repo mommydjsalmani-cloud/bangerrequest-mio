@@ -26,13 +26,13 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-6 justify-center">
             <a
               href="#contatti"
-              className="font-sans font-bold w-full sm:w-auto px-10 md:px-12 py-4 bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wider text-sm"
+              className="font-sans font-bold w-full sm:w-auto px-10 md:px-12 py-4 bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wider text-sm text-center inline-block"
             >
               Verifica disponibilità
             </a>
             <a
               href="#processo"
-              className="font-sans font-semibold w-full sm:w-auto px-10 py-4 border-2 border-white/20 text-white rounded-full hover:border-accent hover:text-accent transition-all duration-300"
+              className="font-sans font-semibold w-full sm:w-auto px-10 py-4 border-2 border-white/20 text-white rounded-full hover:border-accent hover:text-accent transition-all duration-300 text-center inline-block"
             >
               Guarda il video di presentazione
             </a>
