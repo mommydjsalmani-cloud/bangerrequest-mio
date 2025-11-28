@@ -278,3 +278,10 @@ div[id] {
   }
 }
 
+/* Nascondi badge reCAPTCHA */
+.grecaptcha-badge {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
