@@ -23,16 +23,16 @@ export default function Home() {
           <p className="font-sans text-sm sm:text-base md:text-lg text-gray-400 mb-12 max-w-2xl mx-auto px-2">
             Dal 2003 — musica e regia per eventi in Svizzera, Toscana, Lombardia, Emilia Romagna e Veneto
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
             <a
               href="#contatti"
-              className="font-sans font-bold w-full sm:w-auto px-10 md:px-12 py-4 bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wider text-sm text-center inline-block"
+              className="font-sans font-bold w-full sm:w-auto px-10 md:px-12 py-4 bg-gradient-to-r from-accent to-blue-600 hover:from-blue-600 hover:to-accent text-white rounded-full transition-all duration-300 transform hover:scale-105 shadow-xl hover:shadow-2xl uppercase tracking-wider text-sm text-center"
             >
               Verifica disponibilità
             </a>
             <a
               href="#processo"
-              className="font-sans font-semibold w-full sm:w-auto px-10 py-4 border-2 border-white/20 text-white rounded-full hover:border-accent hover:text-accent transition-all duration-300 text-center inline-block"
+              className="font-sans font-semibold w-full sm:w-auto px-10 py-4 border-2 border-white/20 text-white rounded-full hover:border-accent hover:text-accent transition-all duration-300 text-center"
             >
               Guarda il video di presentazione
             </a>
