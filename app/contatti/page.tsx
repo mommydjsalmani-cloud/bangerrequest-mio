@@ -332,7 +332,7 @@ export default function Contatti() {
                     {isLoading ? 'Invio in corso...' : 'Invia richiesta'}
                   </button>
 
-                  <p className="text-xs text-gray-400 text-center mt-4">
+                  <p className="text-xs text-gray-300 text-center mt-4">
                     Questo sito è protetto da reCAPTCHA e si applicano la{' '}
                     <a 
                       href="https://policies.google.com/privacy" 
