@@ -331,29 +331,29 @@ export default function Contatti() {
                   >
                     {isLoading ? 'Invio in corso...' : 'Invia richiesta'}
                   </button>
-
-                  <p className="text-sm text-white text-center mt-4">
-                    Questo sito è protetto da reCAPTCHA e si applicano la{' '}
-                    <a 
-                      href="https://policies.google.com/privacy" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-accent hover:underline font-semibold"
-                    >
-                      Privacy Policy
-                    </a>
-                    {' '}e i{' '}
-                    <a 
-                      href="https://policies.google.com/terms" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-accent hover:underline font-semibold"
-                    >
-                      Termini di Servizio
-                    </a>
-                    {' '}di Google.
-                  </p>
                 </form>
+
+                <p className="text-sm text-white text-center mt-6 px-4">
+                  Questo sito è protetto da reCAPTCHA e si applicano la{' '}
+                  <a 
+                    href="https://policies.google.com/privacy" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline font-semibold"
+                  >
+                    Privacy Policy
+                  </a>
+                  {' '}e i{' '}
+                  <a 
+                    href="https://policies.google.com/terms" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-accent hover:underline font-semibold"
+                  >
+                    Termini di Servizio
+                  </a>
+                  {' '}di Google.
+                </p>
               </div>
             </div>
           </div>
