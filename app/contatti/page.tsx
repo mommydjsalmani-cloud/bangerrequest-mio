@@ -333,7 +333,7 @@ export default function Contatti() {
                   </button>
                 </form>
 
-                <p className="text-sm text-white text-center mt-6 px-4">
+                <p className="text-sm text-center mt-6 px-4" style={{ color: '#ffffff' }}>
                   Questo sito è protetto da reCAPTCHA e si applicano la{' '}
                   <a 
                     href="https://policies.google.com/privacy" 
