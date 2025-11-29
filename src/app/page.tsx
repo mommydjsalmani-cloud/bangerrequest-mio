@@ -107,6 +107,22 @@ export default function Home() {
 
           <div className="space-y-4">
             <a
+              href="https://mommydj.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg flex items-center justify-center gap-3"
+            >
+              <Image 
+                src={publicPath("/Simbolo_Bianco.png")}
+                alt="MommyDJ Logo" 
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
+              />
+              <span>Visita MommyDJ.com</span>
+            </a>
+
+            <a
               href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w"
               target="_blank"
               rel="noopener noreferrer"
