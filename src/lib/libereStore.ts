@@ -127,7 +127,20 @@ export function generateQRCodeUrl(url: string): string {
 // Generazione link pubblico
 export function generatePublicUrl(token: string, baseUrl?: string): string {
   const base = baseUrl || (typeof window !== 'undefined' ? window.location.origin : '');
-  return `${base}/richieste?s=${token}`;
+  
+  // In produzione (Vercel): usa il basePath /richiedi
+  // In sviluppo: usa il path senza basePath
+  let path = '/richieste';
+  
+  if (typeof window !== 'undefined') {
+    const isDevelopment = window.location.origin.includes('localhost');
+    if (!isDevelopment) {
+      // Produzione: aggiungi basePath
+      path = '/richiedi/richieste';
+    }
+  }
+  
+  return `${base}${path}?s=${token}`;
 }
 
 // Status mapping per UI
