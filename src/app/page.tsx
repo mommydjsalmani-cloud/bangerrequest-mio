@@ -40,7 +40,9 @@ export default function Home() {
 
   const generatePublicUrl = (token: string) => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/richieste?s=${token}`;
+    // Aggiungi basePath per produzione (Vercel)
+    const basePath = '/richiedi';
+    return `${baseUrl}${basePath}/richieste?s=${token}`;
   };
 
   const generateQRCodeUrl = (url: string) => {
