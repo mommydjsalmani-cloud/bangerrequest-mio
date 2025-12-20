@@ -39,10 +39,17 @@ export default function Home() {
   }, []);
 
   const generatePublicUrl = (token: string) => {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    // Next.js basePath ('/richiedi') viene aggiunto automaticamente nel browser
-    // Qui generiamo solo il path relativo
-    return `${baseUrl}/richiedi/richieste?s=${token}`;
+    // In produzione (Vercel): usa il dominio corretto con basePath
+    // In sviluppo: usa localhost senza basePath
+    if (typeof window === 'undefined') return '';
+    
+    const origin = window.location.origin;
+    const isDevelopment = origin.includes('localhost');
+    
+    // Produzione: https://domain.com/richiedi/richieste?s=token
+    // Sviluppo: http://localhost:3000/richieste?s=token
+    const path = isDevelopment ? '/richieste' : '/richiedi/richieste';
+    return `${origin}${path}?s=${token}`;
   };
 
   const generateQRCodeUrl = (url: string) => {
