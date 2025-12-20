@@ -202,6 +202,12 @@ export default function Home() {
                 Scansiona per accedere alle richieste
               </p>
               <a 
+                href={generatePublicUrl(qrSession.token)}
+                className="block w-full px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors font-medium text-center"
+              >
+                🎵 Visita la pagina
+              </a>
+              <a 
                 href={generateQRCodeUrl(generatePublicUrl(qrSession.token))}
                 download={`qr-${qrSession.name}.png`}
                 className="block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-colors font-medium text-center"
