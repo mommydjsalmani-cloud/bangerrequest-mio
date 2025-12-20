@@ -40,9 +40,9 @@ export default function Home() {
 
   const generatePublicUrl = (token: string) => {
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    // Aggiungi basePath per produzione (Vercel)
-    const basePath = '/richiedi';
-    return `${baseUrl}${basePath}/richieste?s=${token}`;
+    // Next.js basePath ('/richiedi') viene aggiunto automaticamente nel browser
+    // Qui generiamo solo il path relativo
+    return `${baseUrl}/richiedi/richieste?s=${token}`;
   };
 
   const generateQRCodeUrl = (url: string) => {
