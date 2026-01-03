@@ -898,21 +898,6 @@ export default function LibereAdminPanel() {
                 🏠 Home
               </Link>
               
-              {selectedSessionId && (
-                <button
-                  onClick={toggleHomepageVisibility}
-                  disabled={loading}
-                  className={`px-4 py-2 rounded-lg transition-colors backdrop-blur-sm border font-medium ${
-                    homepageVisible
-                      ? 'bg-green-600 hover:bg-green-700 text-white border-green-500'
-                      : 'bg-white/20 hover:bg-white/30 text-white border-white/30'
-                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  title={homepageVisible ? 'Rimuovi dalla homepage' : 'Aggiungi alla homepage'}
-                >
-                  {homepageVisible ? '🏠✓' : '🏠+'}
-                </button>
-              )}
-              
               <button
                 onClick={() => setAuthed(false)}
                 className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
@@ -1143,6 +1128,21 @@ export default function LibereAdminPanel() {
                 >
                   🔄 Rigenera Token
                 </button>
+                
+                {selectedSessionId && (
+                  <button
+                    onClick={toggleHomepageVisibility}
+                    disabled={loading}
+                    className={`py-3 px-4 rounded-lg font-medium shadow-lg transition-colors ${
+                      homepageVisible
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-pink-600 hover:bg-pink-700 text-white'
+                    } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={homepageVisible ? 'Rimuovi dalla homepage' : 'Aggiungi alla homepage'}
+                  >
+                    {homepageVisible ? '🏠 Su Home ✓' : '🏠 Aggiungi a Home'}
+                  </button>
+                )}
               </div>
               
               {/* Rate Limiting Controls */}
