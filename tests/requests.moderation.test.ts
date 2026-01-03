@@ -3,8 +3,9 @@ import { POST as createRequest, PATCH as patchRequest } from '@/app/api/requests
 import { buildRequest, parseJSON } from './testRoutes';
 import { getSupabase } from '@/lib/supabase';
 
-process.env.DJ_PANEL_SECRET = '77';
-process.env.DJ_PANEL_USER = 'mommy';
+// Usa variabili d'ambiente se disponibili, altrimenti test fixtures
+const TEST_SECRET = process.env.DJ_PANEL_SECRET || 'test-secret-fixture-do-not-use-in-prod';
+const TEST_USER = process.env.DJ_PANEL_USER || 'test-user-fixture';
 
 let testSessionToken: string;
 
@@ -44,7 +45,7 @@ describe('Requests moderation (merge/mute)', () => {
     
     const cj = await parseJSON(create as Response);
     const id = cj.item.id;
-    const mute = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id, action: 'mute' }, { 'x-dj-secret': '77', 'x-dj-user': 'mommy' }) as unknown as Request);
+    const mute = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id, action: 'mute' }, { 'x-dj-secret': TEST_SECRET, 'x-dj-user': TEST_USER }) as unknown as Request);
     expect(mute.status).toBe(200);
     const mj = await parseJSON(mute as Response);
     expect(mj.item.status).toBe('muted');
@@ -67,7 +68,7 @@ describe('Requests moderation (merge/mute)', () => {
     const j1 = await parseJSON(r1 as Response);
     const id1 = j1.item.id;
     // merge self (increment duplicates)
-    const mergeSelf = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id1, action: 'merge' }, { 'x-dj-secret': '77', 'x-dj-user': 'mommy' }) as unknown as Request);
+    const mergeSelf = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id1, action: 'merge' }, { 'x-dj-secret': TEST_SECRET, 'x-dj-user': TEST_USER }) as unknown as Request);
     expect(mergeSelf.status).toBe(200);
     const msj = await parseJSON(mergeSelf as Response);
     expect(msj.item.duplicates).toBe(1);
@@ -84,7 +85,7 @@ describe('Requests moderation (merge/mute)', () => {
     const id2 = j2.item.id;
 
     // merge id2 into id1
-    const mergeInto = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id2, action: 'merge', mergeWithId: id1 }, { 'x-dj-secret': '77', 'x-dj-user': 'mommy' }) as unknown as Request);
+    const mergeInto = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id: id2, action: 'merge', mergeWithId: id1 }, { 'x-dj-secret': TEST_SECRET, 'x-dj-user': TEST_USER }) as unknown as Request);
     expect(mergeInto.status).toBe(200);
     const mi = await parseJSON(mergeInto as Response);
     expect(mi.target.duplicates).toBe(2);

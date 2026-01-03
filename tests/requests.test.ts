@@ -3,8 +3,9 @@ import { POST as createRequest, PATCH as patchRequest } from '@/app/api/requests
 import { buildRequest, parseJSON } from './testRoutes';
 import { getSupabase } from '@/lib/supabase';
 
-process.env.DJ_PANEL_SECRET = '77';
-process.env.DJ_PANEL_USER = 'mommy';
+// Usa variabili d'ambiente se disponibili, altrimenti test fixtures
+const TEST_SECRET = process.env.DJ_PANEL_SECRET || 'test-secret-fixture-do-not-use-in-prod';
+const TEST_USER = process.env.DJ_PANEL_USER || 'test-user-fixture';
 
 let testSessionToken: string;
 
@@ -93,7 +94,7 @@ describe('Requests flow', () => {
     const fail = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id, action: 'accept' }) as unknown as Request);
     expect(fail.status).toBe(401);
     // con auth
-    const ok = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id, action: 'accept' }, { 'x-dj-secret': '77', 'x-dj-user': 'mommy' }) as unknown as Request);
+    const ok = await patchRequest(buildRequest('PATCH', 'http://localhost/api/requests', { id, action: 'accept' }, { 'x-dj-secret': TEST_SECRET, 'x-dj-user': TEST_USER }) as unknown as Request);
     expect(ok.status).toBe(200);
     const jj = await parseJSON(ok as Response);
     expect(jj.item.status).toBe('accepted');

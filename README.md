@@ -43,6 +43,9 @@ Il progetto include GitHub Actions per:
 - ✅ ESLint configurato con regole strict
 - ✅ Health checks automatici
 - ✅ Audit dipendenze settimanale
+- ✅ Rate limiting su autenticazione DJ
+- ✅ Info diagnostica nascosta in production
+- 📖 Leggi: `docs/SECURITY_HARDENING.md` per ulteriori dettagli e roadmap
 
 ### 🚀 Deploy su Vercel
 1. Collega il repo su Vercel
@@ -70,6 +73,7 @@ Se non imposti le variabili Supabase l'app funziona lo stesso ma i dati non sono
 ### 📚 Guide
 - Setup Spotify: `docs/SETUP_SPOTIFY.md`
 - Setup Supabase: `docs/SETUP_SUPABASE.md`
+- Setup reCAPTCHA: `docs/SETUP_RECAPTCHA.md` (protegge il login DJ da bot)
 - Deploy Vercel: `docs/DEPLOY_VERCEL.md`
 
 

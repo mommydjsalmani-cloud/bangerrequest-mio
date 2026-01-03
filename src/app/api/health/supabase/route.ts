@@ -4,15 +4,17 @@ import { getSupabase } from '@/lib/supabase';
 export async function GET() {
   const supabase = getSupabase();
   if (!supabase) {
-    const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const isProd = process.env.NODE_ENV === 'production';
     return NextResponse.json({
       ok: false,
       mode: 'in-memory',
       error: 'missing_env',
-      hasUrl,
-      hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasAnon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      hint: 'Aggiungi NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY per abilitare persistenza'
+      ...(isProd ? {} : {
+        hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+        hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        hasAnon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        hint: 'Aggiungi NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY per abilitare persistenza'
+      })
     }, { status: 500 });
   }
   async function tableExists(client: ReturnType<typeof getSupabase>, name: string) {

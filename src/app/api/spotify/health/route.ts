@@ -4,9 +4,18 @@ import { getSpotifyToken } from '@/lib/spotify';
 export async function GET() {
   const clientId = process.env.SPOTIFY_CLIENT_ID?.trim();
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET?.trim();
+  const isProd = process.env.NODE_ENV === 'production';
+  
   if (!clientId || !clientSecret) {
     return NextResponse.json(
-      { ok: false, error: 'missing_credentials', hasClientId: !!clientId, hasClientSecret: !!clientSecret },
+      {
+        ok: false,
+        error: 'missing_credentials',
+        ...(isProd ? {} : {
+          hasClientId: !!clientId,
+          hasClientSecret: !!clientSecret
+        })
+      },
       { status: 500 }
     );
   }

@@ -1,14 +1,32 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 import { randomBytes } from 'crypto';
+import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/auth';
 
 function requireDJSecret(req: Request) {
   const secret = process.env.DJ_PANEL_SECRET?.trim();
   const user = process.env.DJ_PANEL_USER?.trim();
   if (!secret || !user) return 'misconfigured';
+  
+  // Rate limiting: usa IP come identificatore
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const rateLimitKey = `dj-login:${ip}`;
+  
+  const rateLimit = checkLoginRateLimit(rateLimitKey);
+  if (!rateLimit.allowed) {
+    return 'rate_limited';
+  }
+  
   const hSecret = req.headers.get('x-dj-secret')?.trim();
   const hUser = req.headers.get('x-dj-user')?.trim();
-  if (hSecret !== secret || hUser !== user) return 'unauthorized';
+  
+  if (hSecret !== secret || hUser !== user) {
+    // Registra tentativo fallito per rate limiting
+    return 'unauthorized';
+  }
+  
+  // Reset rate limit on successful auth
+  resetLoginRateLimit(rateLimitKey);
   return null;
 }
 
@@ -74,7 +92,10 @@ async function getStats(supabase: NonNullable<ReturnType<typeof getSupabase>>, s
 // GET - Ottieni info sessione corrente + richieste + stats
 export async function GET(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return withVersion({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
+  if (authErr) {
+    const status = authErr === 'misconfigured' ? 500 : (authErr === 'rate_limited' ? 429 : 401);
+    return withVersion({ ok: false, error: authErr }, { status });
+  }
   
   const url = new URL(req.url);
   const action = url.searchParams.get('action');
@@ -180,7 +201,10 @@ export async function GET(req: Request) {
 // POST - Azioni admin (toggle status, reset, new session, regenerate token)
 export async function POST(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return withVersion({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
+  if (authErr) {
+    const status = authErr === 'misconfigured' ? 500 : (authErr === 'rate_limited' ? 429 : 401);
+    return withVersion({ ok: false, error: authErr }, { status });
+  }
   
   const supabase = getSupabase();
   if (!supabase) {
@@ -514,7 +538,10 @@ export async function POST(req: Request) {
 // PATCH - Aggiorna status richieste (accept/reject)
 export async function PATCH(req: Request) {
   const authErr = requireDJSecret(req);
-  if (authErr) return withVersion({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
+  if (authErr) {
+    const status = authErr === 'misconfigured' ? 500 : (authErr === 'rate_limited' ? 429 : 401);
+    return withVersion({ ok: false, error: authErr }, { status });
+  }
   
   const supabase = getSupabase();
   if (!supabase) {

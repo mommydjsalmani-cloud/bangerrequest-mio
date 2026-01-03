@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
+import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/auth';
 
-// Verifica autenticazione DJ
+// Verifica autenticazione DJ con rate limiting
 function requireDJSecret(req: NextRequest) {
   const secret = process.env.DJ_PANEL_SECRET?.trim();
   const user = process.env.DJ_PANEL_USER?.trim();
   if (!secret || !user) return 'misconfigured';
+  
+  // Rate limiting
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const rateLimitKey = `dj-login:${ip}`;
+  
+  const rateLimit = checkLoginRateLimit(rateLimitKey);
+  if (!rateLimit.allowed) {
+    return 'rate_limited';
+  }
+  
   const hSecret = req.headers.get('x-dj-secret')?.trim();
   const hUser = req.headers.get('x-dj-user')?.trim();
   if (hSecret !== secret || hUser !== user) return 'unauthorized';
+  
+  // Reset on success
+  resetLoginRateLimit(rateLimitKey);
   return null;
 }
 
@@ -51,7 +65,10 @@ export async function GET() {
 // POST: Aggiorna la visibilità homepage di una sessione (riservato al pannello DJ)
 export async function POST(req: NextRequest) {
   const authErr = requireDJSecret(req);
-  if (authErr) return NextResponse.json({ ok: false, error: authErr }, { status: authErr === 'misconfigured' ? 500 : 401 });
+  if (authErr) {
+    const status = authErr === 'misconfigured' ? 500 : (authErr === 'rate_limited' ? 429 : 401);
+    return NextResponse.json({ ok: false, error: authErr }, { status });
+  }
 
   const supabase = getSupabase();
   if (!supabase) {
