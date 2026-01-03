@@ -5,6 +5,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // Non caricare file .env durante i test
+    env: {},
+    // Cancella le env vars di Supabase per i test
+    setupFiles: [],
   },
   plugins: [tsconfigPaths()],
   define: {
@@ -12,5 +16,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@tailwindcss/postcss']
-  }
+  },
+  // Disabilita il caricamento automatico di .env files
+  envPrefix: ['VITE_'],
 });
