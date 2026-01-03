@@ -29,25 +29,68 @@ const nextConfig: NextConfig = {
 
   // Header di sicurezza
   async headers() {
+    // Content Security Policy
+    const cspHeader = [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https://i.scdn.co https://mosaic.scdn.co https://seeded-session-images.scdn.co https://api.qrserver.com",
+      "font-src 'self'",
+      "connect-src 'self' https://*.supabase.co https://api.spotify.com https://www.google.com",
+      "frame-src 'self' https://www.google.com https://recaptcha.google.com",
+      "form-action 'self'",
+      "base-uri 'self'",
+      "frame-ancestors 'none'",
+      "upgrade-insecure-requests",
+    ].join('; ');
+
     return [
       {
         source: '/(.*)',
         headers: [
+          // Previene clickjacking
           {
             key: 'X-Frame-Options',
             value: 'DENY'
           },
+          // Previene MIME type sniffing
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff'
           },
+          // Controlla cosa viene inviato nel Referer
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
           },
+          // Disabilita funzionalità del browser non necessarie
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()'
+            value: 'camera=(), microphone=(), geolocation=(), payment=()'
+          },
+          // Forza HTTPS (HSTS)
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload'
+          },
+          // Content Security Policy
+          {
+            key: 'Content-Security-Policy',
+            value: cspHeader
+          },
+          // Previene XSS reflection attacks
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block'
+          },
+          // Cross-Origin policies
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin'
+          },
+          {
+            key: 'Cross-Origin-Resource-Policy',
+            value: 'same-origin'
           }
         ]
       },
