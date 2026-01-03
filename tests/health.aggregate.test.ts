@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { parseJSON } from './testRoutes';
 
-// Salva e rimuovi le env vars PRIMA di qualsiasi import
-const originalEnv = { ...process.env };
-
 beforeAll(() => {
   // Rimuovi le credenziali Supabase PRIMA che i moduli vengano caricati
   delete process.env.NEXT_PUBLIC_SUPABASE_URL;
