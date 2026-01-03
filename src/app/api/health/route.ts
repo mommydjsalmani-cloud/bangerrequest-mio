@@ -21,18 +21,37 @@ async function healthCheckHandler(): Promise<NextResponse> {
   checks.database = await measureAsync(
     'health_check.database',
     async () => {
-      const supabase = getSupabase();
-      if (!supabase) {
-        const result = {
+      // Prima controlla se le env vars sono configurate
+      const hasUrl = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const hasServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const hasAnon = !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      const hasKey = hasServiceRole || hasAnon;
+
+      // Se mancano le credenziali, ritorna subito senza fare fetch
+      if (!hasUrl || !hasKey) {
+        healthTracker.setHealthy('database', false);
+        return {
           ok: false,
           mode: 'in-memory',
           error: 'missing_credentials',
-          hasUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-          hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-          hasAnon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          hasUrl,
+          hasServiceRole,
+          hasAnon
         };
+      }
+
+      const supabase = getSupabase();
+      if (!supabase) {
+        // getSupabase può ritornare null in test mode anche con env vars presenti
         healthTracker.setHealthy('database', false);
-        return result;
+        return {
+          ok: false,
+          mode: 'in-memory',
+          error: 'missing_credentials',
+          hasUrl,
+          hasServiceRole,
+          hasAnon
+        };
       }
 
       try {
@@ -52,10 +71,14 @@ async function healthCheckHandler(): Promise<NextResponse> {
         };
       } catch (err) {
         healthTracker.setHealthy('database', false);
+        const errorMessage = err instanceof Error ? err.message : 'Connection failed';
+        
+        // Errori di connessione/rete
         return {
           ok: false,
           mode: 'supabase',
-          error: err instanceof Error ? err.message : 'Connection failed'
+          error: 'fetch_failed',
+          details: errorMessage
         };
       }
     }
@@ -68,11 +91,15 @@ async function healthCheckHandler(): Promise<NextResponse> {
       const hasCredentials = !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
       if (!hasCredentials) {
         healthTracker.setHealthy('spotify', false);
+        // In production, non esporre quali credenziali mancano
+        const isProd = process.env.NODE_ENV === 'production';
         return {
           ok: false,
           error: 'missing_credentials',
-          hasClientId: !!process.env.SPOTIFY_CLIENT_ID,
-          hasClientSecret: !!process.env.SPOTIFY_CLIENT_SECRET
+          ...(isProd ? {} : {
+            hasClientId: !!process.env.SPOTIFY_CLIENT_ID,
+            hasClientSecret: !!process.env.SPOTIFY_CLIENT_SECRET
+          })
         };
       }
 

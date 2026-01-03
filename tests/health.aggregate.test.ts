@@ -1,14 +1,34 @@
-import { describe, it, expect } from 'vitest';
-import { GET as healthGET } from '@/app/api/health/route';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { parseJSON } from './testRoutes';
 
+// Mock di getSupabase a livello di modulo - DEVE essere prima di qualsiasi import
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: vi.fn(() => null)
+}));
+
+// Mock anche measureAsync per evitare side effects
+vi.mock('@/lib/monitoring', () => ({
+  healthTracker: {
+    setHealthy: vi.fn()
+  },
+  measureAsync: vi.fn(async (_name: string, fn: () => Promise<unknown>) => fn())
+}));
+
 describe('Aggregated health endpoint', () => {
-  it('restituisce blocco supabase e auth', async () => {
-    // Configuriamo solo auth per vedere differenza
+  beforeEach(() => {
+    // Configura le variabili di ambiente SENZA resetModules (che romperebbe i mock)
+    process.env.NODE_ENV = 'test';
     process.env.DJ_PANEL_USER = 'testuser';
     process.env.DJ_PANEL_SECRET = 'testsecret';
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL; // assicura missing supabase
+    // Rimuovi le credenziali Supabase per forzare missing_credentials
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  });
+
+  it('restituisce blocco supabase e auth', async () => {
+    // Importa il route con il mock di getSupabase già in place
+    const { GET: healthGET } = await import('@/app/api/health/route');
 
     const res = await healthGET() as Response;
     
