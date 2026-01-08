@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { canMakeRequest, sanitizeInput, LibereSession } from '@/lib/libereStore';
+import { canMakeRequest, sanitizeInput, LibereSession, PendingRequestWithVote, getVoterId, formatTimeAgo } from '@/lib/libereStore';
 import { apiPath, publicPath } from '@/lib/apiPath';
 import Image from 'next/image';
 
@@ -19,6 +19,9 @@ type SpotifyTrack = {
   isrc?: string | null;
 };
 
+// Step del flusso utente
+type UserStep = 'onboarding' | 'pending-list' | 'request-form' | 'submitted';
+
 function RichiesteLibereContent() {
   const searchParams = useSearchParams();
   const token = searchParams?.get('s');
@@ -33,9 +36,18 @@ function RichiesteLibereContent() {
   const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
   
+  // Step corrente del flusso
+  const [currentStep, setCurrentStep] = useState<UserStep>('onboarding');
+  
   // Onboarding states
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingName, setOnboardingName] = useState('');
+  
+  // Pending list state
+  const [pendingRequests, setPendingRequests] = useState<PendingRequestWithVote[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [voterId, setVoterId] = useState<string>('');
+  const [votingRequestId, setVotingRequestId] = useState<string | null>(null);
   
   // Form state semplificato
   const [requesterName, setRequesterName] = useState('');
@@ -120,11 +132,18 @@ function RichiesteLibereContent() {
         
         setSession(data.session);
         
+        // Inizializza voter_id
+        const vid = getVoterId();
+        setVoterId(vid);
+        
         // Mostra onboarding solo dopo aver caricato la sessione, se il nome non è salvato
         if (!savedName) {
           setShowOnboarding(true);
+          setCurrentStep('onboarding');
         } else {
           setRequesterName(savedName);
+          // Se ha già il nome, va direttamente alla lista pending
+          setCurrentStep('pending-list');
         }
       } catch {
         setError('Errore connessione');
@@ -182,6 +201,109 @@ function RichiesteLibereContent() {
     return () => clearInterval(interval);
   }, [token, session]);
 
+  // Funzione per caricare richieste pending
+  const loadPendingRequests = useCallback(async () => {
+    if (!session?.id || !voterId) return;
+    
+    setPendingLoading(true);
+    try {
+      const response = await fetch(
+        apiPath(`/api/libere/pending?sessionId=${session.id}&voterId=${voterId}`)
+      );
+      const data = await response.json();
+      
+      if (data.ok && data.requests) {
+        setPendingRequests(data.requests);
+      }
+    } catch (err) {
+      console.error('Errore caricamento pending:', err);
+    } finally {
+      setPendingLoading(false);
+    }
+  }, [session?.id, voterId]);
+
+  // Carica pending requests quando si è nella lista e polling ogni 4s
+  useEffect(() => {
+    if (currentStep !== 'pending-list' || !session?.id || !voterId) return;
+    
+    loadPendingRequests();
+    const interval = setInterval(loadPendingRequests, 4000);
+    return () => clearInterval(interval);
+  }, [currentStep, session?.id, voterId, loadPendingRequests]);
+
+  // Funzione per votare
+  const handleVote = async (requestId: string, action: 'up' | 'down') => {
+    if (!session?.id || !voterId || votingRequestId) return;
+    
+    // Trova il voto attuale
+    const currentRequest = pendingRequests.find(r => r.id === requestId);
+    const currentVote = currentRequest?.myVote;
+    
+    // Calcola l'azione: toggle se stesso voto, altrimenti nuovo voto
+    const finalAction = currentVote === action ? 'none' : action;
+    
+    setVotingRequestId(requestId);
+    
+    // Ottimistic update
+    setPendingRequests(prev => prev.map(r => {
+      if (r.id !== requestId) return r;
+      
+      let newUp = r.up_votes || 0;
+      let newDown = r.down_votes || 0;
+      let newMyVote: 'up' | 'down' | null = null;
+      
+      if (finalAction === 'none') {
+        // Rimuove voto
+        if (currentVote === 'up') newUp = Math.max(0, newUp - 1);
+        if (currentVote === 'down') newDown = Math.max(0, newDown - 1);
+      } else if (finalAction === 'up') {
+        if (currentVote === 'down') newDown = Math.max(0, newDown - 1);
+        if (currentVote !== 'up') newUp += 1;
+        newMyVote = 'up';
+      } else if (finalAction === 'down') {
+        if (currentVote === 'up') newUp = Math.max(0, newUp - 1);
+        if (currentVote !== 'down') newDown += 1;
+        newMyVote = 'down';
+      }
+      
+      return { ...r, up_votes: newUp, down_votes: newDown, myVote: newMyVote };
+    }));
+    
+    try {
+      const response = await fetch(apiPath('/api/libere/vote'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: session.id,
+          requestId,
+          action: finalAction,
+          voterId
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        // Aggiorna con i dati reali dal server
+        setPendingRequests(prev => prev.map(r => {
+          if (r.id !== requestId) return r;
+          return {
+            ...r,
+            up_votes: data.upVotes,
+            down_votes: data.downVotes,
+            myVote: data.myVote
+          };
+        }));
+      }
+    } catch (err) {
+      console.error('Errore voto:', err);
+      // Ricarica per sincronizzare
+      loadPendingRequests();
+    } finally {
+      setVotingRequestId(null);
+    }
+  };
+
   // Controlla stato richiesta con polling
   useEffect(() => {
     if (!lastRequestId || !token) return;
@@ -236,7 +358,7 @@ function RichiesteLibereContent() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Completa onboarding e salva nome
+  // Completa onboarding e salva nome -> va alla lista pending
   const completeOnboarding = () => {
     if (!onboardingName.trim()) return;
     if (session?.require_event_code && !eventCode.trim()) return;
@@ -255,12 +377,15 @@ function RichiesteLibereContent() {
     sessionStorage.setItem(`libere_user_name_${token}`, onboardingName);
     setShowOnboarding(false);
     
+    // Vai alla lista pending invece che direttamente al form
+    setCurrentStep('pending-list');
+    
     const welcomeMsg = session?.require_event_code && eventCode 
-      ? `🎉 Benvenuto ${onboardingName}! Evento: ${eventCode}. Ora puoi richiedere la tua musica preferita.`
-      : `🎉 Benvenuto ${onboardingName}! Ora puoi richiedere la tua musica preferita.`;
+      ? `🎉 Benvenuto ${onboardingName}! Evento: ${eventCode}.`
+      : `🎉 Benvenuto ${onboardingName}!`;
     
     setMessage(welcomeMsg);
-    setTimeout(() => setMessage(null), 4000);
+    setTimeout(() => setMessage(null), 3000);
   };
 
   // Gestisce selezione con collapse
@@ -473,6 +598,146 @@ function RichiesteLibereContent() {
       </main>
     );
   }
+
+  // Step: Lista richieste pending con voti
+  if (currentStep === 'pending-list') {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-6">
+        <div className="w-full max-w-2xl space-y-4 mt-4 mb-8">
+          
+          {/* Header */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl py-4 px-4 border border-white/20 shadow-xl text-center">
+            <h1 className="text-xl font-bold mb-1">
+              🎵 Ciao {requesterName}!
+            </h1>
+            <p className="text-gray-300 text-sm">
+              {session?.name || 'Richieste in corso'}
+            </p>
+          </div>
+
+          {message && (
+            <div className="bg-green-500/20 border border-green-500/50 text-green-200 py-3 px-4 rounded-lg text-center backdrop-blur-lg">
+              {message}
+            </div>
+          )}
+
+          {/* CTA Nuova Richiesta */}
+          <button
+            onClick={() => setCurrentStep('request-form')}
+            className="w-full bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-xl flex items-center justify-center gap-3"
+          >
+            <span className="text-2xl">🎶</span>
+            <span className="text-lg">Fai una richiesta</span>
+          </button>
+
+          {/* Lista Pending */}
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl py-4 px-4 border border-white/20 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <span>📋</span>
+                <span>Richieste in corso</span>
+                {pendingLoading && (
+                  <div className="w-4 h-4 border-2 border-white/50 border-t-transparent rounded-full animate-spin"></div>
+                )}
+              </h2>
+              <span className="text-sm text-gray-400">{pendingRequests.length} brani</span>
+            </div>
+
+            {pendingRequests.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-4xl mb-3">🎵</div>
+                <p className="text-gray-300">Nessuna richiesta al momento</p>
+                <p className="text-gray-400 text-sm mt-1">Sii il primo a richiedere un brano!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pendingRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10 transition-all"
+                  >
+                    <div className="flex gap-3">
+                      {/* Cover */}
+                      {request.cover_url && (
+                        <Image
+                          src={request.cover_url}
+                          alt={request.title}
+                          width={56}
+                          height={56}
+                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+                      
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-white truncate">{request.title}</div>
+                        <div className="text-gray-300 text-sm truncate">{request.artists}</div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-400">
+                          <span>{request.requester_name || 'Anonimo'}</span>
+                          <span>•</span>
+                          <span>{formatTimeAgo(request.created_at)}</span>
+                        </div>
+                      </div>
+
+                      {/* Voti */}
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        {/* Pulsanti voto */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleVote(request.id, 'up')}
+                            disabled={votingRequestId === request.id}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
+                              request.myVote === 'up'
+                                ? 'bg-green-500/30 text-green-300 border border-green-400/50'
+                                : 'bg-white/10 text-gray-300 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                            } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
+                          >
+                            <span>👍</span>
+                            <span className="font-semibold">{request.up_votes || 0}</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => handleVote(request.id, 'down')}
+                            disabled={votingRequestId === request.id}
+                            className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
+                              request.myVote === 'down'
+                                ? 'bg-red-500/30 text-red-300 border border-red-400/50'
+                                : 'bg-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                            } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
+                          >
+                            <span>👎</span>
+                            <span className="font-semibold">{request.down_votes || 0}</span>
+                          </button>
+                        </div>
+
+                        {/* Status label */}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          request.status === 'new' 
+                            ? 'bg-blue-500/30 text-blue-200' 
+                            : request.status === 'accepted'
+                            ? 'bg-green-500/30 text-green-200'
+                            : 'bg-red-500/30 text-red-200'
+                        }`}>
+                          {request.status === 'new' && 'In attesa'}
+                          {request.status === 'accepted' && '✓ Confermata'}
+                          {request.status === 'rejected' && 'Rifiutata'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Info aggiornamento */}
+          <div className="text-center text-xs text-gray-400">
+            <span>🔄 Aggiornamento automatico ogni 4 secondi</span>
+          </div>
+        </div>
+      </main>
+    );
+  }
   
   return (
     <main className="flex min-h-dvh flex-col items-center justify-start bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4 sm:p-6">
@@ -487,6 +752,15 @@ function RichiesteLibereContent() {
             {session?.name ? `Stai richiedendo musica per: ${session.name}` : 'Richiedi la tua musica preferita al DJ'}
           </p>
         </div>
+
+        {/* Torna alla lista */}
+        <button
+          onClick={() => setCurrentStep('pending-list')}
+          className="w-full bg-white/10 hover:bg-white/20 text-white py-2 px-4 rounded-lg transition-all border border-white/20 flex items-center justify-center gap-2 text-sm"
+        >
+          <span>←</span>
+          <span>Torna alla lista richieste</span>
+        </button>
 
         {message && (
           <div className="bg-green-500/20 border border-green-500/50 text-green-200 py-3 px-4 rounded-lg text-center backdrop-blur-lg">
@@ -829,6 +1103,8 @@ function RichiesteLibereContent() {
                   sessionStorage.removeItem('libere_last_request_id');
                   sessionStorage.removeItem('libere_last_request_status');
                   sessionStorage.removeItem('libere_last_track');
+                  // Torna alla lista pending
+                  setCurrentStep('pending-list');
                 }}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
               >

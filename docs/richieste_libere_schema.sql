@@ -123,3 +123,9 @@ create trigger update_sessioni_libere_updated_at
 insert into public.sessioni_libere (token, name, status)
 values ('demo-token-libere-2024', 'Sessione Demo Richieste Libere', 'active')
 on conflict (token) do nothing;
+
+-- ============================================================
+-- SISTEMA VOTI (aggiunto successivamente)
+-- Per abilitare i voti 👍/👎 sulle richieste, eseguire:
+-- scripts/migrate_add_votes.sql
+-- ============================================================

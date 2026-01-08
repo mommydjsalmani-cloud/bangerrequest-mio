@@ -1452,10 +1452,21 @@ export default function LibereAdminPanel() {
                           )}
                         </div>
                         
-                        <div className="text-right">
+                        <div className="text-right flex flex-col items-end gap-1">
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[request.status]}`}>
                             {STATUS_LABELS[request.status]}
                           </span>
+                          
+                          {/* Contatori voti */}
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="flex items-center gap-1 text-sm bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                              👍 {request.up_votes || 0}
+                            </span>
+                            <span className="flex items-center gap-1 text-sm bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              👎 {request.down_votes || 0}
+                            </span>
+                          </div>
+                          
                           {request.duration_ms && (
                             <div className="text-gray-600 text-sm mt-1 font-medium">
                               ⏱️ {formatDuration(request.duration_ms)}

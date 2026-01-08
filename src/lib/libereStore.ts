@@ -46,6 +46,17 @@ export type LibereRequest = {
   rejected_at?: string;
   cancelled_at?: string;
   archived_at?: string;
+  // Voti
+  up_votes?: number;
+  down_votes?: number;
+};
+
+// Tipo per voto utente
+export type UserVote = 'up' | 'down' | null;
+
+// Tipo per richiesta pending con voto utente
+export type PendingRequestWithVote = LibereRequest & {
+  myVote?: UserVote;
 };
 
 export type LibereStats = {
@@ -145,8 +156,8 @@ export function generatePublicUrl(token: string, baseUrl?: string): string {
 
 // Status mapping per UI
 export const STATUS_LABELS = {
-  'new': 'Nuova',
-  'accepted': 'Accettata',
+  'new': 'In attesa',
+  'accepted': 'Confermata',
   'rejected': 'Rifiutata',
   'cancelled': 'Cancellata',
   'archived': 'Archiviata'
@@ -170,3 +181,36 @@ export const SESSION_STATUS_COLORS = {
   'active': 'bg-green-100 text-green-800',
   'paused': 'bg-yellow-100 text-yellow-800'
 } as const;
+
+// Helper per generare/ottenere voter_id anonimo
+export function getVoterId(): string {
+  if (typeof window === 'undefined') return '';
+  
+  const STORAGE_KEY = 'br_voter_id';
+  let voterId = localStorage.getItem(STORAGE_KEY);
+  
+  if (!voterId) {
+    voterId = crypto.randomUUID();
+    localStorage.setItem(STORAGE_KEY, voterId);
+  }
+  
+  return voterId;
+}
+
+// Helper per formattare tempo relativo
+export function formatTimeAgo(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return 'ora';
+  if (diffMin < 60) return `${diffMin} min fa`;
+  if (diffHour < 24) return `${diffHour}h fa`;
+  if (diffDay < 7) return `${diffDay}g fa`;
+  
+  return formatDateTime(isoString);
+}
