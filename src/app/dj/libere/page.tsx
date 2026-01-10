@@ -37,15 +37,12 @@ export default function LibereAdminPanel() {
   const [sortByPriority, setSortByPriority] = useState(false); // Toggle ordinamento per priorità
   
   /**
-   * Calcola lo score_live di una richiesta.
-   * Formula: (up_votes - down_votes) - (minuti_dalla_creazione * 0.01)
-   * Penalità leggera: dopo 100 minuti perde 1 punto
+   * Calcola lo score di una richiesta.
+   * Formula: up_votes - down_votes
+   * A parità di score, l'ordinamento secondario per created_at ASC dà precedenza alle più vecchie.
    */
-  const calculateScoreLive = (upVotes: number, downVotes: number, createdAt: string): number => {
-    const score = (upVotes || 0) - (downVotes || 0);
-    const ageMinutes = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60);
-    const agePenalty = ageMinutes * 0.01;
-    return score - agePenalty;
+  const calculateScore = (upVotes: number, downVotes: number): number => {
+    return (upVotes || 0) - (downVotes || 0);
   };
   
   // Funzione per filtrare e ordinare le richieste
@@ -57,14 +54,14 @@ export default function LibereAdminPanel() {
              request.event_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
     });
     
-    // Se il toggle priorità è attivo, ordina per score_live DESC, created_at ASC
+    // Se il toggle priorità è attivo, ordina per score DESC, created_at ASC
     if (sortByPriority) {
       result = [...result].sort((a, b) => {
-        const scoreLiveA = calculateScoreLive(a.up_votes || 0, a.down_votes || 0, a.created_at);
-        const scoreLiveB = calculateScoreLive(b.up_votes || 0, b.down_votes || 0, b.created_at);
-        const scoreDiff = scoreLiveB - scoreLiveA;
-        if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
-        // A parità di score_live, ordina per created_at ASC (più vecchie prima)
+        const scoreA = calculateScore(a.up_votes || 0, a.down_votes || 0);
+        const scoreB = calculateScore(b.up_votes || 0, b.down_votes || 0);
+        const scoreDiff = scoreB - scoreA;
+        if (scoreDiff !== 0) return scoreDiff;
+        // A parità di score, ordina per created_at ASC (più vecchie prima)
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       });
     }
@@ -1521,8 +1518,8 @@ export default function LibereAdminPanel() {
                               👎 {request.down_votes || 0}
                             </span>
                             {sortByPriority && (
-                              <span className="flex items-center gap-1 text-sm bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full" title="Score live (voti - penalità tempo)">
-                                ⚡ {calculateScoreLive(request.up_votes || 0, request.down_votes || 0, request.created_at).toFixed(1)}
+                              <span className="flex items-center gap-1 text-sm bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full" title="Score (up - down)">
+                                ⚡ {calculateScore(request.up_votes || 0, request.down_votes || 0)}
                               </span>
                             )}
                           </div>

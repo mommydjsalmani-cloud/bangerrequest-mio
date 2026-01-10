@@ -8,15 +8,12 @@ function withVersion<T>(data: T, init?: { status?: number }) {
 }
 
 /**
- * Calcola lo score_live di una richiesta.
- * Formula: (up_votes - down_votes) - (minuti_dalla_creazione * 0.01)
- * Penalità leggera: dopo 100 minuti perde 1 punto
+ * Calcola lo score di una richiesta.
+ * Formula: up_votes - down_votes
+ * A parità di score, l'ordinamento secondario per created_at ASC dà precedenza alle più vecchie.
  */
-function calculateScoreLive(upVotes: number, downVotes: number, createdAt: string): number {
-  const score = (upVotes || 0) - (downVotes || 0);
-  const ageMinutes = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60);
-  const agePenalty = ageMinutes * 0.01;
-  return score - agePenalty;
+function calculateScore(upVotes: number, downVotes: number): number {
+  return (upVotes || 0) - (downVotes || 0);
 }
 
 /**
@@ -75,29 +72,28 @@ export async function GET(req: Request) {
       }
     }
     
-    // Arricchisci le richieste con myVote e score_live
+    // Arricchisci le richieste con myVote e score
     const enrichedRequests = (requests || []).map(r => {
       const upVotes = r.up_votes || 0;
       const downVotes = r.down_votes || 0;
-      const scoreLive = calculateScoreLive(upVotes, downVotes, r.created_at);
+      const score = calculateScore(upVotes, downVotes);
       
       return {
         ...r,
         up_votes: upVotes,
         down_votes: downVotes,
-        score: upVotes - downVotes,
-        score_live: scoreLive,
+        score: score,
         myVote: userVotes[r.id] || null
       };
     });
     
     // Ordinamento automatico per utenti:
-    // 1. score_live DESC (più alto = più in alto)
+    // 1. score DESC (più alto = più in alto)
     // 2. created_at ASC (a parità, le più vecchie prima)
     enrichedRequests.sort((a, b) => {
-      const scoreDiff = b.score_live - a.score_live;
-      if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
-      // A parità di score_live, ordina per created_at ASC
+      const scoreDiff = b.score - a.score;
+      if (scoreDiff !== 0) return scoreDiff;
+      // A parità di score, ordina per created_at ASC
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
     
