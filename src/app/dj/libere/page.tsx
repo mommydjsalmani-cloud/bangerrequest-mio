@@ -34,13 +34,43 @@ export default function LibereAdminPanel() {
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
+  const [sortByPriority, setSortByPriority] = useState(false); // Toggle ordinamento per priorità
   
-  // Funzione per filtrare le richieste per codice evento
-  const filteredRequests = requests.filter(request => {
-    if (!eventCodeFilter.trim()) return true;
-    return request.event_code_upper?.includes(eventCodeFilter.toUpperCase()) || 
-           request.event_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
-  });
+  /**
+   * Calcola lo score_live di una richiesta.
+   * Formula: (up_votes - down_votes) - (minuti_dalla_creazione * 0.01)
+   * Penalità leggera: dopo 100 minuti perde 1 punto
+   */
+  const calculateScoreLive = (upVotes: number, downVotes: number, createdAt: string): number => {
+    const score = (upVotes || 0) - (downVotes || 0);
+    const ageMinutes = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60);
+    const agePenalty = ageMinutes * 0.01;
+    return score - agePenalty;
+  };
+  
+  // Funzione per filtrare e ordinare le richieste
+  const filteredRequests = (() => {
+    // Prima filtra per codice evento
+    let result = requests.filter(request => {
+      if (!eventCodeFilter.trim()) return true;
+      return request.event_code_upper?.includes(eventCodeFilter.toUpperCase()) || 
+             request.event_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
+    });
+    
+    // Se il toggle priorità è attivo, ordina per score_live DESC, created_at ASC
+    if (sortByPriority) {
+      result = [...result].sort((a, b) => {
+        const scoreLiveA = calculateScoreLive(a.up_votes || 0, a.down_votes || 0, a.created_at);
+        const scoreLiveB = calculateScoreLive(b.up_votes || 0, b.down_votes || 0, b.created_at);
+        const scoreDiff = scoreLiveB - scoreLiveA;
+        if (Math.abs(scoreDiff) > 0.001) return scoreDiff;
+        // A parità di score_live, ordina per created_at ASC (più vecchie prima)
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      });
+    }
+    
+    return result;
+  })();
   
   // Auto-clear messaggi con debounce
   useEffect(() => {
@@ -1398,26 +1428,51 @@ export default function LibereAdminPanel() {
               </h2>
               
               {/* Filtro Codice Evento */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  🎫 Filtra per Codice Evento
-                </label>
-                <input
-                  type="text"
-                  value={eventCodeFilter}
-                  onChange={(e) => setEventCodeFilter(e.target.value)}
-                  placeholder="Inserisci codice evento..."
-                  className="w-full md:w-1/3 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
-                  maxLength={50}
-                />
-                {eventCodeFilter && (
+              <div className="mb-4 flex flex-col md:flex-row gap-4 items-start md:items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🎫 Filtra per Codice Evento
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={eventCodeFilter}
+                      onChange={(e) => setEventCodeFilter(e.target.value)}
+                      placeholder="Inserisci codice evento..."
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                      maxLength={50}
+                    />
+                    {eventCodeFilter && (
+                      <button
+                        onClick={() => setEventCodeFilter('')}
+                        className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                      >
+                        Cancella
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Toggle Ordinamento Priorità */}
+                <div className="flex-shrink-0">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🔥 Ordinamento
+                  </label>
                   <button
-                    onClick={() => setEventCodeFilter('')}
-                    className="ml-2 px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
+                    onClick={() => setSortByPriority(!sortByPriority)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm flex items-center gap-2 ${
+                      sortByPriority
+                        ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    title={sortByPriority 
+                      ? 'Ordinamento per priorità attivo: score alto e richieste recenti in cima' 
+                      : 'Clicca per ordinare per priorità (voti e tempo)'}
                   >
-                    Cancella
+                    <span>{sortByPriority ? '⚡' : '📅'}</span>
+                    <span>{sortByPriority ? 'Priorità ON' : 'Cronologico'}</span>
                   </button>
-                )}
+                </div>
               </div>
               
               {filteredRequests.length === 0 ? (
@@ -1465,6 +1520,11 @@ export default function LibereAdminPanel() {
                             <span className="flex items-center gap-1 text-sm bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
                               👎 {request.down_votes || 0}
                             </span>
+                            {sortByPriority && (
+                              <span className="flex items-center gap-1 text-sm bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full" title="Score live (voti - penalità tempo)">
+                                ⚡ {calculateScoreLive(request.up_votes || 0, request.down_votes || 0, request.created_at).toFixed(1)}
+                              </span>
+                            )}
                           </div>
                           
                           {request.duration_ms && (
