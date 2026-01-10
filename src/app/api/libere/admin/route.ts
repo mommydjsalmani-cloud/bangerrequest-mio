@@ -44,16 +44,29 @@ async function getStats(supabase: NonNullable<ReturnType<typeof getSupabase>>, s
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
-  // Totali richieste (solo quelle visibili al DJ)
-  const { count: totalCount } = await supabase
+  // Totali richieste (retrocompatibile: prova con dj_archived, altrimenti solo archived)
+  let totalCount = 0;
+  const { count: tc, error: tcErr } = await supabase
     .from('richieste_libere')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
     .eq('archived', false)
     .eq('dj_archived', false);
   
-  // Richieste ultima ora (solo quelle visibili al DJ)
-  const { count: lastHourCount } = await supabase
+  if (tcErr && tcErr.message.includes('dj_archived')) {
+    const { count } = await supabase
+      .from('richieste_libere')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('archived', false);
+    totalCount = count || 0;
+  } else {
+    totalCount = tc || 0;
+  }
+  
+  // Richieste ultima ora (retrocompatibile)
+  let lastHourCount = 0;
+  const { count: lhc, error: lhcErr } = await supabase
     .from('richieste_libere')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
@@ -61,13 +74,37 @@ async function getStats(supabase: NonNullable<ReturnType<typeof getSupabase>>, s
     .eq('dj_archived', false)
     .gte('created_at', oneHourAgo.toISOString());
   
-  // Top 3 richieste più frequenti (solo quelle visibili al DJ)
-  const { data: allRequests } = await supabase
+  if (lhcErr && lhcErr.message.includes('dj_archived')) {
+    const { count } = await supabase
+      .from('richieste_libere')
+      .select('*', { count: 'exact', head: true })
+      .eq('session_id', sessionId)
+      .eq('archived', false)
+      .gte('created_at', oneHourAgo.toISOString());
+    lastHourCount = count || 0;
+  } else {
+    lastHourCount = lhc || 0;
+  }
+  
+  // Top 3 richieste più frequenti (retrocompatibile)
+  let allRequests: { title: string; artists?: string }[] | null = null;
+  const { data: ar, error: arErr } = await supabase
     .from('richieste_libere')
     .select('title, artists')
     .eq('session_id', sessionId)
     .eq('archived', false)
     .eq('dj_archived', false);
+  
+  if (arErr && arErr.message.includes('dj_archived')) {
+    const { data } = await supabase
+      .from('richieste_libere')
+      .select('title, artists')
+      .eq('session_id', sessionId)
+      .eq('archived', false);
+    allRequests = data;
+  } else {
+    allRequests = ar;
+  }
   
   // Aggrega lato client
   const counts = new Map<string, { title: string; artists?: string; count: number }>();
@@ -179,18 +216,36 @@ export async function GET(req: Request) {
   }
   
   // Richieste della sessione (con filtro archivio DJ)
-  // Vista normale: dj_archived = false
+  // Vista normale: dj_archived = false (o non esiste)
   // Vista archivio: dj_archived = true
   // In entrambi i casi, escludi le richieste definitivamente archiviate
-  const { data: requests, error: requestsError } = await supabase
+  let requestsQuery = supabase
     .from('richieste_libere')
     .select('*')
     .eq('session_id', sessionId)
-    .eq('archived', false) // Sempre escludi quelle definitivamente archiviate
-    .eq('dj_archived', archived) // Filtra per vista DJ
+    .eq('archived', false); // Sempre escludi quelle definitivamente archiviate
+  
+  // Prova a filtrare per dj_archived (se la colonna esiste)
+  // Se non esiste, la query fallirà e useremo il fallback
+  const { data: requests, error: requestsError } = await requestsQuery
+    .eq('dj_archived', archived)
     .order('created_at', { ascending: false });
   
-  if (requestsError) {
+  // Se errore (probabilmente colonna non esiste), riprova senza dj_archived
+  let finalRequests = requests;
+  if (requestsError && requestsError.message.includes('dj_archived')) {
+    const { data: fallbackRequests, error: fallbackError } = await supabase
+      .from('richieste_libere')
+      .select('*')
+      .eq('session_id', sessionId)
+      .eq('archived', archived) // Usa archived come fallback
+      .order('created_at', { ascending: false });
+    
+    if (fallbackError) {
+      return withVersion({ ok: false, error: fallbackError.message }, { status: 500 });
+    }
+    finalRequests = fallbackRequests;
+  } else if (requestsError) {
     return withVersion({ ok: false, error: requestsError.message }, { status: 500 });
   }
   
@@ -200,7 +255,7 @@ export async function GET(req: Request) {
   return withVersion({ 
     ok: true, 
     session,
-    requests: requests || [],
+    requests: finalRequests || [],
     stats
   });
 }
@@ -299,15 +354,27 @@ export async function POST(req: Request) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
       }
       
-      // Archivia tutte le richieste SOLO per la vista DJ
+      // Archivia tutte le richieste SOLO per la vista DJ (retrocompatibile)
       // La lista utente continua a vedere le richieste
+      // Prova prima con dj_archived, se fallisce usa archived
       const { error: archiveError } = await supabase
         .from('richieste_libere')
         .update({ dj_archived: true, dj_archived_at: new Date().toISOString() })
         .eq('session_id', session_id)
         .eq('dj_archived', false);
       
-      if (archiveError) {
+      // Se dj_archived non esiste, fallback al comportamento precedente
+      if (archiveError && archiveError.message.includes('dj_archived')) {
+        const { error: fallbackError } = await supabase
+          .from('richieste_libere')
+          .update({ archived: true, archived_at: new Date().toISOString() })
+          .eq('session_id', session_id)
+          .eq('archived', false);
+        
+        if (fallbackError) {
+          return withVersion({ ok: false, error: fallbackError.message }, { status: 500 });
+        }
+      } else if (archiveError) {
         return withVersion({ ok: false, error: archiveError.message }, { status: 500 });
       }
       
