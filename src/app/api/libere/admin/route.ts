@@ -44,27 +44,30 @@ async function getStats(supabase: NonNullable<ReturnType<typeof getSupabase>>, s
   const now = new Date();
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   
-  // Totali richieste
+  // Totali richieste (solo quelle visibili al DJ)
   const { count: totalCount } = await supabase
     .from('richieste_libere')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
-    .eq('archived', false);
+    .eq('archived', false)
+    .eq('dj_archived', false);
   
-  // Richieste ultima ora
+  // Richieste ultima ora (solo quelle visibili al DJ)
   const { count: lastHourCount } = await supabase
     .from('richieste_libere')
     .select('*', { count: 'exact', head: true })
     .eq('session_id', sessionId)
     .eq('archived', false)
+    .eq('dj_archived', false)
     .gte('created_at', oneHourAgo.toISOString());
   
-  // Top 3 richieste più frequenti (simulata tramite aggregazione lato client)
+  // Top 3 richieste più frequenti (solo quelle visibili al DJ)
   const { data: allRequests } = await supabase
     .from('richieste_libere')
     .select('title, artists')
     .eq('session_id', sessionId)
-    .eq('archived', false);
+    .eq('archived', false)
+    .eq('dj_archived', false);
   
   // Aggrega lato client
   const counts = new Map<string, { title: string; artists?: string; count: number }>();
@@ -175,12 +178,16 @@ export async function GET(req: Request) {
     return withVersion({ ok: false, error: 'Sessione non trovata' }, { status: 404 });
   }
   
-  // Richieste della sessione (con filtro archivio)
+  // Richieste della sessione (con filtro archivio DJ)
+  // Vista normale: dj_archived = false
+  // Vista archivio: dj_archived = true
+  // In entrambi i casi, escludi le richieste definitivamente archiviate
   const { data: requests, error: requestsError } = await supabase
     .from('richieste_libere')
     .select('*')
     .eq('session_id', sessionId)
-    .eq('archived', archived) // Usa il parametro per filtrare
+    .eq('archived', false) // Sempre escludi quelle definitivamente archiviate
+    .eq('dj_archived', archived) // Filtra per vista DJ
     .order('created_at', { ascending: false });
   
   if (requestsError) {
@@ -292,12 +299,13 @@ export async function POST(req: Request) {
         return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
       }
       
-      // Archivia tutte le richieste
+      // Archivia tutte le richieste SOLO per la vista DJ
+      // La lista utente continua a vedere le richieste
       const { error: archiveError } = await supabase
         .from('richieste_libere')
-        .update({ archived: true, archived_at: new Date().toISOString() })
+        .update({ dj_archived: true, dj_archived_at: new Date().toISOString() })
         .eq('session_id', session_id)
-        .eq('archived', false);
+        .eq('dj_archived', false);
       
       if (archiveError) {
         return withVersion({ ok: false, error: archiveError.message }, { status: 500 });
