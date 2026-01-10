@@ -201,6 +201,9 @@ function RichiesteLibereContent() {
     return () => clearInterval(interval);
   }, [token, session]);
 
+  // Flag per sapere se è il primo caricamento (ordina solo la prima volta)
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+
   // Funzione per caricare richieste pending
   const loadPendingRequests = useCallback(async () => {
     if (!session?.id || !voterId) return;
@@ -213,14 +216,33 @@ function RichiesteLibereContent() {
       const data = await response.json();
       
       if (data.ok && data.requests) {
-        setPendingRequests(data.requests);
+        if (isFirstLoad) {
+          // Prima carica: usa l'ordine dal server (già ordinato per score)
+          setPendingRequests(data.requests);
+          setIsFirstLoad(false);
+        } else {
+          // Aggiornamenti successivi: mantieni l'ordine esistente, aggiorna solo i dati
+          setPendingRequests(prev => {
+            const existingIds = new Set(prev.map(r => r.id));
+            const newRequests = data.requests.filter((r: PendingRequestWithVote) => !existingIds.has(r.id));
+            
+            // Aggiorna i dati delle richieste esistenti mantenendo l'ordine
+            const updated = prev.map(existing => {
+              const fresh = data.requests.find((r: PendingRequestWithVote) => r.id === existing.id);
+              return fresh || existing;
+            }).filter(r => data.requests.some((fresh: PendingRequestWithVote) => fresh.id === r.id)); // Rimuovi quelle cancellate
+            
+            // Aggiungi nuove richieste in cima (sono le più recenti)
+            return [...newRequests, ...updated];
+          });
+        }
       }
     } catch (err) {
       console.error('Errore caricamento pending:', err);
     } finally {
       setPendingLoading(false);
     }
-  }, [session?.id, voterId]);
+  }, [session?.id, voterId, isFirstLoad]);
 
   // Carica pending requests quando si è nella lista e polling ogni 4s
   useEffect(() => {
@@ -230,6 +252,13 @@ function RichiesteLibereContent() {
     const interval = setInterval(loadPendingRequests, 4000);
     return () => clearInterval(interval);
   }, [currentStep, session?.id, voterId, loadPendingRequests]);
+  
+  // Reset first load quando si cambia sessione o si torna alla lista
+  useEffect(() => {
+    if (currentStep === 'pending-list') {
+      setIsFirstLoad(true);
+    }
+  }, [session?.id]);
 
   // Funzione per votare
   const handleVote = async (requestId: string, action: 'up' | 'down') => {
