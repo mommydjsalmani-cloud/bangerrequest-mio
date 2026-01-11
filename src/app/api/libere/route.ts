@@ -276,14 +276,19 @@ export async function POST(req: Request) {
         })
         .eq('id', existingId);
       
-      // Notifica Telegram con contatore
+      // Notifica Telegram con contatore + info richiedente
       try {
         if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
+          const requesterName = requester_name?.trim() || 'Ospite';
+          const comment = finalNote || '';
+          
           const text = [
             `🔄 <b>Richiesta ri-inviata!</b> (+${newCount} persone)`,
             `<b>Brano:</b> ${escapeHtml(String(title))} — ${escapeHtml(String(artists || ''))}`,
-            `<i>Questo brano era stato rifiutato ma è stato richiesto di nuovo</i>`,
-          ].join('\n');
+            `<b>Da:</b> ${escapeHtml(String(requesterName))}`,
+            comment ? `<b>Commento:</b> "${escapeHtml(String(comment).slice(0,200))}"` : null,
+            `<i>⚠️ Questo brano era stato rifiutato ma è stato richiesto di nuovo</i>`,
+          ].filter(Boolean).join('\n');
 
           await sendTelegramMessage({
             textHtml: text,
