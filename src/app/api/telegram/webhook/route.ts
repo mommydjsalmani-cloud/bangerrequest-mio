@@ -71,9 +71,11 @@ export async function POST(req: Request) {
     // Non modifichiamo il testo, solo i bottoni per mostrare lo stato
     const djPanelUrl = getDjPanelUrl();
     
-    // Bottoni che mostrano lo stato attuale (v2)
-    let newKeyboard;
+    // Bottoni che mostrano lo stato attuale dopo l'azione (v3 - fix suonata button)
+    let newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>>;
+    
     if (action === 'accept') {
+      // Dopo accept: mostra stato + suonata + cambia idea
       newKeyboard = [
         [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
         [{ text: '🎵 Segna come Suonata', callbackData: `played:${requestId}` }],
@@ -81,19 +83,21 @@ export async function POST(req: Request) {
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
     } else if (action === 'reject') {
+      // Dopo reject: mostra stato + cambia idea
       newKeyboard = [
         [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
         [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
-    } else if (action === 'played') {
+    } else {
+      // Dopo played: mostra solo stato finale
       newKeyboard = [
         [{ text: '🎵 Suonata', callbackData: `noop:${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
     }
 
-    // Aggiorna solo la tastiera, non il testo
+    // Aggiorna solo la tastiera inline
     await editTelegramMessage({ 
       chatId: chatIdVal, 
       messageId: messageIdVal, 
