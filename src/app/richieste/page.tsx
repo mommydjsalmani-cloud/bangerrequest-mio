@@ -1154,21 +1154,23 @@ function RichiesteLibereContent() {
               </a>
             </div>
             
-            {/* Pulsante altra richiesta - SEMPRE visibile */}
-            <button
-              onClick={() => {
-                setLastRequestId(null);
-                setLastRequestStatus(null);
-                setSubmittedTrack(null);
-                sessionStorage.removeItem('libere_last_request_id');
-                sessionStorage.removeItem('libere_last_request_status');
-                sessionStorage.removeItem('libere_last_track');
-                setCurrentStep('pending-list');
-              }}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg"
-            >
-              🎵 Fai un&apos;altra Richiesta
-            </button>
+            {/* Pulsante altra richiesta - solo quando DJ ha deciso */}
+            {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'cancelled' || lastRequestStatus === 'played') && (
+              <button
+                onClick={() => {
+                  setLastRequestId(null);
+                  setLastRequestStatus(null);
+                  setSubmittedTrack(null);
+                  sessionStorage.removeItem('libere_last_request_id');
+                  sessionStorage.removeItem('libere_last_request_status');
+                  sessionStorage.removeItem('libere_last_track');
+                  setCurrentStep('pending-list');
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg"
+              >
+                🎵 Fai un&apos;altra Richiesta
+              </button>
+            )}
           </div>
         )}
       </div>
