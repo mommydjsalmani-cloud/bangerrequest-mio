@@ -50,17 +50,17 @@ export async function POST(req: Request) {
   
   // Gestisci noop (bottone stato disabilitato)
   if (action === 'noop') {
-    await answerCallbackQuery(cbId, 'Richiesta già processata');
+    await answerCallbackQuery(cbId, 'Info: usa i bottoni azione per modificare');
     return NextResponse.json({ ok: true });
   }
   
-  // Azioni valide: accept, reject, played
-  if (!requestId || !['accept', 'reject', 'played'].includes(action)) {
+  // Azioni valide: accept, reject, played, new (ripristina)
+  if (!requestId || !['accept', 'reject', 'played', 'new'].includes(action)) {
     await answerCallbackQuery(cbId, 'Comando non valido', true);
     return NextResponse.json({ ok: true });
   }
 
-  const who = from.username ? `@\${from.username}` : (from.first_name || 'DJ');
+  const who = from.username ? '@' + from.username : (from.first_name || 'DJ');
   const chatIdVal = (chat.id ?? '') as string | number;
   const messageIdVal = Number(message.message_id || 0);
   const djPanelUrl = getDjPanelUrl();
@@ -73,31 +73,47 @@ export async function POST(req: Request) {
       await rejectRequest(requestId);
     } else if (action === 'played') {
       await markAsPlayed(requestId);
+    } else if (action === 'new') {
+      // Ripristina a "new" - richiesta rimessa in coda
+      await resetToNew(requestId);
     }
 
     // Costruisci la nuova tastiera in base all'azione
+    // LOGICA: Tutte le azioni sono reversibili!
     let newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>>;
     
     if (action === 'accept') {
-      // Dopo ACCEPT: mostra stato + bottone suonata + cambia idea
+      // Dopo ACCEPT: stato + suonata + annulla
       newKeyboard = [
-        [{ text: '✅ Accettata', callbackData: `noop:\${requestId}` }],
-        [{ text: '🎵 Segna come Suonata', callbackData: `played:\${requestId}` }],
-        [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:\${requestId}` }],
-        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+        [{ text: '✅ ACCETTATA', callbackData: 'noop:' + requestId }],
+        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
+        [{ text: '❌ Rifiuta', callbackData: 'reject:' + requestId }],
+        [{ text: '🔎 Pannello', url: djPanelUrl }]
       ];
     } else if (action === 'reject') {
-      // Dopo REJECT: mostra stato + cambia idea
+      // Dopo REJECT: stato + ripristina
       newKeyboard = [
-        [{ text: '❌ Rifiutata', callbackData: `noop:\${requestId}` }],
-        [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:\${requestId}` }],
-        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+        [{ text: '❌ RIFIUTATA', callbackData: 'noop:' + requestId }],
+        [{ text: '✅ Accetta', callbackData: 'accept:' + requestId }],
+        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
+        [{ text: '🔎 Pannello', url: djPanelUrl }]
+      ];
+    } else if (action === 'played') {
+      // Dopo PLAYED: stato + ripristina ad accettata
+      newKeyboard = [
+        [{ text: '🎵 SUONATA', callbackData: 'noop:' + requestId }],
+        [{ text: '↩️ Torna ad Accettata', callbackData: 'accept:' + requestId }],
+        [{ text: '🔎 Pannello', url: djPanelUrl }]
       ];
     } else {
-      // Dopo PLAYED: mostra solo stato finale
+      // Dopo NEW (ripristino): mostra i bottoni iniziali
       newKeyboard = [
-        [{ text: '🎵 Suonata', callbackData: `noop:\${requestId}` }],
-        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+        [
+          { text: '✅ Accetta', callbackData: 'accept:' + requestId },
+          { text: '❌ Rifiuta', callbackData: 'reject:' + requestId }
+        ],
+        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
+        [{ text: '🔎 Pannello', url: djPanelUrl }]
       ];
     }
 
@@ -112,15 +128,36 @@ export async function POST(req: Request) {
     const statusMessages: Record<string, string> = {
       'accept': '✅ Accettata',
       'reject': '❌ Rifiutata',
-      'played': '🎵 Segnata come Suonata'
+      'played': '🎵 Suonata',
+      'new': '↩️ Ripristinata'
     };
     
-    await answerCallbackQuery(cbId, `\${statusMessages[action]} da \${who}`);
+    await answerCallbackQuery(cbId, statusMessages[action] + ' da ' + who);
     
   } catch (err) {
     console.error('[Webhook] Error processing action:', action, err);
-    await answerCallbackQuery(cbId, 'Errore durante l\'operazione', true);
+    await answerCallbackQuery(cbId, 'Errore: ' + (err instanceof Error ? err.message : 'sconosciuto'), true);
   }
 
   return NextResponse.json({ ok: true });
+}
+
+// Funzione per ripristinare una richiesta a "new"
+async function resetToNew(requestId: string) {
+  const { getSupabase } = await import('@/lib/supabase');
+  const supabase = getSupabase();
+  if (!supabase) {
+    throw new Error('Database non configurato');
+  }
+  
+  const { error } = await supabase
+    .from('richieste_libere')
+    .update({ status: 'new' })
+    .eq('id', requestId);
+  
+  if (error) {
+    throw new Error('Reset failed: ' + error.message);
+  }
+  
+  return { ok: true };
 }

@@ -636,7 +636,7 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: 'request_id e status richiesti' }, { status: 400 });
   }
 
-  if (!['accepted', 'rejected', 'cancelled', 'played'].includes(status)) {
+  if (!['accepted', 'rejected', 'cancelled', 'played', 'new'].includes(status)) {
     return withVersion({ ok: false, error: 'Status non valido' }, { status: 400 });
   }
 
@@ -648,6 +648,7 @@ export async function PATCH(req: Request) {
     updateData.note = note || null;
   }
 
+  // Timestamp in base all'azione
   if (status === 'accepted') {
     updateData.accepted_at = new Date().toISOString();
   } else if (status === 'rejected') {
@@ -657,6 +658,7 @@ export async function PATCH(req: Request) {
   } else if (status === 'played') {
     updateData.played_at = new Date().toISOString();
   }
+  // status === 'new' non ha timestamp, resetta lo stato
 
   // Prova l'update - se fallisce per played_at, riprova senza
   let updateError = null;
@@ -687,7 +689,8 @@ export async function PATCH(req: Request) {
     'accepted': 'accettata',
     'rejected': 'rifiutata', 
     'cancelled': 'cancellata',
-    'played': 'segnata come suonata'
+    'played': 'segnata come suonata',
+    'new': 'ripristinata in coda'
   };
   
   return withVersion({ 

@@ -1629,10 +1629,21 @@ export default function LibereAdminPanel() {
                             </div>
                           )}
                           
-                          {/* Richieste già suonate - solo info, nessuna azione */}
+                          {/* Richieste già suonate - può tornare ad accettata */}
                           {request.status === 'played' && (
-                            <div className="text-purple-700 text-sm font-medium italic">
-                              🎵 Brano già suonato - visibile solo lato utente
+                            <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'accepted')}
+                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ↩️ Torna Accettata
+                              </button>
+                              <button
+                                onClick={() => act(request.id, 'rejected')}
+                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                ❌ Rifiuta
+                              </button>
                             </div>
                           )}
                         </>
