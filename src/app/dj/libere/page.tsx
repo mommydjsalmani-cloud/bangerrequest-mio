@@ -1458,7 +1458,15 @@ export default function LibereAdminPanel() {
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <div className="font-bold text-lg text-gray-900 mb-1">{request.title}</div>
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold text-lg text-gray-900">{request.title}</div>
+                            {/* Badge contatore richieste multiple */}
+                            {(request.request_count ?? 1) > 1 && (
+                              <span className="px-2 py-0.5 bg-orange-500 text-white text-xs font-bold rounded-full">
+                                +{request.request_count}
+                              </span>
+                            )}
+                          </div>
                           {request.artists && (
                             <div className="text-gray-700 font-medium">{request.artists}</div>
                           )}

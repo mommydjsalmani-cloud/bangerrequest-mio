@@ -50,6 +50,8 @@ export type LibereRequest = {
   // Voti
   up_votes?: number;
   down_votes?: number;
+  // Contatore richieste multiple
+  request_count?: number;
 };
 
 // Tipo per voto utente
