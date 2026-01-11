@@ -132,7 +132,10 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
     const url = `https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`;
     const body = { ...bodyBase, reply_markup: { inline_keyboard: [] } };
     await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  } else if (opts.inlineKeyboard) {
+  }
+  
+  // Aggiorna inline keyboard (separato dal removeKeyboard)
+  if (opts.inlineKeyboard && opts.inlineKeyboard.length > 0) {
     const url = `https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`;
     const keyboard = { inline_keyboard: opts.inlineKeyboard.map((row) => row.map((b) => {
       const out: Record<string, unknown> = { text: b.text };
@@ -141,7 +144,16 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
       return out;
     })) };
     const body = { ...bodyBase, reply_markup: keyboard };
-    await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    console.log('[Telegram] editMessageReplyMarkup body:', JSON.stringify(body));
+    const res = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res) {
+      try {
+        const json = await res.json();
+        console.log('[Telegram] editMessageReplyMarkup response:', JSON.stringify(json));
+      } catch (e) {
+        console.error('[Telegram] editMessageReplyMarkup parse error:', e);
+      }
+    }
   }
 }
 
