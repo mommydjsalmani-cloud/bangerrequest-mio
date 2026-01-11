@@ -104,16 +104,16 @@ async function checkRateLimit(
   return { ok: true };
 }
 
-async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<{ isDuplicate: boolean; existingRequest?: { id: string; status: string } }> {
+async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<{ isDuplicate: boolean; existingRequest?: { id: string; status: string; request_count?: number } }> {
   // Controlla se esiste già una richiesta simile (non archiviata)
   const { data: duplicates } = await supabase
     .from('richieste_libere')
-    .select('id, status')
+    .select('id, status, request_count')
     .eq('session_id', sessionId)
     .eq('title', title)
     .eq('artists', artists || '')
     .eq('archived', false)
-    .in('status', ['new', 'accepted', 'played']) // Include anche brani già suonati
+    .in('status', ['new', 'accepted', 'played', 'rejected']) // Include anche rifiutati
     .order('created_at', { ascending: false })
     .limit(1);
   
@@ -261,8 +261,58 @@ export async function POST(req: Request) {
   const duplicateCheck = await checkDuplicateRequest(supabase, session.id, title.trim(), artists?.trim());
   if (duplicateCheck.isDuplicate && duplicateCheck.existingRequest) {
     const status = duplicateCheck.existingRequest.status;
+    const existingId = duplicateCheck.existingRequest.id;
+    const currentCount = duplicateCheck.existingRequest.request_count || 1;
     
-    // Messaggi diversi in base allo stato
+    // CASO SPECIALE: Richiesta rifiutata - riattiva e notifica DJ
+    if (status === 'rejected') {
+      // Incrementa contatore e riporta a "new"
+      const newCount = currentCount + 1;
+      await supabase
+        .from('richieste_libere')
+        .update({ 
+          status: 'new', 
+          request_count: newCount 
+        })
+        .eq('id', existingId);
+      
+      // Notifica Telegram con contatore
+      try {
+        if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
+          const text = [
+            `🔄 <b>Richiesta ri-inviata!</b> (+${newCount} persone)`,
+            `<b>Brano:</b> ${escapeHtml(String(title))} — ${escapeHtml(String(artists || ''))}`,
+            `<i>Questo brano era stato rifiutato ma è stato richiesto di nuovo</i>`,
+          ].join('\n');
+
+          await sendTelegramMessage({
+            textHtml: text,
+            inlineKeyboard: [[
+              { text: '✅ Accetta', callbackData: `accept:${existingId}` },
+              { text: '❌ Rifiuta', callbackData: `reject:${existingId}` }
+            ], [
+              { text: '🎵 Suonata', callbackData: `played:${existingId}` }
+            ], [
+              { text: '🔎 Apri pannello', url: getDjPanelUrl() }
+            ]]
+          });
+        }
+      } catch (e) {
+        if (process.env.NODE_ENV !== 'production') console.error('[Libere] telegram hook error', e);
+      }
+      
+      return withVersion({ 
+        ok: true,
+        duplicate: true,
+        reactivated: true,
+        message: '⚠️ Questo brano era stato rifiutato dal DJ, ma l\'abbiamo rimesso in coda!',
+        existingStatus: 'new',
+        existingStatusLabel: '⏳ Rimesso in attesa',
+        existingRequestId: existingId
+      }, { status: 200 });
+    }
+    
+    // Altri stati: mostra solo info
     let message: string;
     let statusLabel: string;
     
@@ -283,7 +333,7 @@ export async function POST(req: Request) {
       message,
       existingStatus: status,
       existingStatusLabel: statusLabel,
-      existingRequestId: duplicateCheck.existingRequest.id
+      existingRequestId: existingId
     }, { status: 200 });
   }
   
