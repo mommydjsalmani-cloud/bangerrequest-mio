@@ -493,7 +493,7 @@ function RichiesteLibereContent() {
         
         // Mostra messaggio informativo (NON blocca l'utente sul tracking)
         setMessage(`${data.message}\nStato: ${data.existingStatusLabel}`);
-        setTimeout(() => setMessage(null), 4000);
+        setTimeout(() => setMessage(null), 7000); // 7 secondi per leggere bene
         
         setSubmitting(false);
         return;
