@@ -71,10 +71,15 @@ export async function POST(req: Request) {
     // Non modifichiamo il testo, solo i bottoni per mostrare lo stato
     const djPanelUrl = getDjPanelUrl();
     
-    // Bottoni che mostrano lo stato attuale dopo l'azione (v3 - fix suonata button)
+    // DEBUG: Log per verificare quale action stiamo processando
+    console.log('[Webhook] Processing action:', action, 'requestId:', requestId);
+    
+    // Bottoni che mostrano lo stato attuale dopo l'azione
+    // TIMESTAMP BUILD: 2026-01-11T13:00
     let newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>>;
     
     if (action === 'accept') {
+      console.log('[Webhook] Building ACCEPT keyboard with Suonata button');
       // Dopo accept: mostra stato + suonata + cambia idea
       newKeyboard = [
         [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
@@ -82,7 +87,9 @@ export async function POST(req: Request) {
         [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
+      console.log('[Webhook] Accept keyboard rows:', newKeyboard.length);
     } else if (action === 'reject') {
+      console.log('[Webhook] Building REJECT keyboard');
       // Dopo reject: mostra stato + cambia idea
       newKeyboard = [
         [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
@@ -90,6 +97,7 @@ export async function POST(req: Request) {
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
     } else {
+      console.log('[Webhook] Building PLAYED keyboard');
       // Dopo played: mostra solo stato finale
       newKeyboard = [
         [{ text: '🎵 Suonata', callbackData: `noop:${requestId}` }],
@@ -97,6 +105,8 @@ export async function POST(req: Request) {
       ];
     }
 
+    console.log('[Webhook] Calling editTelegramMessage with keyboard:', JSON.stringify(newKeyboard));
+    
     // Aggiorna solo la tastiera inline
     await editTelegramMessage({ 
       chatId: chatIdVal, 
