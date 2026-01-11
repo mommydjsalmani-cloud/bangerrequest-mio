@@ -696,7 +696,11 @@ function RichiesteLibereContent() {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingRequests.map((request) => (
+                {/* Ordina: prima non suonate (new, accepted), poi suonate (played) */}
+                {[...pendingRequests].sort((a, b) => {
+                  const order = { new: 0, accepted: 1, rejected: 2, played: 3 };
+                  return (order[a.status as keyof typeof order] ?? 99) - (order[b.status as keyof typeof order] ?? 99);
+                }).map((request) => (
                   <div
                     key={request.id}
                     className="bg-white/5 hover:bg-white/10 rounded-lg p-3 border border-white/10 transition-all"
