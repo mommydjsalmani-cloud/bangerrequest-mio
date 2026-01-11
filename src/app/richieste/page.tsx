@@ -710,34 +710,47 @@ function RichiesteLibereContent() {
 
                       {/* Voti */}
                       <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        {/* Pulsanti voto */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleVote(request.id, 'up')}
-                            disabled={votingRequestId === request.id}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
-                              request.myVote === 'up'
-                                ? 'bg-green-500/30 text-green-300 border border-green-400/50'
-                                : 'bg-white/10 text-gray-300 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
-                            } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
-                          >
-                            <span>👍</span>
-                            <span className="font-semibold">{request.up_votes || 0}</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => handleVote(request.id, 'down')}
-                            disabled={votingRequestId === request.id}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
-                              request.myVote === 'down'
-                                ? 'bg-red-500/30 text-red-300 border border-red-400/50'
-                                : 'bg-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
-                            } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
-                          >
-                            <span>👎</span>
-                            <span className="font-semibold">{request.down_votes || 0}</span>
-                          </button>
-                        </div>
+                        {/* Pulsanti voto - DISABILITATI per richieste played */}
+                        {request.status === 'played' ? (
+                          <div className="flex items-center gap-1">
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm bg-gray-500/20 text-gray-400 border border-gray-500/30 cursor-not-allowed">
+                              <span>👍</span>
+                              <span className="font-semibold">{request.up_votes || 0}</span>
+                            </span>
+                            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-sm bg-gray-500/20 text-gray-400 border border-gray-500/30 cursor-not-allowed">
+                              <span>👎</span>
+                              <span className="font-semibold">{request.down_votes || 0}</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleVote(request.id, 'up')}
+                              disabled={votingRequestId === request.id}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
+                                request.myVote === 'up'
+                                  ? 'bg-green-500/30 text-green-300 border border-green-400/50'
+                                  : 'bg-white/10 text-gray-300 hover:bg-green-500/20 hover:text-green-300 border border-white/10'
+                              } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
+                            >
+                              <span>👍</span>
+                              <span className="font-semibold">{request.up_votes || 0}</span>
+                            </button>
+                            
+                            <button
+                              onClick={() => handleVote(request.id, 'down')}
+                              disabled={votingRequestId === request.id}
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all text-sm ${
+                                request.myVote === 'down'
+                                  ? 'bg-red-500/30 text-red-300 border border-red-400/50'
+                                  : 'bg-white/10 text-gray-300 hover:bg-red-500/20 hover:text-red-300 border border-white/10'
+                              } ${votingRequestId === request.id ? 'opacity-50' : ''}`}
+                            >
+                              <span>👎</span>
+                              <span className="font-semibold">{request.down_votes || 0}</span>
+                            </button>
+                          </div>
+                        )}
 
                         {/* Status label */}
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
@@ -745,11 +758,14 @@ function RichiesteLibereContent() {
                             ? 'bg-blue-500/30 text-blue-200' 
                             : request.status === 'accepted'
                             ? 'bg-green-500/30 text-green-200'
+                            : request.status === 'played'
+                            ? 'bg-purple-500/30 text-purple-200'
                             : 'bg-red-500/30 text-red-200'
                         }`}>
                           {request.status === 'new' && 'In attesa'}
                           {request.status === 'accepted' && '✓ Confermata'}
                           {request.status === 'rejected' && 'Rifiutata'}
+                          {request.status === 'played' && '🎵 Suonata'}
                         </span>
                       </div>
                     </div>

@@ -69,5 +69,48 @@ export async function rejectRequest(requestId: string) {
   }
 }
 
-const moderation = { acceptRequest, rejectRequest };
+/**
+ * Segna una richiesta come "played" (suonata).
+ * La richiesta esce dalle liste attive DJ ma resta visibile lato utente.
+ * I voti vengono disabilitati.
+ */
+export async function markAsPlayed(requestId: string) {
+  const supabase = getSupabase();
+  if (!supabase) {
+    throw new Error('Database non configurato');
+  }
+  
+  // Verifica che la richiesta esista nel sistema libere
+  const { data: libereRequest, error: fetchError } = await supabase
+    .from('richieste_libere')
+    .select('id, status')
+    .eq('id', requestId)
+    .single();
+  
+  if (fetchError || !libereRequest) {
+    throw new Error('Richiesta non trovata');
+  }
+  
+  // Se è già played, non fare nulla
+  if (libereRequest.status === 'played') {
+    return { ok: true, alreadyPlayed: true };
+  }
+  
+  // Aggiorna lo stato a played
+  const { error } = await supabase
+    .from('richieste_libere')
+    .update({ 
+      status: 'played',
+      played_at: new Date().toISOString()
+    })
+    .eq('id', requestId);
+  
+  if (error) {
+    throw new Error(`Mark as played failed: ${error.message}`);
+  }
+  
+  return { ok: true };
+}
+
+const moderation = { acceptRequest, rejectRequest, markAsPlayed };
 export default moderation;

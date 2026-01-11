@@ -316,6 +316,8 @@ export async function POST(req: Request) {
           { text: '✅ Accetta', callbackData: `accept:${newRequest.id}` },
           { text: '❌ Rifiuta', callbackData: `reject:${newRequest.id}` }
         ], [
+          { text: '🎵 Suonata', callbackData: `played:${newRequest.id}` }
+        ], [
           { text: '🔎 Apri pannello', url: getDjPanelUrl() }
         ]]
       });

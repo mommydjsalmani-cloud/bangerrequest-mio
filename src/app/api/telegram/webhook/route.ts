@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { answerCallbackQuery, editTelegramMessage, getAllowedUserIds, getDjPanelUrl } from '@/lib/telegram';
-import { acceptRequest, rejectRequest } from '@/lib/moderation';
+import { acceptRequest, rejectRequest, markAsPlayed } from '@/lib/moderation';
 
 export async function POST(req: Request) {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
@@ -54,14 +54,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   
-  if (!requestId || !['accept', 'reject'].includes(action)) {
+  if (!requestId || !['accept', 'reject', 'played'].includes(action)) {
     await answerCallbackQuery(cbId, 'Comando non valido', true);
     return NextResponse.json({ ok: true });
   }
 
   try {
     if (action === 'accept') await acceptRequest(requestId);
-    else await rejectRequest(requestId);
+    else if (action === 'reject') await rejectRequest(requestId);
+    else if (action === 'played') await markAsPlayed(requestId);
 
     const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
     const chatIdVal = (chat.id ?? '') as string | number;
@@ -71,17 +72,26 @@ export async function POST(req: Request) {
     const djPanelUrl = getDjPanelUrl();
     
     // Bottoni che mostrano lo stato attuale
-    const newKeyboard = action === 'accept' 
-      ? [
-          [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
-          [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
-          [{ text: '🔎 Apri pannello', url: djPanelUrl }]
-        ]
-      : [
-          [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
-          [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
-          [{ text: '🔎 Apri pannello', url: djPanelUrl }]
-        ];
+    let newKeyboard;
+    if (action === 'accept') {
+      newKeyboard = [
+        [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
+        [{ text: '🎵 Segna come Suonata', callbackData: `played:${requestId}` }],
+        [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
+        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+      ];
+    } else if (action === 'reject') {
+      newKeyboard = [
+        [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
+        [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
+        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+      ];
+    } else if (action === 'played') {
+      newKeyboard = [
+        [{ text: '🎵 Suonata', callbackData: `noop:${requestId}` }],
+        [{ text: '🔎 Apri pannello', url: djPanelUrl }]
+      ];
+    }
 
     // Aggiorna solo la tastiera, non il testo
     await editTelegramMessage({ 
@@ -90,7 +100,13 @@ export async function POST(req: Request) {
       inlineKeyboard: newKeyboard 
     });
 
-    await answerCallbackQuery(cbId, `${action === 'accept' ? '✅ Accettata' : '❌ Rifiutata'} da ${who}`);
+    const statusMessages: Record<string, string> = {
+      'accept': '✅ Accettata',
+      'reject': '❌ Rifiutata',
+      'played': '🎵 Segnata come Suonata'
+    };
+    
+    await answerCallbackQuery(cbId, `${statusMessages[action]} da ${who}`);
   } catch {
     await answerCallbackQuery(cbId, 'Già processata o non trovata', true);
   }

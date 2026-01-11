@@ -37,7 +37,7 @@ export type LibereRequest = {
   client_ip: string;
   user_agent?: string;
   source: 'spotify' | 'manual';
-  status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived';
+  status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived' | 'played';
   note?: string;
   archived: boolean;
   event_code?: string;
@@ -46,6 +46,7 @@ export type LibereRequest = {
   rejected_at?: string;
   cancelled_at?: string;
   archived_at?: string;
+  played_at?: string;
   // Voti
   up_votes?: number;
   down_votes?: number;
@@ -160,7 +161,8 @@ export const STATUS_LABELS = {
   'accepted': 'Confermata',
   'rejected': 'Rifiutata',
   'cancelled': 'Cancellata',
-  'archived': 'Archiviata'
+  'archived': 'Archiviata',
+  'played': 'Suonata'
 } as const;
 
 export const STATUS_COLORS = {
@@ -168,7 +170,8 @@ export const STATUS_COLORS = {
   'accepted': 'bg-green-100 text-green-800',
   'rejected': 'bg-red-100 text-red-800',
   'cancelled': 'bg-orange-100 text-orange-800',
-  'archived': 'bg-gray-100 text-gray-800'
+  'archived': 'bg-gray-100 text-gray-800',
+  'played': 'bg-purple-100 text-purple-800'
 } as const;
 
 // Session status per UI

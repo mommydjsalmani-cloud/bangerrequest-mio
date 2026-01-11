@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 
-const BUILD_TAG = 'libere-vote-v1';
+const BUILD_TAG = 'libere-vote-v2';
 
 function withVersion<T>(data: T, init?: { status?: number }) {
   return NextResponse.json(data, { status: init?.status, headers: { 'X-App-Version': BUILD_TAG } });
@@ -12,6 +12,8 @@ function withVersion<T>(data: T, init?: { status?: number }) {
  * body: { sessionId, requestId, action, voterId }
  * action: 'up' | 'down' | 'none'
  * Gestisce il voto per una richiesta usando la funzione RPC atomica
+ * 
+ * BLOCCO VOTI: le richieste con status='played' non sono votabili
  */
 export async function POST(req: Request) {
   let body;
@@ -43,6 +45,23 @@ export async function POST(req: Request) {
   }
   
   try {
+    // BLOCCO VOTI: verifica che la richiesta non sia "played"
+    const { data: request, error: checkError } = await supabase
+      .from('richieste_libere')
+      .select('id, status')
+      .eq('id', requestId)
+      .eq('session_id', sessionId)
+      .single();
+    
+    if (checkError || !request) {
+      return withVersion({ ok: false, error: 'request_not_found' }, { status: 404 });
+    }
+    
+    // Se la richiesta è già "played", blocca il voto
+    if (request.status === 'played') {
+      return withVersion({ ok: false, error: 'vote_disabled_played', message: 'I voti sono disabilitati per i brani già suonati' }, { status: 403 });
+    }
+    
     // Usa la funzione RPC atomica
     const { data, error } = await supabase.rpc('vote_richiesta_libera', {
       p_session_id: sessionId,

@@ -636,11 +636,11 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: 'request_id e status richiesti' }, { status: 400 });
   }
 
-  if (!['accepted', 'rejected', 'cancelled'].includes(status)) {
+  if (!['accepted', 'rejected', 'cancelled', 'played'].includes(status)) {
     return withVersion({ ok: false, error: 'Status non valido' }, { status: 400 });
   }
 
-  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string } = { status };
+  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string; played_at?: string } = { status };
 
   // Solo aggiorna la nota se viene fornita esplicitamente
   if (note !== undefined) {
@@ -653,7 +653,11 @@ export async function PATCH(req: Request) {
     updateData.rejected_at = new Date().toISOString();
   } else if (status === 'cancelled') {
     updateData.cancelled_at = new Date().toISOString();
-  }  const { error } = await supabase
+  } else if (status === 'played') {
+    updateData.played_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase
     .from('richieste_libere')
     .update(updateData)
     .eq('id', request_id);
@@ -662,8 +666,15 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: error.message }, { status: 500 });
   }
   
+  const statusMessages: Record<string, string> = {
+    'accepted': 'accettata',
+    'rejected': 'rifiutata', 
+    'cancelled': 'cancellata',
+    'played': 'segnata come suonata'
+  };
+  
   return withVersion({ 
     ok: true, 
-    message: `Richiesta ${status === 'accepted' ? 'accettata' : status === 'rejected' ? 'rifiutata' : 'cancellata'} ✓` 
+    message: `Richiesta ${statusMessages[status]} ✓` 
   });
 }

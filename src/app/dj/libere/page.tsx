@@ -562,7 +562,7 @@ export default function LibereAdminPanel() {
   };
   
   // Funzione veloce con retry automatico
-  const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled', retryCount = 0) => {
+  const act = async (requestId: string, action: 'accepted' | 'rejected' | 'cancelled' | 'played', retryCount = 0) => {
     if (!authed) {
       setError('Non autenticato');
       return;
@@ -1563,11 +1563,23 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Scarta
                               </button>
+                              <button
+                                onClick={() => act(request.id, 'played')}
+                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                🎵 Suonata
+                              </button>
                             </div>
                           )}
                           
                           {request.status === 'accepted' && (
                             <div className="flex gap-2 flex-wrap">
+                              <button
+                                onClick={() => act(request.id, 'played')}
+                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                🎵 Suonata
+                              </button>
                               <button
                                 onClick={() => act(request.id, 'rejected')}
                                 className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
@@ -1584,6 +1596,12 @@ export default function LibereAdminPanel() {
                                 className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
                               >
                                 ✅ Accetta
+                              </button>
+                              <button
+                                onClick={() => act(request.id, 'played')}
+                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                🎵 Suonata
                               </button>
                             </div>
                           )}
@@ -1602,6 +1620,19 @@ export default function LibereAdminPanel() {
                               >
                                 ❌ Rifiuta
                               </button>
+                              <button
+                                onClick={() => act(request.id, 'played')}
+                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
+                              >
+                                🎵 Suonata
+                              </button>
+                            </div>
+                          )}
+                          
+                          {/* Richieste già suonate - solo info, nessuna azione */}
+                          {request.status === 'played' && (
+                            <div className="text-purple-700 text-sm font-medium italic">
+                              🎵 Brano già suonato - visibile solo lato utente
                             </div>
                           )}
                         </>
