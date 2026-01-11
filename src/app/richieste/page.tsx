@@ -483,23 +483,17 @@ function RichiesteLibereContent() {
         return;
       }
       
-      // Gestisci caso duplicato - mostra stato esistente
+      // Gestisci caso duplicato - mostra solo messaggio, utente può fare altra richiesta
       if (data.duplicate) {
-        setLastRequestId(data.existingRequestId);
-        setLastRequestStatus(data.existingStatus);
-        setSubmittedTrack({ title: selected.title, artists: selected.artists });
-        
-        sessionStorage.setItem('libere_last_request_id', data.existingRequestId);
-        sessionStorage.setItem('libere_last_request_status', data.existingStatus);
-        sessionStorage.setItem('libere_last_track', JSON.stringify({ title: selected.title, artists: selected.artists }));
-        
-        // Reset form
+        // Reset form per nuova ricerca
         setSelected(null);
         setNote('');
         setQuery('');
         setResults([]);
+        
+        // Mostra messaggio informativo (NON blocca l'utente sul tracking)
         setMessage(`${data.message}\nStato: ${data.existingStatusLabel}`);
-        setTimeout(() => setMessage(null), 5000);
+        setTimeout(() => setMessage(null), 4000);
         
         setSubmitting(false);
         return;
