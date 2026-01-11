@@ -73,6 +73,7 @@ export async function rejectRequest(requestId: string) {
  * Segna una richiesta come "played" (suonata).
  * La richiesta esce dalle liste attive DJ ma resta visibile lato utente.
  * I voti vengono disabilitati.
+ * NOTA: played_at è opzionale - funziona anche se la colonna non esiste
  */
 export async function markAsPlayed(requestId: string) {
   const supabase = getSupabase();
@@ -96,14 +97,30 @@ export async function markAsPlayed(requestId: string) {
     return { ok: true, alreadyPlayed: true };
   }
   
-  // Aggiorna lo stato a played
-  const { error } = await supabase
+  // Prova prima con played_at, se fallisce prova senza
+  let error = null;
+  
+  // Tentativo 1: con played_at
+  const result1 = await supabase
     .from('richieste_libere')
     .update({ 
       status: 'played',
       played_at: new Date().toISOString()
     })
     .eq('id', requestId);
+  
+  if (result1.error) {
+    // Se l'errore è sulla colonna played_at, riprova senza
+    if (result1.error.message?.includes('played_at')) {
+      const result2 = await supabase
+        .from('richieste_libere')
+        .update({ status: 'played' })
+        .eq('id', requestId);
+      error = result2.error;
+    } else {
+      error = result1.error;
+    }
+  }
   
   if (error) {
     throw new Error(`Mark as played failed: ${error.message}`);

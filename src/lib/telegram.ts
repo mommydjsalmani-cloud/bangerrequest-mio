@@ -117,20 +117,10 @@ export async function sendTelegramMessage(opts: { textHtml: string; inlineKeyboa
 }
 
 export async function editTelegramMessage(opts: { chatId: string | number; messageId: number; textHtml?: string; removeKeyboard?: boolean; inlineKeyboard?: InlineKeyboard }): Promise<void> {
-  // Log per debug (sempre, per capire il problema)
-  console.log('[Telegram editTelegramMessage] ENABLE:', ENABLE, 'TOKEN present:', !!TOKEN);
-  
-  if (!ENABLE) {
-    console.log('[Telegram editTelegramMessage] SKIPPED - ENABLE is false');
-    return;
-  }
-  if (!TOKEN) {
-    console.log('[Telegram editTelegramMessage] SKIPPED - TOKEN is empty');
-    return;
-  }
+  if (!ENABLE) return;
+  if (!TOKEN) return;
 
   const bodyBase: Record<string, unknown> = { chat_id: opts.chatId, message_id: opts.messageId };
-  console.log('[Telegram editTelegramMessage] chatId:', opts.chatId, 'messageId:', opts.messageId);
 
   if (opts.textHtml) {
     const url = `https://api.telegram.org/bot${TOKEN}/editMessageText`;
@@ -144,9 +134,8 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
     await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
   
-  // Aggiorna inline keyboard (separato dal removeKeyboard)
+  // Aggiorna inline keyboard
   if (opts.inlineKeyboard && opts.inlineKeyboard.length > 0) {
-    console.log('[Telegram editTelegramMessage] Updating keyboard with', opts.inlineKeyboard.length, 'rows');
     const url = `https://api.telegram.org/bot${TOKEN}/editMessageReplyMarkup`;
     const keyboard = { inline_keyboard: opts.inlineKeyboard.map((row) => row.map((b) => {
       const out: Record<string, unknown> = { text: b.text };
@@ -155,16 +144,7 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
       return out;
     })) };
     const body = { ...bodyBase, reply_markup: keyboard };
-    console.log('[Telegram editTelegramMessage] Sending request to Telegram API');
-    const res = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res) {
-      const text = await res.text();
-      console.log('[Telegram editTelegramMessage] Response:', text);
-    } else {
-      console.log('[Telegram editTelegramMessage] No response from safeFetch');
-    }
-  } else {
-    console.log('[Telegram editTelegramMessage] No keyboard to update');
+    await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 }
 

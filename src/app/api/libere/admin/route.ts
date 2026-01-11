@@ -640,7 +640,8 @@ export async function PATCH(req: Request) {
     return withVersion({ ok: false, error: 'Status non valido' }, { status: 400 });
   }
 
-  const updateData: { status: string; note?: string | null; accepted_at?: string; rejected_at?: string; cancelled_at?: string; played_at?: string } = { status };
+  // Prepara i dati base per l'update
+  const updateData: Record<string, unknown> = { status };
 
   // Solo aggiorna la nota se viene fornita esplicitamente
   if (note !== undefined) {
@@ -657,13 +658,29 @@ export async function PATCH(req: Request) {
     updateData.played_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
+  // Prova l'update - se fallisce per played_at, riprova senza
+  let updateError = null;
+  const result1 = await supabase
     .from('richieste_libere')
     .update(updateData)
     .eq('id', request_id);
   
-  if (error) {
-    return withVersion({ ok: false, error: error.message }, { status: 500 });
+  if (result1.error) {
+    // Se l'errore è sulla colonna played_at, riprova senza
+    if (result1.error.message?.includes('played_at') && status === 'played') {
+      delete updateData.played_at;
+      const result2 = await supabase
+        .from('richieste_libere')
+        .update(updateData)
+        .eq('id', request_id);
+      updateError = result2.error;
+    } else {
+      updateError = result1.error;
+    }
+  }
+  
+  if (updateError) {
+    return withVersion({ ok: false, error: updateError.message }, { status: 500 });
   }
   
   const statusMessages: Record<string, string> = {

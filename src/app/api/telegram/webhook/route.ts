@@ -54,75 +54,72 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
   
+  // Azioni valide: accept, reject, played
   if (!requestId || !['accept', 'reject', 'played'].includes(action)) {
     await answerCallbackQuery(cbId, 'Comando non valido', true);
     return NextResponse.json({ ok: true });
   }
 
+  const who = from.username ? `@\${from.username}` : (from.first_name || 'DJ');
+  const chatIdVal = (chat.id ?? '') as string | number;
+  const messageIdVal = Number(message.message_id || 0);
+  const djPanelUrl = getDjPanelUrl();
+
   try {
-    if (action === 'accept') await acceptRequest(requestId);
-    else if (action === 'reject') await rejectRequest(requestId);
-    else if (action === 'played') await markAsPlayed(requestId);
+    // Esegui l'azione sul database
+    if (action === 'accept') {
+      await acceptRequest(requestId);
+    } else if (action === 'reject') {
+      await rejectRequest(requestId);
+    } else if (action === 'played') {
+      await markAsPlayed(requestId);
+    }
 
-    const who = from.username ? `@${from.username}` : (from.first_name || 'DJ');
-    const chatIdVal = (chat.id ?? '') as string | number;
-    const messageIdVal = Number(message.message_id || 0);
-
-    // Non modifichiamo il testo, solo i bottoni per mostrare lo stato
-    const djPanelUrl = getDjPanelUrl();
-    
-    // DEBUG: Log per verificare quale action stiamo processando
-    console.log('[Webhook] Processing action:', action, 'requestId:', requestId);
-    
-    // Bottoni che mostrano lo stato attuale dopo l'azione
-    // TIMESTAMP BUILD: 2026-01-11T13:00
+    // Costruisci la nuova tastiera in base all'azione
     let newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>>;
     
     if (action === 'accept') {
-      console.log('[Webhook] Building ACCEPT keyboard with Suonata button');
-      // Dopo accept: mostra stato + suonata + cambia idea
+      // Dopo ACCEPT: mostra stato + bottone suonata + cambia idea
       newKeyboard = [
-        [{ text: '✅ Accettata', callbackData: `noop:${requestId}` }],
-        [{ text: '🎵 Segna come Suonata', callbackData: `played:${requestId}` }],
-        [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:${requestId}` }],
+        [{ text: '✅ Accettata', callbackData: `noop:\${requestId}` }],
+        [{ text: '🎵 Segna come Suonata', callbackData: `played:\${requestId}` }],
+        [{ text: '🔄 Cambia idea (Rifiuta)', callbackData: `reject:\${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
-      console.log('[Webhook] Accept keyboard rows:', newKeyboard.length);
     } else if (action === 'reject') {
-      console.log('[Webhook] Building REJECT keyboard');
-      // Dopo reject: mostra stato + cambia idea
+      // Dopo REJECT: mostra stato + cambia idea
       newKeyboard = [
-        [{ text: '❌ Rifiutata', callbackData: `noop:${requestId}` }],
-        [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:${requestId}` }],
+        [{ text: '❌ Rifiutata', callbackData: `noop:\${requestId}` }],
+        [{ text: '🔄 Cambia idea (Accetta)', callbackData: `accept:\${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
     } else {
-      console.log('[Webhook] Building PLAYED keyboard');
-      // Dopo played: mostra solo stato finale
+      // Dopo PLAYED: mostra solo stato finale
       newKeyboard = [
-        [{ text: '🎵 Suonata', callbackData: `noop:${requestId}` }],
+        [{ text: '🎵 Suonata', callbackData: `noop:\${requestId}` }],
         [{ text: '🔎 Apri pannello', url: djPanelUrl }]
       ];
     }
 
-    console.log('[Webhook] Calling editTelegramMessage with keyboard:', JSON.stringify(newKeyboard));
-    
-    // Aggiorna solo la tastiera inline
+    // Aggiorna la tastiera inline del messaggio
     await editTelegramMessage({ 
       chatId: chatIdVal, 
       messageId: messageIdVal, 
       inlineKeyboard: newKeyboard 
     });
 
+    // Feedback all'utente
     const statusMessages: Record<string, string> = {
       'accept': '✅ Accettata',
       'reject': '❌ Rifiutata',
       'played': '🎵 Segnata come Suonata'
     };
     
-    await answerCallbackQuery(cbId, `${statusMessages[action]} da ${who}`);
-  } catch {
-    await answerCallbackQuery(cbId, 'Già processata o non trovata', true);
+    await answerCallbackQuery(cbId, `\${statusMessages[action]} da \${who}`);
+    
+  } catch (err) {
+    console.error('[Webhook] Error processing action:', action, err);
+    await answerCallbackQuery(cbId, 'Errore durante l\'operazione', true);
   }
 
   return NextResponse.json({ ok: true });
