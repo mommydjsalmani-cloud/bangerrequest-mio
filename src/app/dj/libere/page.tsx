@@ -1548,105 +1548,43 @@ export default function LibereAdminPanel() {
                       
                       {/* Pulsanti azione - SOLO se NON stiamo visualizzando l'archivio */}
                       {!showArchive && (
-                        <>
-                          {request.status === 'new' && (
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() => act(request.id, 'accepted')}
-                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ✅ Accetta
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'rejected')}
-                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ❌ Scarta
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'played')}
-                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                🎵 Suonata
-                              </button>
-                            </div>
-                          )}
+                        <div className="flex gap-2 flex-wrap">
+                          {/* Pulsante ACCETTA - sempre visibile, evidenziato se attivo */}
+                          <button
+                            onClick={() => act(request.id, 'accepted')}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all shadow-sm ${
+                              request.status === 'accepted'
+                                ? 'bg-green-600 ring-4 ring-green-400 ring-offset-2 ring-offset-gray-100 text-white scale-105'
+                                : 'bg-green-500/30 hover:bg-green-600 text-green-800 hover:text-white border-2 border-green-600'
+                            }`}
+                          >
+                            ✅ Accetta
+                          </button>
                           
-                          {request.status === 'accepted' && (
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() => act(request.id, 'played')}
-                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                🎵 Suonata
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'rejected')}
-                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ❌ Rifiuta
-                              </button>
-                            </div>
-                          )}
+                          {/* Pulsante RIFIUTA - sempre visibile, evidenziato se attivo */}
+                          <button
+                            onClick={() => act(request.id, 'rejected')}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all shadow-sm ${
+                              request.status === 'rejected'
+                                ? 'bg-red-600 ring-4 ring-red-400 ring-offset-2 ring-offset-gray-100 text-white scale-105'
+                                : 'bg-red-500/30 hover:bg-red-600 text-red-800 hover:text-white border-2 border-red-600'
+                            }`}
+                          >
+                            ❌ Rifiuta
+                          </button>
                           
-                          {request.status === 'rejected' && (
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() => act(request.id, 'accepted')}
-                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ✅ Accetta
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'played')}
-                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                🎵 Suonata
-                              </button>
-                            </div>
-                          )}
-                          
-                          {request.status === 'cancelled' && (
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() => act(request.id, 'accepted')}
-                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ✅ Accetta
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'rejected')}
-                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ❌ Rifiuta
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'played')}
-                                className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                🎵 Suonata
-                              </button>
-                            </div>
-                          )}
-                          
-                          {/* Richieste già suonate - può tornare ad accettata */}
-                          {request.status === 'played' && (
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() => act(request.id, 'accepted')}
-                                className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ↩️ Torna Accettata
-                              </button>
-                              <button
-                                onClick={() => act(request.id, 'rejected')}
-                                className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white font-medium transition-colors shadow-sm"
-                              >
-                                ❌ Rifiuta
-                              </button>
-                            </div>
-                          )}
-                        </>
+                          {/* Pulsante SUONATA - sempre visibile, evidenziato se attivo */}
+                          <button
+                            onClick={() => act(request.id, 'played')}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all shadow-sm ${
+                              request.status === 'played'
+                                ? 'bg-purple-600 ring-4 ring-purple-400 ring-offset-2 ring-offset-gray-100 text-white scale-105'
+                                : 'bg-purple-500/30 hover:bg-purple-600 text-purple-800 hover:text-white border-2 border-purple-600'
+                            }`}
+                          >
+                            🎵 Suonata
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}

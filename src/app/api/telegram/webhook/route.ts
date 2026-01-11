@@ -78,44 +78,19 @@ export async function POST(req: Request) {
       await resetToNew(requestId);
     }
 
-    // Costruisci la nuova tastiera in base all'azione
-    // LOGICA: Tutte le azioni sono reversibili!
-    let newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>>;
+    // Costruisci la tastiera: sempre 3 pulsanti, quello attivo è evidenziato con 【】
+    const isAccepted = action === 'accept';
+    const isRejected = action === 'reject';
+    const isPlayed = action === 'played';
     
-    if (action === 'accept') {
-      // Dopo ACCEPT: stato + suonata + annulla
-      newKeyboard = [
-        [{ text: '✅ ACCETTATA', callbackData: 'noop:' + requestId }],
-        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
-        [{ text: '❌ Rifiuta', callbackData: 'reject:' + requestId }],
-        [{ text: '🔎 Pannello', url: djPanelUrl }]
-      ];
-    } else if (action === 'reject') {
-      // Dopo REJECT: stato + ripristina
-      newKeyboard = [
-        [{ text: '❌ RIFIUTATA', callbackData: 'noop:' + requestId }],
-        [{ text: '✅ Accetta', callbackData: 'accept:' + requestId }],
-        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
-        [{ text: '🔎 Pannello', url: djPanelUrl }]
-      ];
-    } else if (action === 'played') {
-      // Dopo PLAYED: stato + ripristina ad accettata
-      newKeyboard = [
-        [{ text: '🎵 SUONATA', callbackData: 'noop:' + requestId }],
-        [{ text: '↩️ Torna ad Accettata', callbackData: 'accept:' + requestId }],
-        [{ text: '🔎 Pannello', url: djPanelUrl }]
-      ];
-    } else {
-      // Dopo NEW (ripristino): mostra i bottoni iniziali
-      newKeyboard = [
-        [
-          { text: '✅ Accetta', callbackData: 'accept:' + requestId },
-          { text: '❌ Rifiuta', callbackData: 'reject:' + requestId }
-        ],
-        [{ text: '🎵 Suonata', callbackData: 'played:' + requestId }],
-        [{ text: '🔎 Pannello', url: djPanelUrl }]
-      ];
-    }
+    const newKeyboard: Array<Array<{ text: string; callbackData?: string; url?: string }>> = [
+      [
+        { text: isAccepted ? '【✅ Accettata】' : '✅ Accetta', callbackData: 'accept:' + requestId },
+        { text: isRejected ? '【❌ Rifiutata】' : '❌ Rifiuta', callbackData: 'reject:' + requestId }
+      ],
+      [{ text: isPlayed ? '【🎵 Suonata】' : '🎵 Suonata', callbackData: 'played:' + requestId }],
+      [{ text: '🔎 Pannello', url: djPanelUrl }]
+    ];
 
     // Aggiorna la tastiera inline del messaggio
     await editTelegramMessage({ 
