@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     // Non modifichiamo il testo, solo i bottoni per mostrare lo stato
     const djPanelUrl = getDjPanelUrl();
     
-    // Bottoni che mostrano lo stato attuale
+    // Bottoni che mostrano lo stato attuale (v2)
     let newKeyboard;
     if (action === 'accept') {
       newKeyboard = [
