@@ -33,7 +33,7 @@ function RichiesteLibereContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [lastRequestTime, setLastRequestTime] = useState<number | undefined>();
   const [lastRequestId, setLastRequestId] = useState<string | null>(null);
-  const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | null>(null);
+  const [lastRequestStatus, setLastRequestStatus] = useState<'new' | 'accepted' | 'rejected' | 'cancelled' | 'played' | null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
   
   // Step corrente del flusso
@@ -759,13 +759,13 @@ function RichiesteLibereContent() {
                             : request.status === 'accepted'
                             ? 'bg-green-500/30 text-green-200'
                             : request.status === 'played'
-                            ? 'bg-purple-500/30 text-purple-200'
+                            ? 'bg-green-500/30 text-green-200'
                             : 'bg-red-500/30 text-red-200'
                         }`}>
                           {request.status === 'new' && 'In attesa'}
                           {request.status === 'accepted' && '✓ Confermata'}
                           {request.status === 'rejected' && 'Rifiutata'}
-                          {request.status === 'played' && '🎵 Suonata'}
+                          {request.status === 'played' && '✅ Suonata'}
                         </span>
                       </div>
                     </div>
@@ -1096,7 +1096,7 @@ function RichiesteLibereContent() {
             
             <div className="space-y-4">
               <div className={`rounded-lg p-4 border-2 transition-all duration-300 ${
-                lastRequestStatus === 'accepted' ? 'bg-green-500/20 border-green-400/50' :
+                lastRequestStatus === 'accepted' || lastRequestStatus === 'played' ? 'bg-green-500/20 border-green-400/50' :
                 lastRequestStatus === 'rejected' ? 'bg-red-500/20 border-red-400/50' :
                 lastRequestStatus === 'cancelled' ? 'bg-yellow-500/20 border-yellow-400/50' :
                 'bg-blue-500/20 border-blue-400/50'
@@ -1104,12 +1104,13 @@ function RichiesteLibereContent() {
                 <div className="flex items-center justify-center gap-3">
                   <span className="text-lg font-medium text-white">Stato richiesta:</span>
                   <span className={`text-xl font-bold flex items-center gap-2 ${
-                    lastRequestStatus === 'accepted' ? 'text-green-300' :
+                    lastRequestStatus === 'accepted' || lastRequestStatus === 'played' ? 'text-green-300' :
                     lastRequestStatus === 'rejected' ? 'text-red-300' :
                     lastRequestStatus === 'cancelled' ? 'text-yellow-300' :
                     'text-blue-300'
                   }`}>
-                    {lastRequestStatus === 'accepted' ? '✅ Accettata' :
+                    {lastRequestStatus === 'played' ? '🎵 Suonata!' :
+                     lastRequestStatus === 'accepted' ? '✅ Accettata' :
                      lastRequestStatus === 'rejected' ? '❌ Rifiutata' :
                      lastRequestStatus === 'cancelled' ? '⚠️ Cancellata' :
                      '⏳ In attesa'}
@@ -1139,7 +1140,7 @@ function RichiesteLibereContent() {
               </p>
             </div>
             
-            {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'cancelled') && (
+            {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'cancelled' || lastRequestStatus === 'played') && (
               <button
                 onClick={() => {
                   setLastRequestId(null);
