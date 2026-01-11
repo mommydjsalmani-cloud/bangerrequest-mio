@@ -32,7 +32,6 @@ export default function LibereAdminPanel() {
   const [showArchive, setShowArchive] = useState(false); // Nuovo stato per archivio
   const [eventMode, setEventMode] = useState(false); // Nuovo stato per modalità evento
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
-  const [eventCodeFilter, setEventCodeFilter] = useState(''); // Filtro per codice evento
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
   const [sortByPriority, setSortByPriority] = useState(false); // Toggle ordinamento per priorità
   
@@ -45,18 +44,11 @@ export default function LibereAdminPanel() {
     return (upVotes || 0) - (downVotes || 0);
   };
   
-  // Funzione per filtrare e ordinare le richieste
+  // Funzione per ordinare le richieste
   const filteredRequests = (() => {
-    // Prima filtra per codice evento
-    let result = requests.filter(request => {
-      if (!eventCodeFilter.trim()) return true;
-      return request.event_code_upper?.includes(eventCodeFilter.toUpperCase()) || 
-             request.event_code?.toLowerCase().includes(eventCodeFilter.toLowerCase());
-    });
-    
     // Se il toggle priorità è attivo, ordina per score DESC, created_at ASC
     if (sortByPriority) {
-      result = [...result].sort((a, b) => {
+      return [...requests].sort((a, b) => {
         const scoreA = calculateScore(a.up_votes || 0, a.down_votes || 0);
         const scoreB = calculateScore(b.up_votes || 0, b.down_votes || 0);
         const scoreDiff = scoreB - scoreA;
@@ -65,8 +57,7 @@ export default function LibereAdminPanel() {
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       });
     }
-    
-    return result;
+    return requests;
   })();
   
   // Auto-clear messaggi con debounce
@@ -1424,34 +1415,9 @@ export default function LibereAdminPanel() {
                 )}
               </h2>
               
-              {/* Filtro Codice Evento */}
-              <div className="mb-4 flex flex-col md:flex-row gap-4 items-start md:items-end">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    🎫 Filtra per Codice Evento
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={eventCodeFilter}
-                      onChange={(e) => setEventCodeFilter(e.target.value)}
-                      placeholder="Inserisci codice evento..."
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
-                      maxLength={50}
-                    />
-                    {eventCodeFilter && (
-                      <button
-                        onClick={() => setEventCodeFilter('')}
-                        className="px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors text-sm"
-                      >
-                        Cancella
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Toggle Ordinamento Priorità */}
-                <div className="flex-shrink-0">
+              {/* Toggle Ordinamento Priorità */}
+              <div className="mb-4 flex justify-end">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     🔥 Ordinamento
                   </label>
@@ -1476,10 +1442,7 @@ export default function LibereAdminPanel() {
                 <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
                   <div className="text-4xl mb-2">🎵</div>
                   <div className="font-medium">
-                    {eventCodeFilter ? 
-                      `Nessuna richiesta trovata per "${eventCodeFilter}"` : 
-                      (showArchive ? 'Nessuna richiesta archiviata' : 'Nessuna richiesta presente')
-                    }
+                    {showArchive ? 'Nessuna richiesta archiviata' : 'Nessuna richiesta presente'}
                   </div>
                 </div>
               ) : (
