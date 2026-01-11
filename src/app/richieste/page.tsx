@@ -1091,36 +1091,36 @@ function RichiesteLibereContent() {
             )}
           </div>
         ) : (
-          /* Sezione Richiesta Inviata */
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 shadow-xl text-center space-y-4">
-            <div className="text-4xl mb-4">🎵</div>
-            <h2 className="text-2xl font-bold text-white">Richiesta Inviata!</h2>
+          /* Sezione Richiesta Inviata - Compatta per mobile */
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 border border-white/20 shadow-xl text-center space-y-3">
+            <div className="text-3xl">🎵</div>
+            <h2 className="text-xl font-bold text-white">Richiesta Inviata!</h2>
             
             {submittedTrack && (
-              <div className="bg-white/20 backdrop-blur-lg rounded-lg p-4">
-                <p className="text-gray-300 text-sm mb-1">Hai richiesto:</p>
-                <div className="font-semibold text-white text-lg">
+              <div className="bg-white/20 backdrop-blur-lg rounded-lg p-3">
+                <p className="text-gray-300 text-xs mb-1">Hai richiesto:</p>
+                <div className="font-semibold text-white">
                   {submittedTrack.title}
                 </div>
                 {submittedTrack.artists && (
-                  <div className="text-gray-300 text-sm">
+                  <div className="text-gray-300 text-xs">
                     di {submittedTrack.artists}
                   </div>
                 )}
               </div>
             )}
             
-            <div className="space-y-4">
-              <div className={`rounded-lg p-4 border-2 transition-all duration-300 ${
+            <div className="space-y-2">
+              <div className={`rounded-lg p-3 border-2 transition-all duration-300 ${
                 lastRequestStatus === 'played' ? 'bg-purple-500/20 border-purple-400/50' :
                 lastRequestStatus === 'accepted' ? 'bg-green-500/20 border-green-400/50' :
                 lastRequestStatus === 'rejected' ? 'bg-red-500/20 border-red-400/50' :
                 lastRequestStatus === 'cancelled' ? 'bg-yellow-500/20 border-yellow-400/50' :
                 'bg-blue-500/20 border-blue-400/50'
               }`}>
-                <div className="flex items-center justify-center gap-3">
-                  <span className="text-lg font-medium text-white">Stato richiesta:</span>
-                  <span className={`text-xl font-bold flex items-center gap-2 ${
+                <div className="flex items-center justify-center gap-2">
+                  <span className="text-sm font-medium text-white">Stato:</span>
+                  <span className={`text-lg font-bold ${
                     lastRequestStatus === 'played' ? 'text-purple-300' :
                     lastRequestStatus === 'accepted' ? 'text-green-300' :
                     lastRequestStatus === 'rejected' ? 'text-red-300' :
@@ -1135,46 +1135,40 @@ function RichiesteLibereContent() {
                   </span>
                 </div>
               </div>
-              <div className="bg-white/10 rounded-lg p-3 border border-white/20">
+              <div className="bg-white/10 rounded-lg p-2 border border-white/20">
                 <div className="flex items-center justify-center gap-2 text-gray-300">
-                  <span>🔄</span>
-                  <span className="text-sm">La pagina si aggiorna automaticamente quando il DJ decide</span>
+                  <span className="text-xs">🔄 Aggiornamento automatico</span>
                 </div>
               </div>
             </div>
             
-            {/* Pulsante Instagram */}
-            <div className="pt-4 border-t border-white/20">
+            {/* Pulsante Instagram - più compatto */}
+            <div className="pt-2 border-t border-white/20">
               <a
                 href="https://www.instagram.com/mommymusicentertainment?igsh=OHp1MWI1Z2dmOG4w"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 px-6 rounded-lg text-sm font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
+                className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-2 px-4 rounded-lg text-sm font-medium transition-all shadow-lg"
               >
                 📸 Seguimi su Instagram
               </a>
-              <p className="text-xs text-gray-400 mt-2">
-                Supporta il DJ seguendo su Instagram! 💜
-              </p>
             </div>
             
-            {(lastRequestStatus === 'accepted' || lastRequestStatus === 'rejected' || lastRequestStatus === 'cancelled' || lastRequestStatus === 'played') && (
-              <button
-                onClick={() => {
-                  setLastRequestId(null);
-                  setLastRequestStatus(null);
-                  setSubmittedTrack(null);
-                  sessionStorage.removeItem('libere_last_request_id');
-                  sessionStorage.removeItem('libere_last_request_status');
-                  sessionStorage.removeItem('libere_last_track');
-                  // Torna alla lista pending
-                  setCurrentStep('pending-list');
-                }}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-lg"
-              >
-                🎵 Fai un&apos;altra Richiesta
-              </button>
-            )}
+            {/* Pulsante altra richiesta - SEMPRE visibile */}
+            <button
+              onClick={() => {
+                setLastRequestId(null);
+                setLastRequestStatus(null);
+                setSubmittedTrack(null);
+                sessionStorage.removeItem('libere_last_request_id');
+                sessionStorage.removeItem('libere_last_request_status');
+                sessionStorage.removeItem('libere_last_track');
+                setCurrentStep('pending-list');
+              }}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg"
+            >
+              🎵 Fai un&apos;altra Richiesta
+            </button>
           </div>
         )}
       </div>
