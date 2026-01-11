@@ -483,7 +483,29 @@ function RichiesteLibereContent() {
         return;
       }
       
-      // Successo - salva info
+      // Gestisci caso duplicato - mostra stato esistente
+      if (data.duplicate) {
+        setLastRequestId(data.existingRequestId);
+        setLastRequestStatus(data.existingStatus);
+        setSubmittedTrack({ title: selected.title, artists: selected.artists });
+        
+        sessionStorage.setItem('libere_last_request_id', data.existingRequestId);
+        sessionStorage.setItem('libere_last_request_status', data.existingStatus);
+        sessionStorage.setItem('libere_last_track', JSON.stringify({ title: selected.title, artists: selected.artists }));
+        
+        // Reset form
+        setSelected(null);
+        setNote('');
+        setQuery('');
+        setResults([]);
+        setMessage(`${data.message}\nStato: ${data.existingStatusLabel}`);
+        setTimeout(() => setMessage(null), 5000);
+        
+        setSubmitting(false);
+        return;
+      }
+      
+      // Successo - nuova richiesta creata
       setLastRequestTime(Date.now());
       setLastRequestId(data.request_id);
       setLastRequestStatus('new');

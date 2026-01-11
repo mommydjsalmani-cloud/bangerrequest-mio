@@ -104,20 +104,23 @@ async function checkRateLimit(
   return { ok: true };
 }
 
-async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<boolean> {
-  // Controlla se esiste già una richiesta simile negli ultimi 5 minuti
-  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-  
+async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<{ isDuplicate: boolean; existingRequest?: { id: string; status: string } }> {
+  // Controlla se esiste già una richiesta simile (non archiviata e non suonata)
   const { data: duplicates } = await supabase
     .from('richieste_libere')
-    .select('id')
+    .select('id, status')
     .eq('session_id', sessionId)
     .eq('title', title)
     .eq('artists', artists || '')
     .eq('archived', false)
-    .gte('created_at', fiveMinutesAgo.toISOString());
+    .in('status', ['new', 'accepted']) // Solo richieste ancora in coda
+    .order('created_at', { ascending: false })
+    .limit(1);
   
-  return !!(duplicates && duplicates.length > 0);
+  if (duplicates && duplicates.length > 0) {
+    return { isDuplicate: true, existingRequest: duplicates[0] };
+  }
+  return { isDuplicate: false };
 }
 
 export async function GET(req: Request) {
@@ -254,10 +257,23 @@ export async function POST(req: Request) {
     return withVersion({ ok: false, error: `Troppe richieste. Riprova tra ${seconds} secondi.` }, { status: 429 });
   }
   
-  // Duplicate check
-  const isDuplicate = await checkDuplicateRequest(supabase, session.id, title.trim(), artists?.trim());
-  if (isDuplicate) {
-    return withVersion({ ok: false, error: 'Richiesta già inviata di recente' }, { status: 409 });
+  // Duplicate check - restituisce lo stato se già esiste
+  const duplicateCheck = await checkDuplicateRequest(supabase, session.id, title.trim(), artists?.trim());
+  if (duplicateCheck.isDuplicate && duplicateCheck.existingRequest) {
+    const statusLabels: Record<string, string> = {
+      'new': '⏳ In attesa di conferma',
+      'accepted': '✅ Accettata - il DJ la suonerà!'
+    };
+    const statusLabel = statusLabels[duplicateCheck.existingRequest.status] || duplicateCheck.existingRequest.status;
+    
+    return withVersion({ 
+      ok: true, // Non è un errore, è un'informazione
+      duplicate: true,
+      message: `🎵 Ottima scelta! Questo brano è già in coda.`,
+      existingStatus: duplicateCheck.existingRequest.status,
+      existingStatusLabel: statusLabel,
+      existingRequestId: duplicateCheck.existingRequest.id
+    }, { status: 200 });
   }
   
   // Crea richiesta
