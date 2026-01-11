@@ -759,13 +759,13 @@ function RichiesteLibereContent() {
                             : request.status === 'accepted'
                             ? 'bg-green-500/30 text-green-200'
                             : request.status === 'played'
-                            ? 'bg-green-500/30 text-green-200'
+                            ? 'bg-purple-500/30 text-purple-200'
                             : 'bg-red-500/30 text-red-200'
                         }`}>
                           {request.status === 'new' && 'In attesa'}
                           {request.status === 'accepted' && '✓ Confermata'}
                           {request.status === 'rejected' && 'Rifiutata'}
-                          {request.status === 'played' && '✅ Suonata'}
+                          {request.status === 'played' && '🎵 Suonata'}
                         </span>
                       </div>
                     </div>
