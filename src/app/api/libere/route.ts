@@ -266,20 +266,22 @@ export async function POST(req: Request) {
     
     // CASO SPECIALE: Richiesta rifiutata - riattiva e notifica DJ
     if (status === 'rejected') {
-      // Incrementa contatore e riporta a "new"
+      // Incrementa contatore e riporta a "new", aggiorna anche nome e commento
       const newCount = currentCount + 1;
+      const requesterName = requester_name?.trim() || 'Ospite';
       await supabase
         .from('richieste_libere')
         .update({ 
           status: 'new', 
-          request_count: newCount 
+          request_count: newCount,
+          requester_name: requesterName,
+          note: finalNote
         })
         .eq('id', existingId);
       
       // Notifica Telegram con contatore + info richiedente
       try {
         if (process.env.ENABLE_TELEGRAM_NOTIFICATIONS === 'true') {
-          const requesterName = requester_name?.trim() || 'Ospite';
           const comment = finalNote || '';
           
           const text = [
