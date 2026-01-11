@@ -46,12 +46,54 @@ export async function GET(req: Request) {
   try {
     // Fetch richieste pending (new, accepted, rejected, played) per la sessione
     // L'ordinamento sarà fatto lato server dopo aver calcolato score_live
-    const { data: requests, error: reqError } = await supabase
+    // Nota: played_at potrebbe non esistere se migrazione non eseguita, gestiamo gracefully
+    const selectFields = 'id, session_id, created_at, track_id, uri, title, artists, album, cover_url, duration_ms, requester_name, status, up_votes, down_votes';
+    
+    // Tipo per i risultati
+    type RequestRow = {
+      id: string;
+      session_id: string;
+      created_at: string;
+      track_id?: string;
+      uri?: string;
+      title: string;
+      artists?: string;
+      album?: string;
+      cover_url?: string;
+      duration_ms?: number;
+      requester_name?: string;
+      status: string;
+      up_votes?: number;
+      down_votes?: number;
+      played_at?: string;
+    };
+    
+    // Prima prova con played_at
+    let requests: RequestRow[] | null = null;
+    let reqError: { message?: string } | null = null;
+    
+    const result1 = await supabase
       .from('richieste_libere')
-      .select('id, session_id, created_at, track_id, uri, title, artists, album, cover_url, duration_ms, requester_name, status, up_votes, down_votes, played_at')
+      .select(selectFields + ', played_at')
       .eq('session_id', sessionId)
       .eq('archived', false)
       .in('status', ['new', 'accepted', 'rejected', 'played']);
+    
+    requests = result1.data as RequestRow[] | null;
+    reqError = result1.error;
+    
+    // Se errore contiene played_at, riprova senza
+    if (reqError && reqError.message?.includes('played_at')) {
+      const fallback = await supabase
+        .from('richieste_libere')
+        .select(selectFields)
+        .eq('session_id', sessionId)
+        .eq('archived', false)
+        .in('status', ['new', 'accepted', 'rejected']);
+      
+      requests = fallback.data as RequestRow[] | null;
+      reqError = fallback.error;
+    }
     
     if (reqError) {
       console.error('[pending] Error fetching requests:', reqError);

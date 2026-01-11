@@ -144,16 +144,7 @@ export async function editTelegramMessage(opts: { chatId: string | number; messa
       return out;
     })) };
     const body = { ...bodyBase, reply_markup: keyboard };
-    console.log('[Telegram] editMessageReplyMarkup body:', JSON.stringify(body));
-    const res = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res) {
-      try {
-        const json = await res.json();
-        console.log('[Telegram] editMessageReplyMarkup response:', JSON.stringify(json));
-      } catch (e) {
-        console.error('[Telegram] editMessageReplyMarkup parse error:', e);
-      }
-    }
+    await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 }
 
