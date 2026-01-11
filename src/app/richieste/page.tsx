@@ -1096,7 +1096,8 @@ function RichiesteLibereContent() {
             
             <div className="space-y-4">
               <div className={`rounded-lg p-4 border-2 transition-all duration-300 ${
-                lastRequestStatus === 'accepted' || lastRequestStatus === 'played' ? 'bg-green-500/20 border-green-400/50' :
+                lastRequestStatus === 'played' ? 'bg-emerald-700/30 border-emerald-500/60' :
+                lastRequestStatus === 'accepted' ? 'bg-green-500/20 border-green-400/50' :
                 lastRequestStatus === 'rejected' ? 'bg-red-500/20 border-red-400/50' :
                 lastRequestStatus === 'cancelled' ? 'bg-yellow-500/20 border-yellow-400/50' :
                 'bg-blue-500/20 border-blue-400/50'
@@ -1104,7 +1105,8 @@ function RichiesteLibereContent() {
                 <div className="flex items-center justify-center gap-3">
                   <span className="text-lg font-medium text-white">Stato richiesta:</span>
                   <span className={`text-xl font-bold flex items-center gap-2 ${
-                    lastRequestStatus === 'accepted' || lastRequestStatus === 'played' ? 'text-green-300' :
+                    lastRequestStatus === 'played' ? 'text-emerald-300' :
+                    lastRequestStatus === 'accepted' ? 'text-green-300' :
                     lastRequestStatus === 'rejected' ? 'text-red-300' :
                     lastRequestStatus === 'cancelled' ? 'text-yellow-300' :
                     'text-blue-300'
