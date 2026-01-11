@@ -260,18 +260,28 @@ export async function POST(req: Request) {
   // Duplicate check - restituisce lo stato se già esiste
   const duplicateCheck = await checkDuplicateRequest(supabase, session.id, title.trim(), artists?.trim());
   if (duplicateCheck.isDuplicate && duplicateCheck.existingRequest) {
-    const statusLabels: Record<string, string> = {
-      'new': '⏳ In attesa di conferma',
-      'accepted': '✅ Accettata - il DJ la suonerà!',
-      'played': '🎵 Già suonata stasera!'
-    };
-    const statusLabel = statusLabels[duplicateCheck.existingRequest.status] || duplicateCheck.existingRequest.status;
+    const status = duplicateCheck.existingRequest.status;
+    
+    // Messaggi diversi in base allo stato
+    let message: string;
+    let statusLabel: string;
+    
+    if (status === 'played') {
+      message = '🎵 Ottima scelta! 🎵 Ma questo brano è già stato suonato stasera!';
+      statusLabel = '🎵 Già suonata';
+    } else if (status === 'accepted') {
+      message = '🎵 Ottima scelta! Questo brano è già in coda.';
+      statusLabel = '✅ Accettata - il DJ la suonerà!';
+    } else {
+      message = '🎵 Ottima scelta! Questo brano è già in coda.';
+      statusLabel = '⏳ In attesa di conferma';
+    }
     
     return withVersion({ 
       ok: true, // Non è un errore, è un'informazione
       duplicate: true,
-      message: `🎵 Ottima scelta! Questo brano è già in coda.`,
-      existingStatus: duplicateCheck.existingRequest.status,
+      message,
+      existingStatus: status,
       existingStatusLabel: statusLabel,
       existingRequestId: duplicateCheck.existingRequest.id
     }, { status: 200 });
