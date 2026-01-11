@@ -105,7 +105,7 @@ async function checkRateLimit(
 }
 
 async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof getSupabase>>, sessionId: string, title: string, artists?: string): Promise<{ isDuplicate: boolean; existingRequest?: { id: string; status: string } }> {
-  // Controlla se esiste già una richiesta simile (non archiviata e non suonata)
+  // Controlla se esiste già una richiesta simile (non archiviata)
   const { data: duplicates } = await supabase
     .from('richieste_libere')
     .select('id, status')
@@ -113,7 +113,7 @@ async function checkDuplicateRequest(supabase: NonNullable<ReturnType<typeof get
     .eq('title', title)
     .eq('artists', artists || '')
     .eq('archived', false)
-    .in('status', ['new', 'accepted']) // Solo richieste ancora in coda
+    .in('status', ['new', 'accepted', 'played']) // Include anche brani già suonati
     .order('created_at', { ascending: false })
     .limit(1);
   
@@ -262,7 +262,8 @@ export async function POST(req: Request) {
   if (duplicateCheck.isDuplicate && duplicateCheck.existingRequest) {
     const statusLabels: Record<string, string> = {
       'new': '⏳ In attesa di conferma',
-      'accepted': '✅ Accettata - il DJ la suonerà!'
+      'accepted': '✅ Accettata - il DJ la suonerà!',
+      'played': '🎵 Già suonata stasera!'
     };
     const statusLabel = statusLabels[duplicateCheck.existingRequest.status] || duplicateCheck.existingRequest.status;
     
