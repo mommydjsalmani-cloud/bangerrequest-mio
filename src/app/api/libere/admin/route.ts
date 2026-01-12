@@ -219,7 +219,7 @@ export async function GET(req: Request) {
   // Vista normale: dj_archived = false (o non esiste)
   // Vista archivio: dj_archived = true
   // In entrambi i casi, escludi le richieste definitivamente archiviate
-  let requestsQuery = supabase
+  const requestsQuery = supabase
     .from('richieste_libere')
     .select('*')
     .eq('session_id', sessionId)

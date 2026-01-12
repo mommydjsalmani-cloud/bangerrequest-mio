@@ -258,7 +258,7 @@ function RichiesteLibereContent() {
     if (currentStep === 'pending-list') {
       setIsFirstLoad(true);
     }
-  }, [session?.id]);
+  }, [session?.id, currentStep]);
 
   // Funzione per votare
   const handleVote = async (requestId: string, action: 'up' | 'down') => {
