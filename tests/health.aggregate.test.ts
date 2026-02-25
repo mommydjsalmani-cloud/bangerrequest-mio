@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseJSON } from './testRoutes';
 
 // Mock di getSupabase a livello di modulo - ritorna sempre null
@@ -16,14 +16,18 @@ vi.mock('@/lib/monitoring', () => ({
 
 describe('Aggregated health endpoint', () => {
   beforeEach(() => {
-    // Configura le variabili di ambiente per il test
-    process.env.NODE_ENV = 'test';
-    process.env.DJ_PANEL_USER = 'testuser';
-    process.env.DJ_PANEL_SECRET = 'testsecret';
+    // Configura le variabili di ambiente per il test senza mutare oggetti readonly
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('DJ_PANEL_USER', 'testuser');
+    vi.stubEnv('DJ_PANEL_SECRET', 'testsecret');
     // Rimuovi le credenziali Supabase per forzare missing_credentials
-    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
-    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', '');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('restituisce blocco supabase e auth', async () => {

@@ -10,7 +10,11 @@ jobs:
   health-check:
     name: 🏥 Production Health Check
     runs-on: ubuntu-latest
-    
+    env:
+      PROD_URL: ${{ secrets.PROD_URL }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -23,56 +27,57 @@ jobs:
           
       - name: 📚 Install dependencies
         run: npm ci
-        
-      - name: 🏥 Check application health
+      - name: 🏥 Check application health (critical)
         run: |
-          # Get the production URL from Vercel deployment
-          PROD_URL="https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app"
-          
-          echo "🔍 Checking health endpoints..."
-          
-          # Check main health endpoint
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "✅ Main health check passed"
-          else
-            echo "❌ Main health check failed (HTTP $response)"
-            exit 1
-          fi
-          
-          # Check Supabase health
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/health/supabase" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "✅ Supabase health check passed"
-          else
-            echo "⚠️ Supabase health check failed (HTTP $response)"
-          fi
-          
-          # Check Spotify health
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/api/spotify/health" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "✅ Spotify health check passed"
-          else
-            echo "⚠️ Spotify health check failed (HTTP $response)"
-          fi
-          
-          # Check main page loads
-          response=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL/" || echo "000")
-          if [ "$response" = "200" ]; then
-            echo "✅ Homepage loads successfully"
-          else
-            echo "❌ Homepage failed to load (HTTP $response)"
-            exit 1
-          fi
-          
-          echo "🎉 Health check completed successfully!"
-          
+          set -euo pipefail
+          echo "🔍 Checking critical health endpoints..."
+
+          check() {
+            url="$1"
+            for i in 1 2 3; do
+              if curl -fsS --max-time 10 "$url" -o /dev/null; then
+                echo "✅ $url OK"
+                return 0
+              fi
+              echo "Retry $i for $url"
+              sleep 2
+            done
+            echo "❌ $url failed after retries"
+            return 1
+          }
+
+          check "${PROD_URL}/api/health"
+          check "${PROD_URL}/"
+
+      - name: ⚠️ Check Supabase (non-critical)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/health/supabase" -o /dev/null || echo "Supabase check failed"
+
+      - name: ⚠️ Check Spotify (non-critical)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/spotify/health" -o /dev/null || echo "Spotify check failed"
+
       - name: 📊 Run detailed health check
         run: |
-          node scripts/check_health.cjs https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app/api/health/supabase
-          
+          node scripts/check_health.cjs "${PROD_URL}/api/health/supabase"
+
       - name: 💬 Notify on failure
         if: failure()
         run: |
           echo "❌ Health check failed! Production may be down."
-          echo "Check the application immediately: https://bangerrequest-8sasrdwae-mommys-projects-f4f4fbbb.vercel.app"
+          echo "Check the application immediately: ${PROD_URL}"
+
+          if [ -n "${TELEGRAM_BOT_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
+            MESSAGE="❌ Health check failed for ${GITHUB_REPOSITORY}.\nWorkflow: ${GITHUB_WORKFLOW}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nApp: ${PROD_URL}"
+
+            curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+              --data-urlencode "text=${MESSAGE}" \
+              --data-urlencode "disable_web_page_preview=true" || echo "Telegram notification failed"
+          else
+            echo "Telegram secrets missing, skipping alert"
+          fi
