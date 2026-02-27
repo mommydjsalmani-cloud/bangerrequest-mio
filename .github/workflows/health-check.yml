@@ -36,12 +36,20 @@ jobs:
             exit 1
           fi
 
-          echo "🔍 Checking critical health endpoints: ${PROD_URL}"
+          # Assicura che l'URL abbia il protocollo https://
+          BASE_URL="${PROD_URL}"
+          if [[ "${BASE_URL}" != https://* && "${BASE_URL}" != http://* ]]; then
+            BASE_URL="https://${BASE_URL}"
+          fi
+          # Rimuovi trailing slash
+          BASE_URL="${BASE_URL%/}"
+
+          echo "🔍 Checking critical health endpoints: ${BASE_URL}"
 
           check() {
             url="$1"
             for i in 1 2 3; do
-              if curl -fsS --max-time 10 "$url" -o /dev/null; then
+              if curl -fsS -L --max-time 10 "$url" -o /dev/null; then
                 echo "✅ $url OK"
                 return 0
               fi
@@ -52,33 +60,36 @@ jobs:
             return 1
           }
 
-          check "${PROD_URL}/api/health"
-          check "${PROD_URL}/"
+          check "${BASE_URL}/api/health"
+          check "${BASE_URL}/"
+
+          # Esporta BASE_URL per gli step successivi
+          echo "BASE_URL=${BASE_URL}" >> $GITHUB_ENV
 
       - name: ⚠️ Check Supabase (non-critical)
         continue-on-error: true
         run: |
           set -uo pipefail
-          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/health/supabase" -o /dev/null || echo "Supabase check failed"
+          curl -fsS -L --max-time 8 --retry 2 "${BASE_URL}/api/health/supabase" -o /dev/null || echo "Supabase check failed"
 
       - name: ⚠️ Check Deezer (non-critical)
         continue-on-error: true
         run: |
           set -uo pipefail
-          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/deezer/health" -o /dev/null || echo "Deezer check failed"
+          curl -fsS -L --max-time 8 --retry 2 "${BASE_URL}/api/deezer/health" -o /dev/null || echo "Deezer check failed"
 
       - name: 📊 Run detailed health check
         run: |
-          node scripts/check_health.cjs "${PROD_URL}/api/health/supabase"
+          node scripts/check_health.cjs "${BASE_URL}/api/health/supabase"
 
       - name: 💬 Notify on failure
         if: failure()
         run: |
           echo "❌ Health check failed! Production may be down."
-          echo "Check the application immediately: ${PROD_URL}"
+          echo "Check the application immediately: ${BASE_URL:-${PROD_URL}}"
 
           if [ -n "${TELEGRAM_BOT_TOKEN}" ] && [ -n "${TELEGRAM_CHAT_ID}" ]; then
-            MESSAGE="❌ Health check failed for ${GITHUB_REPOSITORY}.\nWorkflow: ${GITHUB_WORKFLOW}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nApp: ${PROD_URL}"
+            MESSAGE="❌ Health check failed for ${GITHUB_REPOSITORY}.\nWorkflow: ${GITHUB_WORKFLOW}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}\nApp: ${BASE_URL:-${PROD_URL}}"
 
             curl -fsS -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
               --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
