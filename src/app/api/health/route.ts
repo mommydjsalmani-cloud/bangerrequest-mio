@@ -10,10 +10,14 @@ async function healthCheckHandler(): Promise<NextResponse> {
 
   // Check environment variables
   const envCheck = validateEnvironment();
+  const isProd = process.env.NODE_ENV === 'production';
   checks.environment = {
     valid: envCheck.valid,
-    missing: envCheck.missing,
-    warnings: envCheck.warnings,
+    // In produzione non esporre i nomi delle variabili mancanti
+    ...(isProd ? {} : {
+      missing: envCheck.missing,
+      warnings: envCheck.warnings,
+    }),
     nodeEnv: process.env.NODE_ENV
   };
 
@@ -34,23 +38,18 @@ async function healthCheckHandler(): Promise<NextResponse> {
           ok: false,
           mode: 'in-memory',
           error: 'missing_credentials',
-          hasUrl,
-          hasServiceRole,
-          hasAnon
+          ...(isProd ? {} : { hasUrl, hasServiceRole, hasAnon })
         };
       }
 
       const supabase = getSupabase();
       if (!supabase) {
-        // getSupabase può ritornare null in test mode anche con env vars presenti
         healthTracker.setHealthy('database', false);
         return {
           ok: false,
           mode: 'in-memory',
           error: 'missing_credentials',
-          hasUrl,
-          hasServiceRole,
-          hasAnon
+          ...(isProd ? {} : { hasUrl, hasServiceRole, hasAnon })
         };
       }
 
@@ -109,16 +108,17 @@ async function healthCheckHandler(): Promise<NextResponse> {
   healthTracker.setHealthy('auth', authOk);
   checks.auth = {
     ok: authOk,
-    hasUser: !!process.env.DJ_PANEL_USER,
-    hasSecret: !!process.env.DJ_PANEL_SECRET
+    ...(isProd ? {} : {
+      hasUser: !!process.env.DJ_PANEL_USER,
+      hasSecret: !!process.env.DJ_PANEL_SECRET
+    })
   };
 
-  // System info
+  // System info — in produzione solo il responseTime
   const systemInfo = getSystemInfo();
-  checks.system = {
-    ...systemInfo,
-    responseTime: Date.now() - startTime
-  };
+  checks.system = isProd
+    ? { responseTime: Date.now() - startTime }
+    : { ...systemInfo, responseTime: Date.now() - startTime };
 
   // Overall health
   const overallOk = (

@@ -1,7 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { checkLoginRateLimit, resetLoginRateLimit } from '@/lib/auth';
+
+function requireDJSecret(req: NextRequest): string | null {
+  const secret = process.env.DJ_PANEL_SECRET?.trim();
+  const user = process.env.DJ_PANEL_USER?.trim();
+  if (!secret || !user) return 'misconfigured';
+
+  // Rate limiting per IP
+  const ip = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  const rateLimit = checkLoginRateLimit(`dj-login:${ip}`);
+  if (!rateLimit.allowed) return 'rate_limited';
+
+  const hSecret = req.headers.get('x-dj-secret')?.trim();
+  const hUser = req.headers.get('x-dj-user')?.trim();
+  if (hSecret !== secret || hUser !== user) return 'unauthorized';
+
+  resetLoginRateLimit(`dj-login:${ip}`);
+  return null;
+}
 
 export async function POST(request: NextRequest) {
+  const authErr = requireDJSecret(request);
+  if (authErr === 'rate_limited') {
+    return NextResponse.json({ ok: false, error: 'Too many requests' }, { status: 429 });
+  }
+  if (authErr) {
+    return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 401 });
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -16,13 +43,6 @@ export async function POST(request: NextRequest) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    // Verifica autenticazione DJ
-    const body = await request.json();
-    const { secret, user } = body;
-    
-    if (secret !== process.env.DJ_PANEL_SECRET || user !== process.env.DJ_PANEL_USER) {
-      return NextResponse.json({ ok: false, error: 'Non autorizzato' }, { status: 401 });
-    }
 
     // Prova semplicemente a verificare se le tabelle esistono
     const { error: testError } = await supabase
