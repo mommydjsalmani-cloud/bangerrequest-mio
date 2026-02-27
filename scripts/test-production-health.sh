@@ -26,13 +26,13 @@ else
   echo "⚠️ Supabase health check failed (HTTP $response)"
 fi
 
-# Check Spotify health
-echo "Checking ${PROD_URL}/api/spotify/health..."
-response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/api/spotify/health" || echo "000")
+# Check Deezer health
+echo "Checking ${PROD_URL}/api/deezer/health..."
+response=$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL}/api/deezer/health" || echo "000")
 if [ "$response" = "200" ]; then
-  echo "✅ Spotify health check passed"
+  echo "✅ Deezer health check passed"
 else
-  echo "⚠️ Spotify health check failed (HTTP $response)"
+  echo "⚠️ Deezer health check failed (HTTP $response)"
 fi
 
 # Check main page loads

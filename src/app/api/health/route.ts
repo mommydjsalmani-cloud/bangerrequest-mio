@@ -84,36 +84,21 @@ async function healthCheckHandler(): Promise<NextResponse> {
     }
   );
 
-  // Check Spotify API
-  checks.spotify = await measureAsync(
-    'health_check.spotify',
+  // Check Deezer API
+  checks.deezer = await measureAsync(
+    'health_check.deezer',
     async () => {
-      const hasCredentials = !!(process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET);
-      if (!hasCredentials) {
-        healthTracker.setHealthy('spotify', false);
-        // In production, non esporre quali credenziali mancano
-        const isProd = process.env.NODE_ENV === 'production';
-        return {
-          ok: false,
-          error: 'missing_credentials',
-          ...(isProd ? {} : {
-            hasClientId: !!process.env.SPOTIFY_CLIENT_ID,
-            hasClientSecret: !!process.env.SPOTIFY_CLIENT_SECRET
-          })
-        };
-      }
-
       try {
         // Import dinamico per evitare problemi con edge runtime
-        const { getSpotifyToken } = await import('@/lib/spotify');
-        await withTimeout(getSpotifyToken(), config.spotify.searchTimeout, 'spotify_token_health');
-        healthTracker.setHealthy('spotify', true);
+        const { searchDeezer } = await import('@/lib/deezer');
+        await withTimeout(searchDeezer('test', 1), config.deezer.searchTimeout, 'deezer_health');
+        healthTracker.setHealthy('deezer', true);
         return { ok: true };
       } catch (err) {
-        healthTracker.setHealthy('spotify', false);
+        healthTracker.setHealthy('deezer', false);
         return {
           ok: false,
-          error: err instanceof Error ? err.message : 'Token fetch failed'
+          error: err instanceof Error ? err.message : 'Deezer search failed'
         };
       }
     }

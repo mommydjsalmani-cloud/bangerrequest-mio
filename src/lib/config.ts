@@ -20,8 +20,7 @@ export type AppConfig = {
     queryTimeout: number;
     retries: number;
   };
-  spotify: {
-    tokenCacheDuration: number;
+  deezer: {
     searchTimeout: number;
     apiRetries: number;
   };
@@ -76,10 +75,9 @@ function createConfig(): AppConfig {
       queryTimeout: parseInt(process.env.DB_QUERY_TIMEOUT || '15000'), // 15s
       retries: parseInt(process.env.DB_RETRIES || '2')
     },
-    spotify: {
-      tokenCacheDuration: parseInt(process.env.SPOTIFY_TOKEN_CACHE_DURATION || '3300000'), // 55 minuti
-      searchTimeout: parseInt(process.env.SPOTIFY_SEARCH_TIMEOUT || '5000'), // 5s
-      apiRetries: parseInt(process.env.SPOTIFY_API_RETRIES || '2')
+    deezer: {
+      searchTimeout: parseInt(process.env.DEEZER_SEARCH_TIMEOUT || '5000'), // 5s
+      apiRetries: parseInt(process.env.DEEZER_API_RETRIES || '2')
     },
     dj: {
       sessionTimeout: parseInt(process.env.DJ_SESSION_TIMEOUT || '7200000'), // 2 ore
@@ -123,9 +121,7 @@ export function validateEnvironment(): { valid: boolean; missing: string[]; warn
   // Variabili raccomandate
   const recommended = [
     'NEXT_PUBLIC_SUPABASE_URL',
-    'SUPABASE_SERVICE_ROLE_KEY',
-    'SPOTIFY_CLIENT_ID',
-    'SPOTIFY_CLIENT_SECRET'
+    'SUPABASE_SERVICE_ROLE_KEY'
   ];
 
   for (const envVar of required) {

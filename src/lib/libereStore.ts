@@ -36,7 +36,7 @@ export type LibereRequest = {
   requester_name?: string;
   client_ip: string;
   user_agent?: string;
-  source: 'spotify' | 'manual';
+  source: 'deezer' | 'spotify' | 'manual';
   status: 'new' | 'accepted' | 'rejected' | 'cancelled' | 'archived' | 'played';
   note?: string;
   archived: boolean;

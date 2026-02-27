@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://i.scdn.co https://mosaic.scdn.co https://seeded-session-images.scdn.co https://api.qrserver.com",
       "font-src 'self'",
-      "connect-src 'self' https://*.supabase.co https://api.spotify.com https://www.google.com",
+      "connect-src 'self' https://*.supabase.co https://api.deezer.com https://www.google.com",
       "frame-src 'self' https://www.google.com https://recaptcha.google.com",
       "form-action 'self'",
       "base-uri 'self'",

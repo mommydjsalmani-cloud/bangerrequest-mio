@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Banger Request - Richieste Musicali",
-  description: "Richiedi la tua musica preferita al DJ! Sistema di richieste musicali interattivo con integrazione Spotify.",
+  description: "Richiedi la tua musica preferita al DJ! Sistema di richieste musicali interattivo con integrazione Deezer.",
 };
 
 export default function RootLayout({

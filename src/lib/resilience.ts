@@ -69,7 +69,7 @@ export class CircuitBreaker {
 
 // Circuit breakers per servizi esterni
 export const circuitBreakers = {
-  spotify: new CircuitBreaker({
+  deezer: new CircuitBreaker({
     failureThreshold: 5,
     resetTimeout: 60000, // 1 minuto
     successThreshold: 3

@@ -77,7 +77,7 @@ export default function Requests() {
         return;
       }
       setLoading(true);
-      fetch(apiPath(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`))
+      fetch(apiPath(`/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`))
         .then((r) => r.json())
         .then((data) => {
           setResults(data.tracks || []);
@@ -231,7 +231,7 @@ export default function Requests() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 type="text"
-                placeholder="Cerca titolo o artista su Spotify"
+                placeholder="Cerca titolo o artista su Deezer"
                 className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
               />
             </div>
@@ -253,7 +253,7 @@ export default function Requests() {
                     )}
                     <div className="flex gap-1">
                       <button onClick={() => setSelected(t)} className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Sel.</button>
-                      <a href={`https://open.spotify.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
+                      <a href={`https://www.deezer.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
                     </div>
                   </div>
                 </div>
@@ -321,7 +321,7 @@ export default function Requests() {
           <div className="text-xs text-gray-300 mt-2">Ultima richiesta ID {lastRequestId} — stato: <span className="font-semibold">{lastRequestStatus ?? 'in attesa'}</span></div>
         )}
 
-        <div className="text-[11px] sm:text-xs text-gray-400 mt-4 leading-snug">Nota: preview disponibili solo quando presenti in Spotify. Nessun account Spotify richiesto.</div>
+        <div className="text-[11px] sm:text-xs text-gray-400 mt-4 leading-snug">Nota: preview disponibili solo quando presenti in Deezer. Nessun account Deezer richiesto.</div>
       </div>
     </main>
   );

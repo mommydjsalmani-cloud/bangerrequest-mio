@@ -6,7 +6,7 @@ import { canMakeRequest, sanitizeInput, LibereSession, PendingRequestWithVote, g
 import { apiPath, publicPath } from '@/lib/apiPath';
 import Image from 'next/image';
 
-type SpotifyTrack = {
+type DeezerTrack = {
   id: string;
   uri?: string;
   title?: string;
@@ -54,11 +54,11 @@ function RichiesteLibereContent() {
   const [note, setNote] = useState('');
   const [eventCode, setEventCode] = useState('');
   
-  // Spotify search
+  // Deezer search
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SpotifyTrack[]>([]);
+  const [results, setResults] = useState<DeezerTrack[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selected, setSelected] = useState<SpotifyTrack | null>(null);
+  const [selected, setSelected] = useState<DeezerTrack | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   const submitted = !!lastRequestId;
@@ -360,7 +360,7 @@ function RichiesteLibereContent() {
     return () => clearInterval(interval);
   }, [lastRequestId, token, lastRequestStatus]);
   
-  // Ricerca Spotify con debounce
+  // Ricerca Deezer con debounce
   useEffect(() => {
     const t = setTimeout(() => {
       if (!query.trim()) {
@@ -369,7 +369,7 @@ function RichiesteLibereContent() {
       }
       setSearching(true);
       setIsCollapsed(false); // Reset collapse quando cerchi
-      fetch(apiPath(`/api/spotify/search?q=${encodeURIComponent(query)}&limit=10`))
+      fetch(apiPath(`/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`))
         .then((r) => r.json())
         .then((data) => {
           setResults(data.tracks || []);
@@ -418,7 +418,7 @@ function RichiesteLibereContent() {
   };
 
   // Gestisce selezione con collapse
-  const handleTrackSelection = (track: SpotifyTrack) => {
+  const handleTrackSelection = (track: DeezerTrack) => {
     if (selected?.id === track.id) {
       // Se clicchi sulla stessa canzone, fai toggle del collapse
       setIsCollapsed(!isCollapsed);
@@ -464,7 +464,7 @@ function RichiesteLibereContent() {
         album: selected.album || '',
         cover_url: selected.cover_url || '',
         duration_ms: selected.duration_ms,
-        source: 'spotify',
+        source: 'deezer',
         note: note.trim() || undefined,
         event_code: eventCode.trim() || undefined
       };
@@ -870,7 +870,7 @@ function RichiesteLibereContent() {
             {/* Risultati Ricerca con Cards Moderne */}
             {results.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-base font-semibold">🎶 Risultati da Spotify</label>
+                <label className="block text-base font-semibold">🎶 Risultati da Deezer</label>
                 <div className="grid grid-cols-1 gap-1 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
@@ -938,15 +938,15 @@ function RichiesteLibereContent() {
                             </span>
                           )}
                           
-                          {/* Open in Spotify Button */}
+                          {/* Open in Deezer Button */}
                           <a
-                            href={`https://open.spotify.com/track/${track.id}`}
+                            href={`https://www.deezer.com/track/${track.id}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 shadow-lg whitespace-nowrap"
                           >
-                            Apri in Spotify
+                            Apri in Deezer
                           </a>
                         </div>
                       </div>
