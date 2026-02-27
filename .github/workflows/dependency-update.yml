@@ -44,8 +44,6 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: 'https://mock.supabase.co'
           SUPABASE_SERVICE_ROLE_KEY: 'mock-key'
-          SPOTIFY_CLIENT_ID: 'mock-id'
-          SPOTIFY_CLIENT_SECRET: 'mock-secret'
           DJ_PANEL_SECRET: 'mock-secret'
           DJ_PANEL_USER: 'mock-user'
           
@@ -60,27 +58,28 @@ jobs:
           
       - name: 📝 Create Pull Request
         if: steps.changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          commit-message: 'chore: update dependencies'
-          title: '📦 Automated Dependency Update'
-          body: |
-            ## 📦 Dependency Updates
-            
-            This PR contains automated dependency updates:
-            
-            ### Changes
-            - Updated patch and minor versions for better security and performance
-            - All tests pass ✅
-            - Build successful ✅
-            
-            ### Review Notes
-            - Review the changes carefully before merging
-            - Run additional manual tests if needed
-            - Check for any breaking changes in the updated packages
-            
-            ---
-            *This PR was created automatically by the dependency-update workflow*
-          branch: chore/dependency-update
-          delete-branch: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b chore/dependency-update || git checkout chore/dependency-update
+          git add package*.json
+          git commit -m "chore: update dependencies"
+          git push origin chore/dependency-update --force
+          gh pr create \
+            --base main \
+            --head chore/dependency-update \
+            --title "📦 Automated Dependency Update" \
+            --body "## 📦 Dependency Updates
+
+This PR contains automated dependency updates:
+
+### Changes
+- Updated patch and minor versions for better security and performance
+- All tests pass ✅
+- Build successful ✅
+
+---
+*This PR was created automatically by the dependency-update workflow*" \
+            || echo "PR already exists or no changes to push"
