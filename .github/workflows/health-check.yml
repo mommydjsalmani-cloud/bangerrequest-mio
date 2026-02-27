@@ -30,7 +30,13 @@ jobs:
       - name: 🏥 Check application health (critical)
         run: |
           set -euo pipefail
-          echo "🔍 Checking critical health endpoints..."
+
+          if [ -z "${PROD_URL}" ]; then
+            echo "❌ PROD_URL secret is not set. Add it in repository Settings → Secrets."
+            exit 1
+          fi
+
+          echo "🔍 Checking critical health endpoints: ${PROD_URL}"
 
           check() {
             url="$1"
@@ -55,11 +61,11 @@ jobs:
           set -uo pipefail
           curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/health/supabase" -o /dev/null || echo "Supabase check failed"
 
-      - name: ⚠️ Check Spotify (non-critical)
+      - name: ⚠️ Check Deezer (non-critical)
         continue-on-error: true
         run: |
           set -uo pipefail
-          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/spotify/health" -o /dev/null || echo "Spotify check failed"
+          curl -fsS --max-time 8 --retry 2 "${PROD_URL}/api/deezer/health" -o /dev/null || echo "Deezer check failed"
 
       - name: 📊 Run detailed health check
         run: |
