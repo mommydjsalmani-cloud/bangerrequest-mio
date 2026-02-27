@@ -8,9 +8,8 @@ const nextConfig: NextConfig = {
   // Configurazione immagini
   images: {
     remotePatterns: [
-      { protocol: 'https', hostname: 'i.scdn.co' },
-      { protocol: 'https', hostname: 'mosaic.scdn.co' },
-      { protocol: 'https', hostname: 'seeded-session-images.scdn.co' },
+      { protocol: 'https', hostname: 'e-cdns-images.dzcdn.net' },
+      { protocol: 'https', hostname: 'cdns-images.dzcdn.net' },
       { protocol: 'https', hostname: 'api.qrserver.com' }
     ],
     // Ottimizzazioni performance
@@ -34,7 +33,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://i.scdn.co https://mosaic.scdn.co https://seeded-session-images.scdn.co https://api.qrserver.com",
+      "img-src 'self' data: https://e-cdns-images.dzcdn.net https://cdns-images.dzcdn.net https://api.qrserver.com",
       "font-src 'self'",
       "connect-src 'self' https://*.supabase.co https://api.deezer.com https://www.google.com",
       "frame-src 'self' https://www.google.com https://recaptcha.google.com",
