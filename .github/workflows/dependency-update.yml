@@ -67,19 +67,17 @@ jobs:
           git add package*.json
           git commit -m "chore: update dependencies"
           git push origin chore/dependency-update --force
+          cat > /tmp/pr_body.md << 'EOF'
+          ## Dependency Updates
+
+          Automated dependency updates (patch and minor versions).
+          All tests pass and build is successful.
+
+          *This PR was created automatically by the dependency-update workflow*
+          EOF
           gh pr create \
             --base main \
             --head chore/dependency-update \
-            --title "📦 Automated Dependency Update" \
-            --body "## 📦 Dependency Updates
-
-This PR contains automated dependency updates:
-
-### Changes
-- Updated patch and minor versions for better security and performance
-- All tests pass ✅
-- Build successful ✅
-
----
-*This PR was created automatically by the dependency-update workflow*" \
+            --title "chore: automated dependency update" \
+            --body-file /tmp/pr_body.md \
             || echo "PR already exists or no changes to push"
