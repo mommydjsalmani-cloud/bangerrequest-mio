@@ -4,8 +4,10 @@ const { URL } = require('node:url');
 
 const url = process.argv[2] || 'http://localhost:3000/api/health';
 
-function makeRequest(url) {
+function makeRequest(url, redirects = 0) {
   return new Promise((resolve, reject) => {
+    if (redirects > 5) return reject(new Error('Too many redirects'));
+
     const parsedUrl = new URL(url);
     const client = parsedUrl.protocol === 'https:' ? https : http;
     
@@ -21,6 +23,14 @@ function makeRequest(url) {
     };
 
     const req = client.request(options, (res) => {
+      // Segui i redirect (301, 302, 307, 308)
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        const location = res.headers.location;
+        const nextUrl = location.startsWith('http') ? location : new URL(location, url).toString();
+        res.resume(); // consuma il body per liberare la connessione
+        return makeRequest(nextUrl, redirects + 1).then(resolve).catch(reject);
+      }
+
       let data = '';
       res.on('data', (chunk) => data += chunk);
       res.on('end', () => {
