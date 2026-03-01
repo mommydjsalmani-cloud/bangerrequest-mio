@@ -184,6 +184,7 @@ export default function LibereAdminPanel() {
       setError(`Errore Tidal OAuth: ${params.get('tidal_error')}`);
       window.history.replaceState({}, '', window.location.pathname);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, password]);
   
   const checkMigration = async () => {
@@ -645,7 +646,7 @@ export default function LibereAdminPanel() {
       } else {
         setError(data.error || 'Errore cambio catalogo');
       }
-    } catch (_error) {
+    } catch {
       setError('Errore connessione');
     } finally {
       setLoading(false);
@@ -674,7 +675,7 @@ export default function LibereAdminPanel() {
       } else {
         setError(data.error || 'Errore auth Tidal');
       }
-    } catch (_error) {
+    } catch {
       setError('Errore connessione Tidal');
     } finally {
       setLoading(false);
@@ -712,7 +713,7 @@ export default function LibereAdminPanel() {
           loadSessionData(selectedSessionId);
         }
       }, 2000);
-    } catch (_error) {
+    } catch {
       setError('Errore retry');
     } finally {
       setLoading(false);
