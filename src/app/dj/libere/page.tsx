@@ -132,6 +132,54 @@ export default function LibereAdminPanel() {
     loadCredentialsAndAuth();
   }, []);
 
+  const saveTidalAuth = async (
+    sessionId: string,
+    accessToken: string,
+    refreshToken: string,
+    userId: string | null,
+    expiresAt: string | null
+  ) => {
+    setLoading(true);
+    try {
+      const response = await fetch(apiPath('/api/libere/admin'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          action: 'save_tidal_auth',
+          session_id: sessionId,
+          tidal_access_token: accessToken,
+          tidal_refresh_token: refreshToken,
+          tidal_user_id: userId || '',
+          tidal_token_expires_at: expiresAt
+        })
+      });
+
+      const data = await response.json();
+      console.log('Save Tidal auth response:', data);
+
+      if (data.ok) {
+        setSuccess('✅ Tidal autenticato con successo!');
+        sessionStorage.removeItem('tidal_session_id');
+        localStorage.removeItem('tidal_session_id');
+        localStorage.removeItem('tidal_oauth_pending');
+        setSelectedSessionId(sessionId);
+        await loadSessionData(sessionId);
+        window.history.replaceState({}, '', window.location.pathname);
+      } else {
+        setError(data.error || 'Errore salvataggio auth Tidal');
+      }
+    } catch (err) {
+      console.error('Errore save tidal auth:', err);
+      setError('Errore connessione');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Gestisci callback OAuth Tidal
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -143,8 +191,34 @@ export default function LibereAdminPanel() {
     const expiresAt = params.get('tidal_expires_at');
     const callbackSessionId = params.get('tidal_session_id');
 
+    // Se il callback è già passato ma la sessione DJ si è persa (caso mobile), completa il salvataggio dopo login
+    const pendingRaw = localStorage.getItem('tidal_oauth_pending');
+    if (!tidal_success && !tidal_error && pendingRaw && username && password) {
+      try {
+        const pending = JSON.parse(pendingRaw) as {
+          sessionId?: string;
+          accessToken?: string;
+          refreshToken?: string;
+          userId?: string;
+          expiresAt?: string;
+        };
+        if (pending.sessionId && pending.accessToken && pending.refreshToken) {
+          saveTidalAuth(
+            pending.sessionId,
+            pending.accessToken,
+            pending.refreshToken,
+            pending.userId || null,
+            pending.expiresAt || null
+          );
+          return;
+        }
+      } catch {
+        localStorage.removeItem('tidal_oauth_pending');
+      }
+    }
+
     if (tidal_success) {
-      const savedSessionId = callbackSessionId || sessionStorage.getItem('tidal_session_id');
+      const savedSessionId = callbackSessionId || sessionStorage.getItem('tidal_session_id') || localStorage.getItem('tidal_session_id');
       
       console.log('Tidal callback ricevuto:', {
         hasAccessToken: !!accessToken,
@@ -159,52 +233,31 @@ export default function LibereAdminPanel() {
       }
       
       if (!savedSessionId) {
-        setError('❌ Session ID non trovato (hai creato nuova sessione durante OAuth?)');
+        localStorage.setItem('tidal_oauth_pending', JSON.stringify({
+          sessionId: callbackSessionId || '',
+          accessToken,
+          refreshToken,
+          userId: userId || '',
+          expiresAt: expiresAt || ''
+        }));
+        setError('❌ Session ID non trovato. Riapri il pannello DJ e rifai login.');
         return;
       }
       
       if (!username || !password) {
-        setError('❌ Credenziali DJ non trovate - ricarica la pagina');
+        localStorage.setItem('tidal_oauth_pending', JSON.stringify({
+          sessionId: savedSessionId,
+          accessToken,
+          refreshToken,
+          userId: userId || '',
+          expiresAt: expiresAt || ''
+        }));
+        setMessage('🔐 Callback Tidal ricevuto. Fai login DJ per completare il collegamento.');
+        window.history.replaceState({}, '', window.location.pathname);
         return;
       }
-      
-      setLoading(true);
-      
-      fetch(apiPath('/api/libere/admin'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-dj-user': username,
-          'x-dj-secret': password
-        },
-        body: JSON.stringify({
-          action: 'save_tidal_auth',
-          session_id: savedSessionId,
-          tidal_access_token: accessToken,
-          tidal_refresh_token: refreshToken,
-          tidal_user_id: userId || '',
-          tidal_token_expires_at: expiresAt
-        })
-      })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Save Tidal auth response:', data);
-        if (data.ok) {
-          setSuccess('✅ Tidal autenticato con successo!');
-          sessionStorage.removeItem('tidal_session_id');
-          setSelectedSessionId(savedSessionId);
-          loadSessionData(savedSessionId);
-          // Pulisci URL
-          window.history.replaceState({}, '', window.location.pathname);
-        } else {
-          setError(data.error || 'Errore salvataggio auth Tidal');
-        }
-      })
-      .catch(err => {
-        console.error('Errore save tidal auth:', err);
-        setError('Errore connessione');
-      })
-      .finally(() => setLoading(false));
+
+      saveTidalAuth(savedSessionId, accessToken, refreshToken, userId, expiresAt);
     }
 
     if (tidal_error) {
@@ -682,6 +735,10 @@ export default function LibereAdminPanel() {
   // Avvia OAuth Tidal
   const initTidalAuth = async () => {
     if (!authed) return;
+    if (!selectedSessionId) {
+      setError('Seleziona prima una sessione');
+      return;
+    }
     
     setLoading(true);
     
@@ -702,6 +759,7 @@ export default function LibereAdminPanel() {
       
       if (data.ok && data.authUrl) {
         sessionStorage.setItem('tidal_session_id', selectedSessionId);
+        localStorage.setItem('tidal_session_id', selectedSessionId);
         window.location.href = data.authUrl;
       } else {
         setError(data.error || 'Errore auth Tidal');
