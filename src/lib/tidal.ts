@@ -3,7 +3,7 @@
 
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
 
-const TIDAL_API_BASE = 'https://openapi.tidal.com/v2';
+const TIDAL_API_BASE = 'https://api.tidal.com/v1';
 const TIDAL_LOGIN_BASE = 'https://login.tidal.com';
 const TIDAL_TOKEN_BASE = 'https://auth.tidal.com/v1/oauth2';
 
@@ -50,20 +50,17 @@ export function decryptToken(encryptedToken: string): string {
 }
 
 export interface TidalTrack {
-  id: string;
+  id: number | string;
   title: string;
   artists: Array<{
-    id: string;
+    id: number | string;
     name: string;
+    type?: string;
   }>;
   album: {
-    id: string;
+    id: number | string;
     title: string;
-    imageCover?: Array<{
-      url: string;
-      width: number;
-      height: number;
-    }>;
+    cover?: string; // UUID es. "ae27bc5e-3dc7-4fa5-b5a4-b5c7ba16c6a2"
   };
   duration: number; // in secondi
   explicit: boolean;
@@ -193,7 +190,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<TidalTok
 }
 
 /**
- * Ricerca brani su Tidal
+ * Ricerca brani su Tidal (API v1)
  */
 export async function searchTidal(
   query: string,
@@ -201,11 +198,13 @@ export async function searchTidal(
   limit = 10,
   offset = 0
 ): Promise<TidalSearchResponse> {
+  const clientId = process.env.TIDAL_CLIENT_ID || '';
   const url = `${TIDAL_API_BASE}/search/tracks?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&countryCode=IT`;
 
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
       'Content-Type': 'application/json',
     },
   });
@@ -216,14 +215,15 @@ export async function searchTidal(
   }
 
   const data = await response.json();
+  // v1 API: { limit, offset, totalNumberOfItems, items: [...] }
   return {
-    tracks: data.tracks || [],
+    tracks: data.items || data.tracks || [],
     totalNumberOfItems: data.totalNumberOfItems || 0,
   };
 }
 
 /**
- * Crea playlist su Tidal
+ * Crea playlist su Tidal (API v1)
  */
 export async function createTidalPlaylist(
   name: string,
@@ -231,18 +231,19 @@ export async function createTidalPlaylist(
   userId: string,
   description?: string
 ): Promise<TidalPlaylist> {
+  const clientId = process.env.TIDAL_CLIENT_ID || '';
   const url = `${TIDAL_API_BASE}/users/${userId}/playlists`;
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      name,
+      title: name,
       description: description || `Richieste musicali - ${name}`,
-      public: false,
     }),
   });
 
@@ -251,27 +252,48 @@ export async function createTidalPlaylist(
     throw new Error(`Tidal playlist creation failed: ${response.status} ${error}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  // v1 risponde con { uuid, title, numberOfTracks, ... }
+  return {
+    id: data.uuid || data.id || '',
+    name: data.title || data.name || name,
+    description: data.description,
+    created: data.created || new Date().toISOString(),
+    numberOfTracks: data.numberOfTracks || 0,
+  };
 }
 
 /**
- * Aggiunge brano a playlist Tidal
+ * Aggiunge brano a playlist Tidal (API v1)
  */
 export async function addTrackToTidalPlaylist(
   playlistId: string,
   trackId: string,
   accessToken: string
 ): Promise<void> {
-  const url = `${TIDAL_API_BASE}/playlists/${playlistId}/items`;
+  const clientId = process.env.TIDAL_CLIENT_ID || '';
+  // v1: prima ottieni l'etag della playlist (richiesto per modificarla)
+  const playlistRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
+    },
+  });
+  const etag = playlistRes.headers.get('ETag') || '';
 
+  const url = `${TIDAL_API_BASE}/playlists/${playlistId}/tracks`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
       'Content-Type': 'application/json',
+      ...(etag ? { 'If-None-Match': etag } : {}),
     },
     body: JSON.stringify({
-      trackIds: [trackId],
+      trackIds: [Number(trackId)],
+      toIndex: -1,
+      onDuplicates: 'SKIP',
     }),
   });
 
@@ -282,17 +304,19 @@ export async function addTrackToTidalPlaylist(
 }
 
 /**
- * Verifica se playlist esiste
+ * Verifica se playlist esiste (API v1)
  */
 export async function getTidalPlaylist(
   playlistId: string,
   accessToken: string
 ): Promise<TidalPlaylist | null> {
+  const clientId = process.env.TIDAL_CLIENT_ID || '';
   const url = `${TIDAL_API_BASE}/playlists/${playlistId}`;
 
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
       'Content-Type': 'application/json',
     },
   });
@@ -306,26 +330,38 @@ export async function getTidalPlaylist(
     throw new Error(`Tidal get playlist failed: ${response.status} ${error}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return {
+    id: data.uuid || data.id || playlistId,
+    name: data.title || data.name || '',
+    description: data.description,
+    created: data.created || '',
+    numberOfTracks: data.numberOfTracks || 0,
+  };
 }
 
 /**
  * Normalizza TidalTrack nel formato interno dell'app
  */
 export function normalizeTidalTrack(track: TidalTrack) {
-  const cover = track.album.imageCover?.[0]?.url || null;
+  // v1 API: album.cover è un UUID es. "ae27bc5e-3dc7-4fa5-b5a4-b5c7ba16c6a2"
+  // URL immagine: https://resources.tidal.com/images/{uuid-con-slash}/320x320.jpg
+  const coverUuid = track.album.cover;
+  const cover = coverUuid
+    ? `https://resources.tidal.com/images/${coverUuid.replace(/-/g, '/')}/320x320.jpg`
+    : null;
   const artists = track.artists.map(a => a.name).join(', ');
 
   return {
-    id: track.id,
-    uri: null, // Tidal non usa URI stile Spotify
+    id: String(track.id),
+    uri: null,
     title: track.title,
     artists,
     album: track.album.title,
     cover_url: cover,
     duration_ms: track.duration * 1000,
     explicit: track.explicit,
-    preview_url: null, // Tidal non fornisce preview pubbliche
+    preview_url: null,
     isrc: track.isrc || null,
     popularity: 0,
     external_urls: { tidal: `https://tidal.com/browse/track/${track.id}` },
