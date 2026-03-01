@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken, encryptToken } from '@/lib/tidal';
 
 /**
- * GET /api/tidal/callback
- * Riceve code OAuth e completa autenticazione
+ * Gestisce il callback OAuth di Tidal (GET e POST)
  */
-export async function GET(req: NextRequest) {
+async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const error = searchParams.get('error');
@@ -79,5 +77,38 @@ export async function GET(req: NextRequest) {
         error instanceof Error ? error.message : 'callback_failed'
       ), req.url)
     );
+  }
+}
+
+/**
+ * GET /api/tidal/callback
+ * Riceve code OAuth e completa autenticazione
+ */
+export async function GET(req: NextRequest) {
+  return handleCallback(req.nextUrl.searchParams, req);
+}
+
+/**
+ * POST /api/tidal/callback
+ * Supporto POST per OAuth provider che lo richiedono
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const searchParams = new URLSearchParams({
+      code: body.code || '',
+      state: body.state || '',
+      error: body.error || '',
+    });
+    return handleCallback(searchParams, req);
+  } catch (error) {
+    // Fallback per POST con form-data
+    const formData = await req.formData();
+    const searchParams = new URLSearchParams({
+      code: formData.get('code')?.toString() || '',
+      state: formData.get('state')?.toString() || '',
+      error: formData.get('error')?.toString() || '',
+    });
+    return handleCallback(searchParams, req);
   }
 }
