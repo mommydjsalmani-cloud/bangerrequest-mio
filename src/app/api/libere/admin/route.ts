@@ -766,99 +766,59 @@ export async function PATCH(req: Request) {
       
       // Se la sessione usa Tidal e ha autenticazione, aggiungi alla playlist
       if (session && session.catalog_type === 'tidal' && session.tidal_access_token && request.track_id) {
-        // Marca come pending per Tidal
-        await supabase
-          .from('richieste_libere')
-          .update({ 
-            tidal_added_status: 'pending',
-            tidal_retry_count: 0
-          })
-          .eq('id', request_id);
-        
-        // Tenta aggiunta in background (non bloccare la risposta)
-        // In produzione questo andrebbe fatto con una queue/worker
-        setImmediate(async () => {
-          try {
-            const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal } = await import('@/lib/tidal');
-            const accessToken = decryptToken(session.tidal_access_token!);
-            
-            let playlistId = session.tidal_playlist_id;
-            
-            // Se non esiste playlist o è stata eliminata, ricreala
-            if (!playlistId && session.tidal_user_id) {
+        // Esegui in modo sincrono (setImmediate non funziona in serverless Vercel)
+        try {
+          const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal } = await import('@/lib/tidal');
+          const accessToken = decryptToken(session.tidal_access_token!);
+          
+          let playlistId = session.tidal_playlist_id;
+          
+          if (!playlistId && session.tidal_user_id) {
+            const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
+            playlistId = playlist.id;
+            await supabase
+              .from('sessioni_libere')
+              .update({ tidal_playlist_id: playlistId })
+              .eq('id', request.session_id);
+          } else if (playlistId) {
+            const existing = await getTidalPlaylist(playlistId, accessToken);
+            if (!existing && session.tidal_user_id) {
               const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
               playlistId = playlist.id;
-              
               await supabase
                 .from('sessioni_libere')
                 .update({ tidal_playlist_id: playlistId })
                 .eq('id', request.session_id);
-            } else if (playlistId) {
-              // Verifica se playlist esiste ancora
-              const existing = await getTidalPlaylist(playlistId, accessToken);
-              if (!existing && session.tidal_user_id) {
-                // Playlist eliminata, ricreala
-                const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
-                playlistId = playlist.id;
-                
-                await supabase
-                  .from('sessioni_libere')
-                  .update({ tidal_playlist_id: playlistId })
-                  .eq('id', request.session_id);
-              }
             }
-            
-            if (playlistId) {
-              let trackIdToAdd = request.track_id;
-              
-              // Tenta di aggiungere con l'ID originale
-              try {
-                await addTrackToTidalPlaylist(playlistId, trackIdToAdd!, accessToken);
-              } catch (addError) {
-                // Se fallisce, prova a cercare il brano su Tidal usando title + artists
-                // (potrebbe essere un ID Deezer se il catalogo è stato cambiato dopo la richiesta)
-                if (request.title) {
-                  try {
-                    const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
-                    const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
-                    
-                    if (searchResults.tracks && searchResults.tracks.length > 0) {
-                      // Usa il primo risultato
-                      trackIdToAdd = searchResults.tracks[0].id;
-                      await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
-                    } else {
-                      throw new Error(`Brano "${request.title}" non trovato su Tidal`);
-                    }
-                  } catch (searchError) {
-                    // Se la ricerca fallisce, rilancia l'errore originale
-                    throw addError;
-                  }
-                } else {
-                  throw addError;
+          }
+          
+          if (playlistId) {
+            let trackIdToAdd = request.track_id!;
+            try {
+              await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
+            } catch {
+              // Fallback: cerca per titolo+artista se l'ID non funziona
+              if (request.title) {
+                const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
+                const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
+                if (searchResults.tracks?.length > 0) {
+                  trackIdToAdd = searchResults.tracks[0].id;
+                  await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
                 }
               }
-              
-              // Marca come success
-              await supabase
-                .from('richieste_libere')
-                .update({ 
-                  tidal_added_status: 'success',
-                  tidal_added_at: new Date().toISOString(),
-                  tidal_error_message: null
-                })
-                .eq('id', request_id);
             }
-          } catch (error) {
-            // Marca come failed per retry successivo
             await supabase
               .from('richieste_libere')
-              .update({ 
-                tidal_added_status: 'failed',
-                tidal_error_message: error instanceof Error ? error.message : 'Unknown error'
-              })
+              .update({ tidal_added_status: 'success', tidal_added_at: new Date().toISOString(), tidal_error_message: null })
               .eq('id', request_id);
           }
-        });
+        } catch (tidalError) {
+          console.error('Tidal add track error:', tidalError);
+          await supabase
+            .from('richieste_libere')
+            .update({ tidal_added_status: 'failed', tidal_error_message: tidalError instanceof Error ? tidalError.message : 'Unknown error' })
+            .eq('id', request_id);
+        }
       }
     }
   }

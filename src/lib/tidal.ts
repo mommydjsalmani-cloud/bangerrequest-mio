@@ -88,7 +88,8 @@ export interface TidalTokenResponse {
   refresh_token: string;
   expires_in: number;
   token_type: string;
-  user_id?: string;
+  user_id?: string; // estratto da user.userId
+  user?: { userId?: number | string; countryCode?: string };
 }
 
 /**
@@ -152,7 +153,12 @@ export async function exchangeCodeForToken(
     throw new Error(`Tidal token exchange failed: ${response.status} ${error}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  // Tidal restituisce user_id dentro l'oggetto user.userId
+  if (!data.user_id && data.user?.userId) {
+    data.user_id = String(data.user.userId);
+  }
+  return data;
 }
 
 /**
