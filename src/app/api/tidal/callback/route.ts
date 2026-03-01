@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken, encryptToken } from '@/lib/tidal';
-import { getSupabase } from '@/lib/supabase';
 
 /**
  * GET /api/tidal/callback
