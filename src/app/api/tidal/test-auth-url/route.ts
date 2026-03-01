@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTidalAuthUrl } from '@/lib/tidal';
+import { getTidalAuthUrl, generatePKCE } from '@/lib/tidal';
 
 /**
  * GET /api/tidal/test-auth-url
@@ -12,6 +13,10 @@ export async function GET(req: NextRequest) {
     
     // Genera auth URL
     const authUrl = getTidalAuthUrl(state);
+      const { codeVerifier, codeChallenge } = generatePKCE();
+    
+      // Genera auth URL
+      const authUrl = getTidalAuthUrl(state, codeChallenge);
     
     return NextResponse.json({
       ok: true,

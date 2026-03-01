@@ -66,6 +66,17 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Scambia code per token
     const tokenData = await exchangeCodeForToken(code);
+        const codeVerifier = req.cookies.get('tidal_oauth_code_verifier')?.value;
+        if (!codeVerifier) {
+          console.error('Missing code_verifier for PKCE');
+          return NextResponse.redirect(
+            new URL('/dj/libere?tidal_error=missing_code_verifier', req.url)
+          );
+        }
+
+        console.log('Exchanging code for token with PKCE');
+        // Scambia code per token con PKCE
+        const tokenData = await exchangeCodeForToken(code, codeVerifier);
     
     console.log('Token exchange successful, got user_id:', tokenData.user_id);
 
@@ -97,6 +108,7 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     
     // Cancella il cookie di stato dopo validazione riuscita
     response.cookies.delete('tidal_oauth_state');
+      response.cookies.delete('tidal_oauth_code_verifier');
     
     console.log('OAuth callback completed successfully');
     

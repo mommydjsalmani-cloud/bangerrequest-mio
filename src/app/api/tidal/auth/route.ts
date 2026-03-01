@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTidalAuthUrl } from '@/lib/tidal';
 import { randomBytes } from 'crypto';
+import { getTidalAuthUrl, generatePKCE } from '@/lib/tidal';
 
 /**
  * GET /api/tidal/auth
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest) {
     // Genera authUrl con state
     const authUrl = getTidalAuthUrl(state);
     
+    // Genera PKCE per OAuth di Tidal
+    const { codeVerifier, codeChallenge } = generatePKCE();
+    
     console.log('Generated Tidal auth URL:', {
       clientId: process.env.TIDAL_CLIENT_ID?.substring(0, 10) + '...',
       redirectUri: process.env.TIDAL_REDIRECT_URI,
@@ -50,6 +54,15 @@ export async function GET(req: NextRequest) {
     
     // Salva lo state (senza origin) in cookie per validare CSRF nel callback
     response.cookies.set('tidal_oauth_state', randomState, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minuti
+      path: '/'
+    });
+    
+    // Salva code_verifier per il token exchange nel callback
+    response.cookies.set('tidal_oauth_code_verifier', codeVerifier, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

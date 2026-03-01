@@ -2,6 +2,7 @@
 // https://developer.tidal.com/documentation/api/api-overview
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
 
 const TIDAL_API_BASE = 'https://openapi.tidal.com/v2';
 const TIDAL_LOGIN_BASE = 'https://login.tidal.com';
@@ -11,6 +12,19 @@ const TIDAL_TOKEN_BASE = 'https://auth.tidal.com/v1/oauth2';
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY_TIDAL || 'default-key-32-chars-long-12345'; // Deve essere 32 caratteri
 const ALGORITHM = 'aes-256-gcm';
 
+/**
+ * Genera PKCE code_verifier e code_challenge
+ * PKCE è richiesto da Tidal OAuth per motivi di sicurezza
+ */
+export function generatePKCE(): { codeVerifier: string; codeChallenge: string } {
+  // Genera 32 byte random per il verifier
+  const codeVerifier = randomBytes(32).toString('base64url');
+  
+  // Calcola SHA256 hash del verifier per il challenge
+  const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
+  
+  return { codeVerifier, codeChallenge };
+}
 export function encryptToken(token: string): string {
   const iv = randomBytes(16);
   const cipher = createCipheriv(ALGORITHM, Buffer.from(ENCRYPTION_KEY.slice(0, 32)), iv);
@@ -84,6 +98,13 @@ export interface TidalTokenResponse {
  * @param state CSRF state token
  */
 export function getTidalAuthUrl(state: string): string {
+  /**
+   * Genera URL per OAuth authorization
+   * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
+   * @param state CSRF state token
+   * @param codeChallenge Code challenge per PKCE (SHA256 hash del verifier)
+   */
+  export function getTidalAuthUrl(state: string, codeChallenge: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const redirectUri = process.env.TIDAL_REDIRECT_URI;
   
@@ -99,6 +120,8 @@ export function getTidalAuthUrl(state: string): string {
     state,
   });
 
+    params.append('code_challenge_method', 'S256');
+
   return `${TIDAL_LOGIN_BASE}/authorize?${params.toString()}`;
 }
 
@@ -107,6 +130,12 @@ export function getTidalAuthUrl(state: string): string {
  * @param code Authorization code da Tidal
  */
 export async function exchangeCodeForToken(code: string): Promise<TidalTokenResponse> {
+  /**
+   * Scambia authorization code per access token
+   * @param code Authorization code da Tidal
+   * @param codeVerifier Code verifier per PKCE (generato originariamente come verifier)
+   */
+  export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<TidalTokenResponse> {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
   const redirectUri = process.env.TIDAL_REDIRECT_URI;
