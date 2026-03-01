@@ -188,7 +188,7 @@ export default function LibereAdminPanel() {
       setError(`Errore Tidal OAuth: ${tidal_error}`);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [tidal_success, tidal_error, accessToken, refreshToken, userId, expiresAt, searchParams, username, password]);
+  }, [searchParams, username, password]);
   
   const checkMigration = async () => {
     setMigrationLoading(true);
