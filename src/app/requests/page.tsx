@@ -9,6 +9,7 @@ export default function Requests() {
   const router = useRouter();
   const [nome, setNome] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [catalogType, setCatalogType] = useState<'deezer' | 'tidal'>('deezer');
   const [validatingSession, setValidatingSession] = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function Requests() {
         // Usa la prima sessione attiva
         const activeSession = j.sessions[0];
         setSessionToken(activeSession.token);
+        setCatalogType(activeSession.catalog_type || 'deezer');
       } catch {
         router.replace("/?retry=1");
         return;
@@ -77,16 +79,20 @@ export default function Requests() {
         return;
       }
       setLoading(true);
-      fetch(apiPath(`/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`))
+      const searchEndpoint = catalogType === 'tidal' 
+        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${sessionToken}`
+        : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
+      
+      fetch(apiPath(searchEndpoint))
         .then((r) => r.json())
         .then((data) => {
-          setResults(data.tracks || []);
+          setResults(data.tracks || data.results || []);
         })
         .catch(() => setResults([]))
         .finally(() => setLoading(false));
     }, 400);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, catalogType, sessionToken]);
 
   // Load last request id + track info from session on mount
   useEffect(() => {
@@ -253,7 +259,17 @@ export default function Requests() {
                     )}
                     <div className="flex gap-1">
                       <button onClick={() => setSelected(t)} className="bg-green-600 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Sel.</button>
-                      <a href={`https://www.deezer.com/track/${t.id}`} target="_blank" rel="noopener noreferrer" className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm">Apri</a>
+                      <a 
+                        href={catalogType === 'tidal' 
+                          ? `https://tidal.com/browse/track/${t.id}` 
+                          : `https://www.deezer.com/track/${t.id}`
+                        } 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
+                      >
+                        Apri
+                      </a>
                     </div>
                   </div>
                 </div>
@@ -321,7 +337,10 @@ export default function Requests() {
           <div className="text-xs text-gray-300 mt-2">Ultima richiesta ID {lastRequestId} — stato: <span className="font-semibold">{lastRequestStatus ?? 'in attesa'}</span></div>
         )}
 
-        <div className="text-[11px] sm:text-xs text-gray-400 mt-4 leading-snug">Nota: preview disponibili solo quando presenti in Deezer. Nessun account Deezer richiesto.</div>
+        <div className="text-[11px] sm:text-xs text-gray-400 mt-4 leading-snug">
+          Nota: preview disponibili solo quando presenti in {catalogType === 'tidal' ? 'Tidal' : 'Deezer'}. 
+          Nessun account {catalogType === 'tidal' ? 'Tidal' : 'Deezer'} richiesto.
+        </div>
       </div>
     </main>
   );

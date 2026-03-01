@@ -38,7 +38,7 @@ export async function GET() {
     // Limitiamo a 2 sessioni come da specifica
     const { data: sessions, error } = await supabase
       .from('sessioni_libere')
-      .select('id, name, token, homepage_visible, homepage_priority, status')
+      .select('id, name, token, homepage_visible, homepage_priority, status, catalog_type')
       .eq('homepage_visible', true)
       .eq('archived', false)
       .in('status', ['active', 'paused'])
