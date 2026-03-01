@@ -10,11 +10,8 @@ export async function GET(req: NextRequest) {
     // Genera state
     const state = 'test-state-123';
     
-    // Estrai l'origin dalla richiesta
-    const origin = req.headers.get('origin') || new URL(req.url).origin;
-    
     // Genera auth URL
-    const authUrl = getTidalAuthUrl(state, origin);
+    const authUrl = getTidalAuthUrl(state);
     
     return NextResponse.json({
       ok: true,

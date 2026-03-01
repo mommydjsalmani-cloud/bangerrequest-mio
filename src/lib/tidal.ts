@@ -82,17 +82,14 @@ export interface TidalTokenResponse {
  * Genera URL per OAuth authorization
  * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
  * @param state CSRF state token
- * @param origin Dominio della richiesta (usato per redirect_uri dinamico)
  */
-export function getTidalAuthUrl(state: string, origin: string): string {
+export function getTidalAuthUrl(state: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
+  const redirectUri = process.env.TIDAL_REDIRECT_URI;
   
-  if (!clientId) {
+  if (!clientId || !redirectUri) {
     throw new Error('Tidal credentials not configured');
   }
-
-  // Costruisci il redirect_uri basato sul dominio della richiesta
-  const redirectUri = `${origin}/richiedi/api/tidal/callback`;
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -108,36 +105,28 @@ export function getTidalAuthUrl(state: string, origin: string): string {
 /**
  * Scambia authorization code per access token
  * @param code Authorization code da Tidal
- * @param redirectUri Redirect URI usato nella authorization request (deve corrispondere esattamente)
  */
-export async function exchangeCodeForToken(code: string, redirectUri?: string): Promise<TidalTokenResponse> {
+export async function exchangeCodeForToken(code: string): Promise<TidalTokenResponse> {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
-  const defaultRedirectUri = process.env.TIDAL_REDIRECT_URI;
+  const redirectUri = process.env.TIDAL_REDIRECT_URI;
 
-  if (!clientId || !clientSecret) {
+  if (!clientId || !clientSecret || !redirectUri) {
     throw new Error('Tidal credentials not configured');
-  }
-
-  // Usa il redirectUri passato, altrimenti fallback al default
-  const uri = redirectUri || defaultRedirectUri;
-  
-  if (!uri) {
-    throw new Error('Redirect URI not configured');
   }
 
   // Log dei parametri per debug
   console.log('Tidal token exchange:', {
     endpoint: `${TIDAL_TOKEN_BASE}/token`,
     clientId: clientId.substring(0, 5) + '...',
-    redirectUri: uri,
+    redirectUri: redirectUri,
     code: code.substring(0, 10) + '...',
   });
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: uri,
+    redirect_uri: redirectUri,
   });
 
   const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {

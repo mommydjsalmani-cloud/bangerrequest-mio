@@ -44,14 +44,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Estrai l'origin dalla richiesta per redirect_uri dinamico
-    const origin = req.headers.get('origin') || new URL(req.url).origin;
-    const redirectUri = `${origin}/richiedi/api/tidal/callback`;
+    console.log('Exchanging code for token');
 
-    console.log('Exchanging code for token:', { code: code.substring(0, 10) + '...', redirectUri });
-
-    // Scambia code per token usando il redirect_uri corretto
-    const tokenData = await exchangeCodeForToken(code, redirectUri);
+    // Scambia code per token
+    const tokenData = await exchangeCodeForToken(code);
 
     // Cripta i token per sicurezza
     const encryptedAccessToken = encryptToken(tokenData.access_token);
