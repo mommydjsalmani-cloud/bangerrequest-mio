@@ -604,6 +604,69 @@ export async function POST(req: Request) {
       
       return withVersion({ ok: true, message: 'Sessione eliminata ✓' });
     }
+
+    case 'switch_catalog': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { catalog_type } = body;
+      
+      if (!catalog_type || !['deezer', 'tidal'].includes(catalog_type)) {
+        return withVersion({ ok: false, error: 'catalog_type deve essere deezer o tidal' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ catalog_type })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: `Catalogo cambiato in ${catalog_type === 'tidal' ? 'Tidal' : 'Deezer'} ✓` 
+      });
+    }
+
+    case 'save_tidal_auth': {
+      if (!session_id) {
+        return withVersion({ ok: false, error: 'session_id richiesto' }, { status: 400 });
+      }
+      
+      const { 
+        tidal_access_token, 
+        tidal_refresh_token, 
+        tidal_user_id,
+        tidal_token_expires_at 
+      } = body;
+      
+      if (!tidal_access_token || !tidal_refresh_token) {
+        return withVersion({ ok: false, error: 'Token Tidal richiesti' }, { status: 400 });
+      }
+      
+      const { error } = await supabase
+        .from('sessioni_libere')
+        .update({ 
+          tidal_access_token,
+          tidal_refresh_token,
+          tidal_user_id: tidal_user_id || null,
+          tidal_token_expires_at: tidal_token_expires_at || null,
+          catalog_type: 'tidal' // Auto-switch a Tidal dopo auth
+        })
+        .eq('id', session_id);
+      
+      if (error) {
+        return withVersion({ ok: false, error: error.message }, { status: 500 });
+      }
+      
+      return withVersion({ 
+        ok: true, 
+        message: 'Tidal autenticato ✓' 
+      });
+    }
     
     default:
       return withVersion({ ok: false, error: 'Azione non supportata' }, { status: 400 });
@@ -683,6 +746,94 @@ export async function PATCH(req: Request) {
   
   if (updateError) {
     return withVersion({ ok: false, error: updateError.message }, { status: 500 });
+  }
+
+  // Se la richiesta è stata accettata, verifica se aggiungere a Tidal
+  if (status === 'accepted') {
+    // Ottieni richiesta e sessione per verificare Tidal
+    const { data: request } = await supabase
+      .from('richieste_libere')
+      .select('id, session_id, track_id, title')
+      .eq('id', request_id)
+      .single();
+    
+    if (request) {
+      const { data: session } = await supabase
+        .from('sessioni_libere')
+        .select('catalog_type, tidal_access_token, tidal_playlist_id, tidal_user_id, name')
+        .eq('id', request.session_id)
+        .single();
+      
+      // Se la sessione usa Tidal e ha autenticazione, aggiungi alla playlist
+      if (session && session.catalog_type === 'tidal' && session.tidal_access_token && request.track_id) {
+        // Marca come pending per Tidal
+        await supabase
+          .from('richieste_libere')
+          .update({ 
+            tidal_added_status: 'pending',
+            tidal_retry_count: 0
+          })
+          .eq('id', request_id);
+        
+        // Tenta aggiunta in background (non bloccare la risposta)
+        // In produzione questo andrebbe fatto con una queue/worker
+        setImmediate(async () => {
+          try {
+            const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken } = await import('@/lib/tidal');
+            const accessToken = decryptToken(session.tidal_access_token!);
+            
+            let playlistId = session.tidal_playlist_id;
+            
+            // Se non esiste playlist o è stata eliminata, ricreala
+            if (!playlistId && session.tidal_user_id) {
+              const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
+              playlistId = playlist.id;
+              
+              await supabase
+                .from('sessioni_libere')
+                .update({ tidal_playlist_id: playlistId })
+                .eq('id', request.session_id);
+            } else if (playlistId) {
+              // Verifica se playlist esiste ancora
+              const existing = await getTidalPlaylist(playlistId, accessToken);
+              if (!existing && session.tidal_user_id) {
+                // Playlist eliminata, ricreala
+                const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
+                playlistId = playlist.id;
+                
+                await supabase
+                  .from('sessioni_libere')
+                  .update({ tidal_playlist_id: playlistId })
+                  .eq('id', request.session_id);
+              }
+            }
+            
+            if (playlistId) {
+              await addTrackToTidalPlaylist(playlistId, request.track_id!, accessToken);
+              
+              // Marca come success
+              await supabase
+                .from('richieste_libere')
+                .update({ 
+                  tidal_added_status: 'success',
+                  tidal_added_at: new Date().toISOString(),
+                  tidal_error_message: null
+                })
+                .eq('id', request_id);
+            }
+          } catch (error) {
+            // Marca come failed per retry successivo
+            await supabase
+              .from('richieste_libere')
+              .update({ 
+                tidal_added_status: 'failed',
+                tidal_error_message: error instanceof Error ? error.message : 'Unknown error'
+              })
+              .eq('id', request_id);
+          }
+        });
+      }
+    }
   }
   
   const statusMessages: Record<string, string> = {
