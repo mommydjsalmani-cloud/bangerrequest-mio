@@ -12,14 +12,24 @@ export async function GET(req: NextRequest) {
     const state = searchParams.get('state');
     const error = searchParams.get('error');
 
+    console.log('Tidal callback received:', {
+      code: code ? code.substring(0, 10) + '...' : null,
+      state: state ? state.substring(0, 10) + '...' : null,
+      error,
+      origin: req.headers.get('origin'),
+      url: req.nextUrl.toString(),
+    });
+
     // Gestione errore OAuth
     if (error) {
+      console.error('Tidal OAuth error:', error);
       return NextResponse.redirect(
         new URL('/dj/libere?tidal_error=' + encodeURIComponent(error), req.url)
       );
     }
 
     if (!code || !state) {
+      console.error('Missing code or state');
       return NextResponse.redirect(
         new URL('/dj/libere?tidal_error=invalid_callback', req.url)
       );
@@ -37,6 +47,8 @@ export async function GET(req: NextRequest) {
     // Estrai l'origin dalla richiesta per redirect_uri dinamico
     const origin = req.headers.get('origin') || new URL(req.url).origin;
     const redirectUri = `${origin}/richiedi/api/tidal/callback`;
+
+    console.log('Exchanging code for token:', { code: code.substring(0, 10) + '...', redirectUri });
 
     // Scambia code per token usando il redirect_uri corretto
     const tokenData = await exchangeCodeForToken(code, redirectUri);

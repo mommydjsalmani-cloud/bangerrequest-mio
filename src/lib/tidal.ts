@@ -126,21 +126,37 @@ export async function exchangeCodeForToken(code: string, redirectUri?: string): 
     throw new Error('Redirect URI not configured');
   }
 
+  // Log dei parametri per debug
+  console.log('Tidal token exchange:', {
+    endpoint: `${TIDAL_TOKEN_BASE}/token`,
+    clientId: clientId.substring(0, 5) + '...',
+    redirectUri: uri,
+    code: code.substring(0, 10) + '...',
+  });
+
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    code,
+    redirect_uri: uri,
+  });
+
   const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: uri,
-    }),
+    body,
   });
 
   if (!response.ok) {
     const error = await response.text();
+    console.error('Tidal token exchange error:', {
+      status: response.status,
+      statusText: response.statusText,
+      body: error,
+      redirectUri: uri,
+    });
     throw new Error(`Tidal token exchange failed: ${response.status} ${error}`);
   }
 
