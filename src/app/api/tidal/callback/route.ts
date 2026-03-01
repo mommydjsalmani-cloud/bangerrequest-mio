@@ -56,7 +56,11 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Salva in sessione temporanea (da associare poi alla sessione attiva)
     // Per ora salviamo in query params (in produzione usare session storage sicuro)
-    const callbackUrl = new URL('/dj/libere', req.url);
+    
+    // Estrai l'origin dal cookie per reindirizzare al dominio corretto
+    const origin = req.cookies.get('tidal_oauth_origin')?.value || new URL(req.url).origin;
+    
+    const callbackUrl = new URL(`${origin}/richiedi/dj/libere`);
     callbackUrl.searchParams.set('tidal_success', 'true');
     callbackUrl.searchParams.set('tidal_access_token', encryptedAccessToken);
     callbackUrl.searchParams.set('tidal_refresh_token', encryptedRefreshToken);
@@ -65,8 +69,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     const response = NextResponse.redirect(callbackUrl);
     
-    // Cancella il cookie dello state dopo validazione riuscita
+    // Cancella i cookie di stato e origin dopo validazione riuscita
     response.cookies.delete('tidal_oauth_state');
+    response.cookies.delete('tidal_oauth_origin');
     
     return response;
 

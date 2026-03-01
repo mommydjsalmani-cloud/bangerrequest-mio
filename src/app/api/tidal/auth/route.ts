@@ -25,6 +25,9 @@ export async function GET(req: NextRequest) {
     // Genera state per CSRF protection
     const state = randomBytes(32).toString('hex');
     
+    // Estrai l'origin della richiesta per reindirizzare correttamente nel callback
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://bangerrequest-mio.vercel.app';
+    
     // Genera authUrl con state
     const authUrl = getTidalAuthUrl(state);
     
@@ -32,6 +35,15 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.json({
       ok: true,
       authUrl,
+    });
+    
+    // Salva ORIGIN nel cookie (per reindirizzare correttamente nel callback)
+    response.cookies.set('tidal_oauth_origin', origin, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minuti
+      path: '/'
     });
     
     response.cookies.set('tidal_oauth_state', state, {
