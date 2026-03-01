@@ -105,9 +105,8 @@ export function getTidalAuthUrl(state: string, codeChallenge: string): string {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    // Tidal search API richiede r_usr ma potrebbe non essere disponibile per tutti i client
-    // Se il login fallisce con errore 1002, rimuovi r_usr dal portale Tidal
-    scope: 'user.read playlists.read playlists.write r_usr',
+    // Scopes: user.read per profilo, playlists per playlist, search.read per ricerche
+    scope: 'user.read playlists.read playlists.write search.read',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
