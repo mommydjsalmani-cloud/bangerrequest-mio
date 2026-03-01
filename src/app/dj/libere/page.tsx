@@ -131,6 +131,60 @@ export default function LibereAdminPanel() {
     
     loadCredentialsAndAuth();
   }, []);
+
+  // Gestisci callback OAuth Tidal
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.has('tidal_success')) {
+      const accessToken = params.get('tidal_access_token');
+      const refreshToken = params.get('tidal_refresh_token');
+      const userId = params.get('tidal_user_id');
+      const expiresAt = params.get('tidal_expires_at');
+      const savedSessionId = sessionStorage.getItem('tidal_session_id');
+      
+      if (accessToken && refreshToken && savedSessionId && username && password) {
+        setLoading(true);
+        
+        fetch(apiPath('/api/libere/admin'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dj-user': username,
+            'x-dj-secret': password
+          },
+          body: JSON.stringify({
+            action: 'save_tidal_auth',
+            session_id: savedSessionId,
+            tidal_access_token: accessToken,
+            tidal_refresh_token: refreshToken,
+            tidal_user_id: userId || '',
+            tidal_token_expires_at: expiresAt
+          })
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            setSuccess('✅ Tidal autenticato con successo!');
+            sessionStorage.removeItem('tidal_session_id');
+            setSelectedSessionId(savedSessionId);
+            loadSessionData(savedSessionId);
+            // Pulisci URL
+            window.history.replaceState({}, '', window.location.pathname);
+          } else {
+            setError(data.error || 'Errore salvataggio auth Tidal');
+          }
+        })
+        .catch(() => setError('Errore connessione'))
+        .finally(() => setLoading(false));
+      }
+    }
+    
+    if (params.has('tidal_error')) {
+      setError(`Errore Tidal OAuth: ${params.get('tidal_error')}`);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [username, password]);
   
   const checkMigration = async () => {
     setMigrationLoading(true);
@@ -556,6 +610,110 @@ export default function LibereAdminPanel() {
     } catch (error) {
       console.error('Errore toggle homepage:', error);
       setError('Errore connessione homepage');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Cambia catalogo Deezer/Tidal
+  const switchCatalog = async (catalogType: 'deezer' | 'tidal') => {
+    if (!selectedSessionId || !authed) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch(apiPath('/api/libere/admin'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          action: 'switch_catalog',
+          session_id: selectedSessionId,
+          catalog_type: catalogType
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess(`Catalogo: ${catalogType === 'tidal' ? 'Tidal 🎵' : 'Deezer 🎵'}`);
+        await loadSessionData(selectedSessionId);
+      } else {
+        setError(data.error || 'Errore cambio catalogo');
+      }
+    } catch (error) {
+      setError('Errore connessione');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Avvia OAuth Tidal
+  const initTidalAuth = async () => {
+    if (!authed) return;
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch(apiPath('/api/tidal/auth'), {
+        headers: {
+          'x-dj-user': username,
+          'x-dj-secret': password
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok && data.authUrl) {
+        sessionStorage.setItem('tidal_session_id', selectedSessionId);
+        window.location.href = data.authUrl;
+      } else {
+        setError(data.error || 'Errore auth Tidal');
+      }
+    } catch (error) {
+      setError('Errore connessione Tidal');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Retry manuale aggiunta Tidal
+  const retryTidalAdd = async (requestId: string) => {
+    if (!authed) return;
+    
+    setLoading(true);
+    
+    try {
+      // Resetta lo stato a pending e lascia che il backend riprovi
+      await fetch(apiPath('/api/libere/admin'), {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          request_id: requestId,
+          status: 'accepted'
+        })
+      });
+      
+      setSuccess('⏳ Tentativo aggiunta Tidal...');
+      
+      // Ricarica dopo un po' per vedere il risultato
+      setTimeout(() => {
+        if (showArchive) {
+          loadArchivedRequests(selectedSessionId);
+        } else {
+          loadSessionData(selectedSessionId);
+        }
+      }, 2000);
+    } catch (error) {
+      setError('Errore retry');
     } finally {
       setLoading(false);
     }
@@ -1163,6 +1321,76 @@ export default function LibereAdminPanel() {
                 )}
               </div>
               
+              {/* Catalog Selection Controls */}
+              {selectedSessionId && (
+                <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-800">🎵 Catalogo Musicale</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => switchCatalog('deezer')}
+                        disabled={loading || currentSession?.catalog_type === 'deezer'}
+                        className={`py-2 px-4 rounded-lg font-medium shadow transition-colors ${
+                          currentSession?.catalog_type === 'deezer'
+                            ? 'bg-blue-600 text-white cursor-not-allowed'
+                            : 'bg-gray-200 hover:bg-blue-500 hover:text-white text-gray-700'
+                        }`}
+                      >
+                        🎧 Deezer {currentSession?.catalog_type === 'deezer' && '✓'}
+                      </button>
+                      
+                      <button
+                        onClick={() => switchCatalog('tidal')}
+                        disabled={loading || currentSession?.catalog_type === 'tidal'}
+                        className={`py-2 px-4 rounded-lg font-medium shadow transition-colors ${
+                          currentSession?.catalog_type === 'tidal'
+                            ? 'bg-purple-600 text-white cursor-not-allowed'
+                            : 'bg-gray-200 hover:bg-purple-500 hover:text-white text-gray-700'
+                        }`}
+                      >
+                        🎶 Tidal {currentSession?.catalog_type === 'tidal' && '✓'}
+                      </button>
+                    </div>
+                    
+                    {currentSession?.catalog_type === 'tidal' && (
+                      <div className="border-t border-gray-300 pt-4 mt-4">
+                        {currentSession?.tidal_access_token ? (
+                          <div className="flex items-center gap-2 text-sm text-green-700">
+                            <span className="text-lg">✅</span>
+                            <span className="font-medium">Autenticato con Tidal</span>
+                            {currentSession?.tidal_user_id && (
+                              <span className="text-gray-600 ml-2">
+                                (User ID: {currentSession.tidal_user_id})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="text-sm text-orange-700 mb-3 flex items-center gap-2">
+                              <span className="text-lg">⚠️</span>
+                              <span>Accedi a Tidal per abilitare le funzioni playlist</span>
+                            </p>
+                            <button
+                              onClick={initTidalAuth}
+                              disabled={loading}
+                              className="py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow transition-colors disabled:opacity-50"
+                            >
+                              🔐 Accedi a Tidal
+                            </button>
+                          </div>
+                        )}
+                        
+                        {currentSession?.tidal_playlist_id && (
+                          <p className="text-sm text-gray-600 mt-3">
+                            📋 Playlist: <span className="font-mono text-xs">{currentSession.tidal_playlist_id}</span>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
               {/* Rate Limiting Controls */}
               <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50">
                 <h3 className="text-lg font-semibold mb-3 text-gray-800">⏱️ Controllo Rate Limiting</h3>
@@ -1479,6 +1707,42 @@ export default function LibereAdminPanel() {
                           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${STATUS_COLORS[request.status]}`}>
                             {STATUS_LABELS[request.status]}
                           </span>
+                          
+                          {/* Tidal Status Flag */}
+                          {currentSession?.catalog_type === 'tidal' && request.status === 'accepted' && (
+                            <div className="mt-1">
+                              {request.tidal_added_status === 'success' && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                  ✅ In Playlist
+                                </span>
+                              )}
+                              {request.tidal_added_status === 'pending' && (
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                  ⏳ In aggiunta...
+                                </span>
+                              )}
+                              {request.tidal_added_status === 'failed' && (
+                                <div className="flex flex-col gap-1 items-end">
+                                  <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                    ❌ Errore Tidal
+                                  </span>
+                                  <button
+                                    onClick={() => retryTidalAdd(request.id)}
+                                    disabled={loading}
+                                    className="text-xs bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded transition-colors disabled:opacity-50"
+                                    title={request.tidal_error_message || 'Riprova ad aggiungere alla playlist'}
+                                  >
+                                    🔄 Riprova
+                                  </button>
+                                  {request.tidal_retry_count && request.tidal_retry_count > 0 && (
+                                    <span className="text-xs text-gray-500">
+                                      (Tentativi: {request.tidal_retry_count})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           
                           {/* Contatori voti */}
                           <div className="flex items-center gap-2 mt-1">
