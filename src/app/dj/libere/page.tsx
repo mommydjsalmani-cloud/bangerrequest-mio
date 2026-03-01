@@ -145,41 +145,65 @@ export default function LibereAdminPanel() {
     if (tidal_success) {
       const savedSessionId = sessionStorage.getItem('tidal_session_id');
       
-      if (accessToken && refreshToken && savedSessionId && username && password) {
-        setLoading(true);
-        
-        fetch(apiPath('/api/libere/admin'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-dj-user': username,
-            'x-dj-secret': password
-          },
-          body: JSON.stringify({
-            action: 'save_tidal_auth',
-            session_id: savedSessionId,
-            tidal_access_token: accessToken,
-            tidal_refresh_token: refreshToken,
-            tidal_user_id: userId || '',
-            tidal_token_expires_at: expiresAt
-          })
-        })
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) {
-            setSuccess('✅ Tidal autenticato con successo!');
-            sessionStorage.removeItem('tidal_session_id');
-            setSelectedSessionId(savedSessionId);
-            loadSessionData(savedSessionId);
-            // Pulisci URL
-            window.history.replaceState({}, '', window.location.pathname);
-          } else {
-            setError(data.error || 'Errore salvataggio auth Tidal');
-          }
-        })
-        .catch(() => setError('Errore connessione'))
-        .finally(() => setLoading(false));
+      console.log('Tidal callback ricevuto:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        savedSessionId,
+        hasCredentials: !!username && !!password
+      });
+      
+      if (!accessToken || !refreshToken) {
+        setError('❌ Token Tidal mancanti dal callback');
+        return;
       }
+      
+      if (!savedSessionId) {
+        setError('❌ Session ID non trovato (hai creato nuova sessione durante OAuth?)');
+        return;
+      }
+      
+      if (!username || !password) {
+        setError('❌ Credenziali DJ non trovate - ricarica la pagina');
+        return;
+      }
+      
+      setLoading(true);
+      
+      fetch(apiPath('/api/libere/admin'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          action: 'save_tidal_auth',
+          session_id: savedSessionId,
+          tidal_access_token: accessToken,
+          tidal_refresh_token: refreshToken,
+          tidal_user_id: userId || '',
+          tidal_token_expires_at: expiresAt
+        })
+      })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Save Tidal auth response:', data);
+        if (data.ok) {
+          setSuccess('✅ Tidal autenticato con successo!');
+          sessionStorage.removeItem('tidal_session_id');
+          setSelectedSessionId(savedSessionId);
+          loadSessionData(savedSessionId);
+          // Pulisci URL
+          window.history.replaceState({}, '', window.location.pathname);
+        } else {
+          setError(data.error || 'Errore salvataggio auth Tidal');
+        }
+      })
+      .catch(err => {
+        console.error('Errore save tidal auth:', err);
+        setError('Errore connessione');
+      })
+      .finally(() => setLoading(false));
     }
 
     if (tidal_error) {

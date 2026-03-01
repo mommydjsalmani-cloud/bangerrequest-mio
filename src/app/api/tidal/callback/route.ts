@@ -63,13 +63,25 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     }
 
     // Scambia code per token con PKCE
+    console.log('Exchanging code for token...');
     const tokenData = await exchangeCodeForToken(code, codeVerifier);
     
-    console.log('Token exchange successful, got user_id:', tokenData.user_id);
+    console.log('Token exchange successful:', {
+      user_id: tokenData.user_id,
+      expires_in: tokenData.expires_in,
+      has_access_token: !!tokenData.access_token,
+      has_refresh_token: !!tokenData.refresh_token,
+      access_token_length: tokenData.access_token?.length
+    });
 
     // Cripta i token per sicurezza prima di passarli nell'URL
     const encryptedAccessToken = encryptToken(tokenData.access_token);
     const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
+    
+    console.log('Tokens encrypted:', {
+      encrypted_access_length: encryptedAccessToken.length,
+      encrypted_refresh_length: encryptedRefreshToken.length
+    });
 
     // Calcola scadenza
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
@@ -85,8 +97,15 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
     callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
 
-    console.log('Redirecting to:', callbackUrl.toString().substring(0, 100) + '...');
-    console.log('OAuth callback completed successfully');
+    console.log('Full redirect URL params:', {
+      tidal_success: 'true',
+      user_id: tokenData.user_id,
+      expires_at: expiresAt.toISOString(),
+      access_token_preview: encryptedAccessToken.substring(0, 30) + '...',
+      full_url_length: callbackUrl.toString().length
+    });
+    
+    console.log('OAuth callback completed successfully - redirecting');
     
     return NextResponse.redirect(callbackUrl);
 

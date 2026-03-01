@@ -643,7 +643,18 @@ export async function POST(req: Request) {
         tidal_token_expires_at 
       } = body;
       
+      console.log('save_tidal_auth received:', {
+        session_id,
+        has_access_token: !!tidal_access_token,
+        has_refresh_token: !!tidal_refresh_token,
+        access_token_length: tidal_access_token?.length,
+        refresh_token_length: tidal_refresh_token?.length,
+        user_id: tidal_user_id,
+        expires_at: tidal_token_expires_at
+      });
+      
       if (!tidal_access_token || !tidal_refresh_token) {
+        console.error('save_tidal_auth: missing tokens');
         return withVersion({ ok: false, error: 'Token Tidal richiesti' }, { status: 400 });
       }
       
@@ -659,8 +670,11 @@ export async function POST(req: Request) {
         .eq('id', session_id);
       
       if (error) {
+        console.error('save_tidal_auth: DB error:', error);
         return withVersion({ ok: false, error: error.message }, { status: 500 });
       }
+      
+      console.log('save_tidal_auth: success for session', session_id);
       
       return withVersion({ 
         ok: true, 
