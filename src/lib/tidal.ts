@@ -80,6 +80,7 @@ export interface TidalTokenResponse {
 
 /**
  * Genera URL per OAuth authorization
+ * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
  */
 export function getTidalAuthUrl(state: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
