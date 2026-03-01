@@ -278,7 +278,7 @@ export default function Requests() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 type="text"
-                placeholder="Cerca titolo o artista su Deezer"
+                placeholder={catalogType === 'tidal' ? 'Cerca titolo o artista su Tidal 🎵' : 'Cerca titolo o artista su Deezer 🎵'}
                 className="w-full p-3 rounded bg-zinc-800 text-white placeholder-gray-400 focus:outline-none text-sm"
               />
             </div>
@@ -309,7 +309,7 @@ export default function Requests() {
                         rel="noopener noreferrer" 
                         className="bg-gray-700 text-white py-1 px-2 rounded text-[11px] sm:text-sm"
                       >
-                        Apri
+                        {catalogType === 'tidal' ? 'Ascolta su Tidal' : 'Ascolta su Deezer'}
                       </a>
                     </div>
                   </div>
