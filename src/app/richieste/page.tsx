@@ -130,6 +130,7 @@ function RichiesteLibereContent() {
           return;
         }
         
+        console.debug('[LoadSession] Sessione caricata:', { catalog_type: data.session?.catalog_type, session_id: data.session?.id });
         setSession(data.session);
         
         // Inizializza voter_id
@@ -183,6 +184,8 @@ function RichiesteLibereContent() {
         const response = await fetch(apiPath(`/api/libere?s=${token}`));
         if (response.ok) {
           const data = await response.json();
+          console.debug('[Polling] Risposta /api/libere:', { catalog_type: data.session?.catalog_type, session_catalog: session.catalog_type });
+          
           if (data.ok && data.session) {
             // Controlla se require_event_code è cambiato
             if (data.session.require_event_code !== session.require_event_code) {
@@ -192,6 +195,7 @@ function RichiesteLibereContent() {
             
             // Controlla se catalog_type è cambiato (Deezer <-> Tidal)
             if (data.session.catalog_type && data.session.catalog_type !== session.catalog_type) {
+              console.debug('[Polling] Catalogo cambiato!', { da: session.catalog_type, a: data.session.catalog_type });
               // Aggiorna la sessione nello stato
               setSession(data.session);
               // Resetta ricerca e risultati quando cambia catalogo
@@ -384,6 +388,7 @@ function RichiesteLibereContent() {
       const searchUrl = isTidal
         ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${token}`
         : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
+      console.debug('[Search] Query:', query, 'Catalogo:', session?.catalog_type, 'URL:', searchUrl);
       fetch(apiPath(searchUrl))
         .then((r) => r.json())
         .then((data) => {
@@ -885,9 +890,12 @@ function RichiesteLibereContent() {
             {/* Risultati Ricerca con Cards Moderne */}
             {results.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-base font-semibold">
-                  🎶 Risultati da {session?.catalog_type === 'tidal' ? 'Tidal' : 'Deezer'}
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-base font-semibold">
+                    🎶 Risultati da {session?.catalog_type === 'tidal' ? 'Tidal' : 'Deezer'}
+                  </label>
+                  <span className="text-xs text-gray-400 tabular-nums">{session?.catalog_type || 'null'}</span>
+                </div>
                 <div className="grid grid-cols-1 gap-1 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
