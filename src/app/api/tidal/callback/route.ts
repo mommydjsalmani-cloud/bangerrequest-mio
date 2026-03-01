@@ -35,8 +35,27 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Valida lo state contro il cookie
     const storedState = req.cookies.get('tidal_oauth_state')?.value;
-    if (!storedState || storedState !== state) {
-      console.error('State mismatch:', { stored: storedState, received: state });
+    if (!storedState || !state) {
+      console.error('Missing state or stored state');
+      return NextResponse.redirect(
+        new URL('/dj/libere?tidal_error=missing_state', req.url)
+      );
+    }
+    
+    // Decodifica origin e random state da state (base64)
+    let stateData: { random: string; origin: string };
+    try {
+      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+    } catch (e) {
+      console.error('Invalid state format');
+      return NextResponse.redirect(
+        new URL('/dj/libere?tidal_error=invalid_state_format', req.url)
+      );
+    }
+    
+    // Valida il random state
+    if (stateData.random !== storedState) {
+      console.error('State mismatch:', { stored: storedState, received: stateData.random });
       return NextResponse.redirect(
         new URL('/dj/libere?tidal_error=state_mismatch', req.url)
       );
@@ -59,8 +78,8 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     // Salva in sessione temporanea (da associare poi alla sessione attiva)
     // Per ora salviamo in query params (in produzione usare session storage sicuro)
     
-    // Estrai l'origin dal cookie per reindirizzare al dominio corretto
-    const origin = req.cookies.get('tidal_oauth_origin')?.value || new URL(req.url).origin;
+    // Usa l'origin decodificato dallo state
+    const origin = stateData.origin;
     
     console.log('Building redirect URL:', { origin });
     
@@ -75,9 +94,8 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     const response = NextResponse.redirect(callbackUrl);
     
-    // Cancella i cookie di stato e origin dopo validazione riuscita
+    // Cancella il cookie di stato dopo validazione riuscita
     response.cookies.delete('tidal_oauth_state');
-    response.cookies.delete('tidal_oauth_origin');
     
     console.log('OAuth callback completed successfully');
     
