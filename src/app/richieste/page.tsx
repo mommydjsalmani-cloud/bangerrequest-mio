@@ -388,6 +388,15 @@ function RichiesteLibereContent() {
       fetch(apiPath(searchUrl))
         .then((r) => r.json())
         .then((data) => {
+          if (!data.ok && data.error) {
+            setResults([]);
+            if (data.error.includes('Tidal not configured')) {
+              setMessage('⚠️ Il DJ non ha ancora collegato Tidal a questa sessione. Riprova tra poco.');
+            } else if (data.error.includes('Invalid or expired session')) {
+              setMessage('⚠️ Sessione Tidal scaduta. Il DJ deve riconnettersi a Tidal.');
+            }
+            return;
+          }
           setResults(data.tracks || []);
         })
         .catch(() => setResults([]))
