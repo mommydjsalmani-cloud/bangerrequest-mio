@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { exchangeCodeForToken, encryptToken } from '@/lib/tidal';
+import { exchangeCodeForToken, encryptToken, decryptToken } from '@/lib/tidal';
 
 /**
  * Gestisce il callback OAuth di Tidal (GET e POST)
@@ -15,8 +15,6 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       state: state ? state.substring(0, 30) + '...' : null,
       error,
       errorDescription: searchParams.get('error_description'),
-      origin: req.headers.get('origin'),
-      url: req.nextUrl.toString().substring(0, 150) + '...',
     });
 
     // Gestione errore OAuth
@@ -34,17 +32,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       );
     }
 
-    // Valida lo state contro il cookie
-    const storedState = req.cookies.get('tidal_oauth_state')?.value;
-    if (!storedState || !state) {
-      console.error('Missing state or stored state');
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=missing_state', req.url)
-      );
-    }
-
-    // Decodifica origin e random state da state (base64url)
-    let stateData: { random: string; origin: string };
+    // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato)
+    // Non usiamo cookie perché il callback può arrivare su dominio diverso da quello di auth
+    let stateData: { random: string; origin: string; cv: string };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
     } catch {
@@ -54,18 +44,21 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       );
     }
 
-    if (stateData.random !== storedState) {
-      console.error('State mismatch:', { stored: storedState, received: stateData.random });
+    if (!stateData.random || !stateData.origin || !stateData.cv) {
+      console.error('Incomplete state payload:', Object.keys(stateData));
       return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=state_mismatch', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=incomplete_state', req.url)
       );
     }
 
-    const codeVerifier = req.cookies.get('tidal_oauth_code_verifier')?.value;
-    if (!codeVerifier) {
-      console.error('Missing code_verifier for PKCE');
+    // Decripta il codeVerifier dallo state
+    let codeVerifier: string;
+    try {
+      codeVerifier = decryptToken(stateData.cv);
+    } catch {
+      console.error('Failed to decrypt codeVerifier from state');
       return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=missing_code_verifier', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=invalid_code_verifier', req.url)
       );
     }
 
@@ -74,19 +67,15 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     
     console.log('Token exchange successful, got user_id:', tokenData.user_id);
 
-    // Cripta i token per sicurezza
+    // Cripta i token per sicurezza prima di passarli nell'URL
     const encryptedAccessToken = encryptToken(tokenData.access_token);
     const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
 
     // Calcola scadenza
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
 
-    // Salva in sessione temporanea (da associare poi alla sessione attiva)
-    // Per ora salviamo in query params (in produzione usare session storage sicuro)
-    
-    // Usa l'origin decodificato dallo state
+    // Reindirizza all'origin originale con i token
     const origin = stateData.origin;
-    
     console.log('Building redirect URL:', { origin });
     
     const callbackUrl = new URL(`${origin}/richiedi/dj/libere`);
@@ -97,16 +86,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
 
     console.log('Redirecting to:', callbackUrl.toString().substring(0, 100) + '...');
-
-    const response = NextResponse.redirect(callbackUrl);
-    
-    // Cancella cookie OAuth temporanei
-    response.cookies.delete('tidal_oauth_state');
-    response.cookies.delete('tidal_oauth_code_verifier');
-    
     console.log('OAuth callback completed successfully');
     
-    return response;
+    return NextResponse.redirect(callbackUrl);
 
   } catch (error) {
     console.error('Tidal callback error:', error);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
-import { getTidalAuthUrl, generatePKCE } from '@/lib/tidal';
+import { getTidalAuthUrl, generatePKCE, encryptToken } from '@/lib/tidal';
 
 /**
  * GET /api/tidal/auth
@@ -28,12 +28,13 @@ export async function GET(req: NextRequest) {
     // Estrai l'origin della richiesta per reindirizzare correttamente nel callback
     const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://bangerrequest-mio.vercel.app';
     
-    // Codifica origin nel state per recuperarlo nel callback (niente cookie cross-domain)
-    const stateWithOrigin = JSON.stringify({ random: randomState, origin });
-    const state = Buffer.from(stateWithOrigin).toString('base64url');
-
     // Genera PKCE per OAuth di Tidal
     const { codeVerifier, codeChallenge } = generatePKCE();
+
+    // Codifica tutto nello state: random (CSRF), origin (redirect), codeVerifier (PKCE)
+    // Questo evita cookie cross-domain: il callback decodifica tutto dallo state
+    const statePayload = JSON.stringify({ random: randomState, origin, cv: encryptToken(codeVerifier) });
+    const state = Buffer.from(statePayload).toString('base64url');
 
     // Genera authUrl con state + code_challenge
     const authUrl = getTidalAuthUrl(state, codeChallenge);
@@ -45,32 +46,11 @@ export async function GET(req: NextRequest) {
       authUrl: authUrl.substring(0, 150) + '...',
     });
     
-    // Salva state in cookie firmato per validare nel callback
-    const response = NextResponse.json({
+    // Niente cookie: tutto è nello state (codeVerifier cifrato)
+    return NextResponse.json({
       ok: true,
       authUrl,
     });
-    
-    // Salva lo state (senza origin) in cookie per validare CSRF nel callback
-    // Usa sameSite: 'none' + secure: true per permettere il cookie dal redirect cross-site di Tidal
-    response.cookies.set('tidal_oauth_state', randomState, {
-      httpOnly: true,
-      secure: true, // Must be true with sameSite: 'none'
-      sameSite: 'none',
-      maxAge: 600, // 10 minuti
-      path: '/'
-    });
-    
-    // Salva code_verifier per il token exchange nel callback
-    response.cookies.set('tidal_oauth_code_verifier', codeVerifier, {
-      httpOnly: true,
-      secure: true, // Must be true with sameSite: 'none'
-      sameSite: 'none',
-      maxAge: 600, // 10 minuti
-      path: '/'
-    });
-    
-    return response;
 
   } catch (error) {
     console.error('Tidal auth error:', error);
