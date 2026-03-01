@@ -174,7 +174,7 @@ function RichiesteLibereContent() {
     }
   }, []);
 
-  // Polling per controllare cambiamenti nella configurazione della sessione
+  // Polling per controllare cambiamenti nella configurazione della sessione (catalog_type, require_event_code)
   useEffect(() => {
     if (!token || !session) return;
 
@@ -189,6 +189,17 @@ function RichiesteLibereContent() {
               // Ricarica la pagina per mostrare/nascondere il campo codice evento
               window.location.reload();
             }
+            
+            // Controlla se catalog_type è cambiato (Deezer <-> Tidal)
+            if (data.session.catalog_type && data.session.catalog_type !== session.catalog_type) {
+              // Aggiorna la sessione nello stato
+              setSession(data.session);
+              // Resetta ricerca e risultati quando cambia catalogo
+              setQuery('');
+              setResults([]);
+              setSelected(null);
+              setMessage(`🎵 Catalogo cambiato in ${data.session.catalog_type === 'tidal' ? 'Tidal' : 'Deezer'}!`);
+            }
           }
         }
       } catch (error) {
@@ -196,8 +207,8 @@ function RichiesteLibereContent() {
       }
     };
 
-    // Controlla ogni 5 secondi
-    const interval = setInterval(checkSessionConfig, 5000);
+    // Controlla ogni 4 secondi
+    const interval = setInterval(checkSessionConfig, 4000);
     return () => clearInterval(interval);
   }, [token, session]);
 
@@ -874,7 +885,9 @@ function RichiesteLibereContent() {
             {/* Risultati Ricerca con Cards Moderne */}
             {results.length > 0 && (
               <div className="space-y-2">
-                <label className="block text-base font-semibold">🎶 Risultati da Deezer</label>
+                <label className="block text-base font-semibold">
+                  🎶 Risultati da {session?.catalog_type === 'tidal' ? 'Tidal' : 'Deezer'}
+                </label>
                 <div className="grid grid-cols-1 gap-1 max-h-96 overflow-y-auto">
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
