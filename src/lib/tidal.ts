@@ -144,7 +144,7 @@ export async function exchangeCodeForToken(code: string): Promise<TidalTokenResp
       status: response.status,
       statusText: response.statusText,
       body: error,
-      redirectUri: uri,
+      redirectUri: redirectUri,
     });
     throw new Error(`Tidal token exchange failed: ${response.status} ${error}`);
   }
