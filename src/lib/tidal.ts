@@ -1,7 +1,6 @@
 // Tidal API Client con OAuth 2.0
 // https://developer.tidal.com/documentation/api/api-overview
 
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
 
 const TIDAL_API_BASE = 'https://openapi.tidal.com/v2';
@@ -93,21 +92,13 @@ export interface TidalTokenResponse {
 }
 
 /**
- * Genera URL per OAuth authorization
- * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
- * @param state CSRF state token
+ * Genera URL per OAuth authorization con PKCE
+ * Uses login.tidal.com endpoint
  */
-export function getTidalAuthUrl(state: string): string {
-  /**
-   * Genera URL per OAuth authorization
-   * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
-   * @param state CSRF state token
-   * @param codeChallenge Code challenge per PKCE (SHA256 hash del verifier)
-   */
-  export function getTidalAuthUrl(state: string, codeChallenge: string): string {
+export function getTidalAuthUrl(state: string, codeChallenge: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const redirectUri = process.env.TIDAL_REDIRECT_URI;
-  
+
   if (!clientId || !redirectUri) {
     throw new Error('Tidal credentials not configured');
   }
@@ -118,24 +109,20 @@ export function getTidalAuthUrl(state: string): string {
     redirect_uri: redirectUri,
     scope: 'user.read playlists.read playlists.write',
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
   });
-
-    params.append('code_challenge_method', 'S256');
 
   return `${TIDAL_LOGIN_BASE}/authorize?${params.toString()}`;
 }
 
 /**
- * Scambia authorization code per access token
- * @param code Authorization code da Tidal
+ * Scambia authorization code per access token con PKCE
  */
-export async function exchangeCodeForToken(code: string): Promise<TidalTokenResponse> {
-  /**
-   * Scambia authorization code per access token
-   * @param code Authorization code da Tidal
-   * @param codeVerifier Code verifier per PKCE (generato originariamente come verifier)
-   */
-  export async function exchangeCodeForToken(code: string, codeVerifier: string): Promise<TidalTokenResponse> {
+export async function exchangeCodeForToken(
+  code: string,
+  codeVerifier: string
+): Promise<TidalTokenResponse> {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
   const redirectUri = process.env.TIDAL_REDIRECT_URI;
@@ -144,18 +131,11 @@ export async function exchangeCodeForToken(code: string): Promise<TidalTokenResp
     throw new Error('Tidal credentials not configured');
   }
 
-  // Log dei parametri per debug
-  console.log('Tidal token exchange:', {
-    endpoint: `${TIDAL_TOKEN_BASE}/token`,
-    clientId: clientId.substring(0, 5) + '...',
-    redirectUri: redirectUri,
-    code: code.substring(0, 10) + '...',
-  });
-
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
     redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
   });
 
   const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {
@@ -169,12 +149,6 @@ export async function exchangeCodeForToken(code: string): Promise<TidalTokenResp
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Tidal token exchange error:', {
-      status: response.status,
-      statusText: response.statusText,
-      body: error,
-      redirectUri: redirectUri,
-    });
     throw new Error(`Tidal token exchange failed: ${response.status} ${error}`);
   }
 

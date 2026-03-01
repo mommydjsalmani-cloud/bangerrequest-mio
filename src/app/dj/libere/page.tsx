@@ -660,11 +660,7 @@ export default function LibereAdminPanel() {
     setLoading(true);
     
     try {
-      // IMPORTANTE: Sempre usa bangerrequest-mio.vercel.app per il flusso OAuth
-      // (il dominio registrato in Tidal), indipendentemente da quale dominio l'utente visita
-      const authApiUrl = `https://bangerrequest-mio.vercel.app/richiedi/api/tidal/auth`;
-      
-      const response = await fetch(authApiUrl, {
+      const response = await fetch(apiPath('/api/tidal/auth'), {
         headers: {
           'x-dj-user': username,
           'x-dj-secret': password
@@ -675,7 +671,6 @@ export default function LibereAdminPanel() {
       
       if (data.ok && data.authUrl) {
         sessionStorage.setItem('tidal_session_id', selectedSessionId);
-        sessionStorage.setItem('tidal_return_url', window.location.href);
         window.location.href = data.authUrl;
       } else {
         setError(data.error || 'Errore auth Tidal');

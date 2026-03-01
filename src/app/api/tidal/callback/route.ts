@@ -21,16 +21,16 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Gestione errore OAuth
     if (error) {
-      console.error('Tidal OAuth error:', error);
+      console.error('Tidal OAuth error:', error, searchParams.get('error_description'));
       return NextResponse.redirect(
-        new URL('/dj/libere?tidal_error=' + encodeURIComponent(error), req.url)
+        new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(error), req.url)
       );
     }
 
     if (!code || !state) {
       console.error('Missing code or state');
       return NextResponse.redirect(
-        new URL('/dj/libere?tidal_error=invalid_callback', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=invalid_callback', req.url)
       );
     }
 
@@ -39,44 +39,38 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     if (!storedState || !state) {
       console.error('Missing state or stored state');
       return NextResponse.redirect(
-        new URL('/dj/libere?tidal_error=missing_state', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=missing_state', req.url)
       );
     }
-    
-    // Decodifica origin e random state da state (base64)
+
+    // Decodifica origin e random state da state (base64url)
     let stateData: { random: string; origin: string };
     try {
-      stateData = JSON.parse(Buffer.from(state, 'base64').toString());
-    } catch (e) {
+      stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+    } catch {
       console.error('Invalid state format');
       return NextResponse.redirect(
-        new URL('/dj/libere?tidal_error=invalid_state_format', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=invalid_state_format', req.url)
       );
     }
-    
-    // Valida il random state
+
     if (stateData.random !== storedState) {
       console.error('State mismatch:', { stored: storedState, received: stateData.random });
       return NextResponse.redirect(
-        new URL('/dj/libere?tidal_error=state_mismatch', req.url)
+        new URL('/richiedi/dj/libere?tidal_error=state_mismatch', req.url)
       );
     }
 
-    console.log('Exchanging code for token');
+    const codeVerifier = req.cookies.get('tidal_oauth_code_verifier')?.value;
+    if (!codeVerifier) {
+      console.error('Missing code_verifier for PKCE');
+      return NextResponse.redirect(
+        new URL('/richiedi/dj/libere?tidal_error=missing_code_verifier', req.url)
+      );
+    }
 
-    // Scambia code per token
-    const tokenData = await exchangeCodeForToken(code);
-        const codeVerifier = req.cookies.get('tidal_oauth_code_verifier')?.value;
-        if (!codeVerifier) {
-          console.error('Missing code_verifier for PKCE');
-          return NextResponse.redirect(
-            new URL('/dj/libere?tidal_error=missing_code_verifier', req.url)
-          );
-        }
-
-        console.log('Exchanging code for token with PKCE');
-        // Scambia code per token con PKCE
-        const tokenData = await exchangeCodeForToken(code, codeVerifier);
+    // Scambia code per token con PKCE
+    const tokenData = await exchangeCodeForToken(code, codeVerifier);
     
     console.log('Token exchange successful, got user_id:', tokenData.user_id);
 
@@ -106,9 +100,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     const response = NextResponse.redirect(callbackUrl);
     
-    // Cancella il cookie di stato dopo validazione riuscita
+    // Cancella cookie OAuth temporanei
     response.cookies.delete('tidal_oauth_state');
-      response.cookies.delete('tidal_oauth_code_verifier');
+    response.cookies.delete('tidal_oauth_code_verifier');
     
     console.log('OAuth callback completed successfully');
     
@@ -117,7 +111,7 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
   } catch (error) {
     console.error('Tidal callback error:', error);
     return NextResponse.redirect(
-      new URL('/dj/libere?tidal_error=' + encodeURIComponent(
+      new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(
         error instanceof Error ? error.message : 'callback_failed'
       ), req.url)
     );

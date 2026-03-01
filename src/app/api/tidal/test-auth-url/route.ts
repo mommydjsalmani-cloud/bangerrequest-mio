@@ -1,22 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getTidalAuthUrl } from '@/lib/tidal';
+import { NextResponse } from 'next/server';
 import { getTidalAuthUrl, generatePKCE } from '@/lib/tidal';
 
 /**
  * GET /api/tidal/test-auth-url
  * Debug: mostra l'URL di authorize che viene generata
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // Genera state
     const state = 'test-state-123';
-    
-    // Genera auth URL
-    const authUrl = getTidalAuthUrl(state);
-      const { codeVerifier, codeChallenge } = generatePKCE();
-    
-      // Genera auth URL
-      const authUrl = getTidalAuthUrl(state, codeChallenge);
+    const { codeChallenge } = generatePKCE();
+    const authUrl = getTidalAuthUrl(state, codeChallenge);
     
     return NextResponse.json({
       ok: true,
