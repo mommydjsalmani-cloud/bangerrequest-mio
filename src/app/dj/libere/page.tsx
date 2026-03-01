@@ -645,7 +645,7 @@ export default function LibereAdminPanel() {
       } else {
         setError(data.error || 'Errore cambio catalogo');
       }
-    } catch (error) {
+    } catch (_error) {
       setError('Errore connessione');
     } finally {
       setLoading(false);
@@ -674,7 +674,7 @@ export default function LibereAdminPanel() {
       } else {
         setError(data.error || 'Errore auth Tidal');
       }
-    } catch (error) {
+    } catch (_error) {
       setError('Errore connessione Tidal');
     } finally {
       setLoading(false);
@@ -712,7 +712,7 @@ export default function LibereAdminPanel() {
           loadSessionData(selectedSessionId);
         }
       }, 2000);
-    } catch (error) {
+    } catch (_error) {
       setError('Errore retry');
     } finally {
       setLoading(false);
