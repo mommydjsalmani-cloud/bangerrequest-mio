@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 import { apiPath } from '@/lib/apiPath';
-
-export const dynamic = 'force-dynamic';
 
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
@@ -135,16 +132,15 @@ export default function LibereAdminPanel() {
     loadCredentialsAndAuth();
   }, []);
 
-  // Gestisci callback OAuth Tidal - usa useSearchParams per reattività
-  const searchParams = useSearchParams();
-  
+  // Gestisci callback OAuth Tidal
   useEffect(() => {
-    const tidal_success = searchParams.get('tidal_success');
-    const tidal_error = searchParams.get('tidal_error');
-    const accessToken = searchParams.get('tidal_access_token');
-    const refreshToken = searchParams.get('tidal_refresh_token');
-    const userId = searchParams.get('tidal_user_id');
-    const expiresAt = searchParams.get('tidal_expires_at');
+    const params = new URLSearchParams(window.location.search);
+    const tidal_success = params.get('tidal_success');
+    const tidal_error = params.get('tidal_error');
+    const accessToken = params.get('tidal_access_token');
+    const refreshToken = params.get('tidal_refresh_token');
+    const userId = params.get('tidal_user_id');
+    const expiresAt = params.get('tidal_expires_at');
 
     if (tidal_success) {
       const savedSessionId = sessionStorage.getItem('tidal_session_id');
@@ -190,7 +186,7 @@ export default function LibereAdminPanel() {
       setError(`Errore Tidal OAuth: ${tidal_error}`);
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, [searchParams, username, password]);
+  }, [username, password]);
   
   const checkMigration = async () => {
     setMigrationLoading(true);
