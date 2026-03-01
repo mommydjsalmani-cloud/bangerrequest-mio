@@ -81,14 +81,18 @@ export interface TidalTokenResponse {
 /**
  * Genera URL per OAuth authorization
  * Uses login.tidal.com endpoint (corrected from auth.tidal.com)
+ * @param state CSRF state token
+ * @param origin Dominio della richiesta (usato per redirect_uri dinamico)
  */
-export function getTidalAuthUrl(state: string): string {
+export function getTidalAuthUrl(state: string, origin: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
-  const redirectUri = process.env.TIDAL_REDIRECT_URI;
   
-  if (!clientId || !redirectUri) {
+  if (!clientId) {
     throw new Error('Tidal credentials not configured');
   }
+
+  // Costruisci il redirect_uri basato sul dominio della richiesta
+  const redirectUri = `${origin}/richiedi/api/tidal/callback`;
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -103,14 +107,23 @@ export function getTidalAuthUrl(state: string): string {
 
 /**
  * Scambia authorization code per access token
+ * @param code Authorization code da Tidal
+ * @param redirectUri Redirect URI usato nella authorization request (deve corrispondere esattamente)
  */
-export async function exchangeCodeForToken(code: string): Promise<TidalTokenResponse> {
+export async function exchangeCodeForToken(code: string, redirectUri?: string): Promise<TidalTokenResponse> {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
-  const redirectUri = process.env.TIDAL_REDIRECT_URI;
+  const defaultRedirectUri = process.env.TIDAL_REDIRECT_URI;
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret) {
     throw new Error('Tidal credentials not configured');
+  }
+
+  // Usa il redirectUri passato, altrimenti fallback al default
+  const uri = redirectUri || defaultRedirectUri;
+  
+  if (!uri) {
+    throw new Error('Redirect URI not configured');
   }
 
   const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {
@@ -122,7 +135,7 @@ export async function exchangeCodeForToken(code: string): Promise<TidalTokenResp
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
-      redirect_uri: redirectUri,
+      redirect_uri: uri,
     }),
   });
 

@@ -25,8 +25,11 @@ export async function GET(req: NextRequest) {
     // Genera state per CSRF protection
     const state = randomBytes(32).toString('hex');
     
-    // Genera authUrl con state
-    const authUrl = getTidalAuthUrl(state);
+    // Estrai l'origin dalla richiesta per redirect_uri dinamico
+    const origin = req.headers.get('origin') || new URL(req.url).origin;
+    
+    // Genera authUrl con state e dominio dinamico
+    const authUrl = getTidalAuthUrl(state, origin);
     
     // Salva state in cookie firmato per validare nel callback
     const response = NextResponse.json({
