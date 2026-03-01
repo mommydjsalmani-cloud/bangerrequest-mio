@@ -25,6 +25,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Valida lo state contro il cookie
+    const storedState = req.cookies.get('tidal_oauth_state')?.value;
+    if (!storedState || storedState !== state) {
+      console.error('State mismatch:', { stored: storedState, received: state });
+      return NextResponse.redirect(
+        new URL('/dj/libere?tidal_error=state_mismatch', req.url)
+      );
+    }
+
     // Scambia code per token
     const tokenData = await exchangeCodeForToken(code);
 
@@ -44,7 +53,12 @@ export async function GET(req: NextRequest) {
     callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
     callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
 
-    return NextResponse.redirect(callbackUrl);
+    const response = NextResponse.redirect(callbackUrl);
+    
+    // Cancella il cookie dello state dopo validazione riuscita
+    response.cookies.delete('tidal_oauth_state');
+    
+    return response;
 
   } catch (error) {
     console.error('Tidal callback error:', error);

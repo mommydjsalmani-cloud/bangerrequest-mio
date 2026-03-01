@@ -25,15 +25,24 @@ export async function GET(req: NextRequest) {
     // Genera state per CSRF protection
     const state = randomBytes(32).toString('hex');
     
-    // Salva state in session storage (per verifica nel callback)
-    // In produzione usare Redis o DB
+    // Genera authUrl con state
     const authUrl = getTidalAuthUrl(state);
     
-    return NextResponse.json({
+    // Salva state in cookie firmato per validare nel callback
+    const response = NextResponse.json({
       ok: true,
       authUrl,
-      state,
     });
+    
+    response.cookies.set('tidal_oauth_state', state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minuti
+      path: '/'
+    });
+    
+    return response;
 
   } catch (error) {
     console.error('Tidal auth error:', error);
