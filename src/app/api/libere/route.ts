@@ -176,7 +176,8 @@ export async function GET(req: Request) {
       rate_limit_seconds: session.rate_limit_seconds,
       notes_enabled: session.notes_enabled,
       require_event_code: session.require_event_code,
-      current_event_code: session.current_event_code
+      current_event_code: session.current_event_code,
+      catalog_type: session.catalog_type || 'deezer'
     }
   });
 }
