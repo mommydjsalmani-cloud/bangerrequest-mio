@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 import { apiPath } from '@/lib/apiPath';
 
+export const dynamic = 'force-dynamic';
+
 export default function LibereAdminPanel() {
   const [authed, setAuthed] = useState(false);
   const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
