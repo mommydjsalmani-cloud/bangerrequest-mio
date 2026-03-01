@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchTidal, normalizeTidalTrack } from '@/lib/tidal';
+import { searchTidal, normalizeTidalTrack, decryptToken, refreshAccessToken, encryptToken } from '@/lib/tidal';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -59,23 +59,58 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // TODO: Verifica scadenza token e rinnova se necessario
-    // Per ora usiamo direttamente il token
+    // Decripta i token (già garantiti presenti dal controllo sopra)
+    let accessToken: string = decryptToken(session.tidal_access_token as string);
+    const refreshToken: string | null = session.tidal_refresh_token
+      ? decryptToken(session.tidal_refresh_token)
+      : null;
 
-    // Ricerca su Tidal
-    const results = await searchTidal(query, session.tidal_access_token, limit, offset);
+    async function doSearch(currentAccessToken: string) {
+      const tokenToUse: string = String(currentAccessToken || '');
+      // @ts-ignore - token coerced to string above
+      const results = await searchTidal(query, tokenToUse, limit, offset);
+      const tracks = results.tracks.map(normalizeTidalTrack);
+      return NextResponse.json({
+        ok: true,
+        tracks,
+        total: results.totalNumberOfItems,
+        limit,
+        offset,
+        query,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
-    const tracks = results.tracks.map(normalizeTidalTrack);
+    try {
+      return await doSearch(accessToken);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const is401 = msg.includes('401');
+      if (!is401 || !refreshToken) {
+        throw err;
+      }
 
-    return NextResponse.json({
-      ok: true,
-      tracks,
-      total: results.totalNumberOfItems,
-      limit,
-      offset,
-      query,
-      timestamp: new Date().toISOString(),
-    });
+      // Prova a rinfrescare il token e ripeti
+      try {
+        const newTokens = await refreshAccessToken(refreshToken);
+        const encryptedAccess = encryptToken(newTokens.access_token);
+        const encryptedRefresh = encryptToken(newTokens.refresh_token);
+
+        await supabase
+          .from('sessioni_libere')
+          .update({
+            tidal_access_token: encryptedAccess,
+            tidal_refresh_token: encryptedRefresh,
+            tidal_token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+          })
+          .eq('id', session.id);
+
+        accessToken = newTokens.access_token;
+        return await doSearch(accessToken);
+      } catch (refreshErr) {
+        throw refreshErr;
+      }
+    }
 
   } catch (error) {
     console.error('Tidal search error:', error);

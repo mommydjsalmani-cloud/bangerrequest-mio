@@ -194,7 +194,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<TidalTok
  */
 export async function searchTidal(
   query: string,
-  accessToken: string,
+  accessToken: string | null,
   limit = 10,
   offset = 0
 ): Promise<TidalSearchResponse> {
@@ -203,7 +203,7 @@ export async function searchTidal(
 
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken || ''}`,
       'X-Tidal-Token': clientId,
       'Content-Type': 'application/json',
     },
