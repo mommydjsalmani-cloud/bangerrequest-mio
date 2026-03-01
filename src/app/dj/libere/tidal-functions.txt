@@ -1,0 +1,179 @@
+// Utility functions per integrazione Tidal nel pannello DJ
+// Da integrare in src/app/dj/libere/page.tsx
+
+/**
+ * Cambia il catalogo della sessione (Deezer ↔ Tidal)
+ */
+async function switchCatalog(catalogType: 'deezer' | 'tidal') {
+  if (!selectedSessionId || !authed) return;
+  
+  set Loading(true);
+  setError(null);
+  
+  try {
+    const response = await fetch(apiPath('/api/libere/admin'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-dj-user': username,
+        'x-dj-secret': password
+      },
+      body: JSON.stringify({
+        action: 'switch_catalog',
+        session_id: selectedSessionId,
+        catalog_type: catalogType
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      setSuccess(`Catalogo cambiato in ${catalogType === 'tidal' ? 'Tidal' : 'Deezer'}`);
+      await loadSessionData(selectedSessionId);
+    } else {
+      setError(data.error || 'Errore cambio catalogo');
+    }
+  } catch (error) {
+    console.error('Switch catalog error:', error);
+    setError('Errore connessione');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/**
+ * Avvia OAuth flow per Tidal
+ */
+async function initTidalAuth() {
+  if (!authed) return;
+  
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const response = await fetch(apiPath('/api/tidal/auth'), {
+      headers: {
+        'x-dj-user': username,
+        'x-dj-secret': password
+      }
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok && data.authUrl) {
+      // Salva session ID per post-callback
+      sessionStorage.setItem('tidal_session_id', selectedSessionId);
+      // Reindirizza a Tidal OAuth
+      window.location.href = data.authUrl;
+    } else {
+      setError(data.error || 'Errore autenticazione Tidal');
+    }
+  } catch (error) {
+    console.error('Tidal auth error:', error);
+    setError('Errore connessione Tidal');
+  } finally {
+    setLoading(false);
+  }
+}
+
+/**
+ * Gestisce callback OAuth Tidal
+ */
+async function handleTidalCallback(params: URLSearchParams) {
+  const success = params.get('tidal_success');
+  const error = params.get('tidal_error');
+  const accessToken = params.get('tidal_access_token');
+  const refreshToken = params.get('tidal_refresh_token');
+  const userId = params.get('tidal_user_id');
+  const expiresAt = params.get('tidal_expires_at');
+  
+  if (error) {
+    setError(`Errore Tidal OAuth: ${error}`);
+    return;
+  }
+  
+  if (success && accessToken && refreshToken) {
+    // Salva token nella sessione
+    const savedSessionId = sessionStorage.getItem('tidal_session_id');
+    if (!savedSessionId) {
+      setError('Session ID mancante dopo callback');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch(apiPath('/api/libere/admin'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dj-user': username,
+          'x-dj-secret': password
+        },
+        body: JSON.stringify({
+          action: 'save_tidal_auth',
+          session_id: savedSessionId,
+          tidal_access_token: accessToken,
+          tidal_refresh_token: refreshToken,
+          tidal_user_id: userId || '',
+          tidal_token_expires_at: expiresAt
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok) {
+        setSuccess('✅ Tidal autenticato con successo!');
+        sessionStorage.removeItem('tidal_session_id');
+        setSelectedSessionId(savedSessionId);
+        await loadSessionData(savedSessionId);
+      } else {
+        setError(data.error || 'Errore salvataggio autenticazione Tidal');
+      }
+    } catch (error) {
+      console.error('Save Tidal auth error:', error);
+      setError('Errore connessione');
+    } finally {
+      setLoading(false);
+    }
+  }
+}
+
+/**
+ * Crea playlist Tidal per la sessione corrente
+ */
+async function createTidalPlaylist() {
+  if (!selectedSessionId || !authed) return;
+  
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const response = await fetch(apiPath('/api/tidal/playlist'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-dj-user': username,
+        'x-dj-secret': password
+      },
+      body: JSON.stringify({
+        action: 'create_playlist',
+        session_id: selectedSessionId
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      setSuccess(`✅ Playlist Tidal "${currentSession?.name}" creata!`);
+      await loadSessionData(selectedSessionId);
+    } else {
+      setError(data.error || 'Errore creazione playlist');
+    }
+  } catch (error) {
+    console.error('Create playlist error:', error);
+    setError('Errore connessione');
+  } finally {
+    setLoading(false);
+  }
+}
