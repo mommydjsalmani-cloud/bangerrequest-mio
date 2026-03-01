@@ -46,6 +46,8 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Scambia code per token
     const tokenData = await exchangeCodeForToken(code);
+    
+    console.log('Token exchange successful, got user_id:', tokenData.user_id);
 
     // Cripta i token per sicurezza
     const encryptedAccessToken = encryptToken(tokenData.access_token);
@@ -60,6 +62,8 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     // Estrai l'origin dal cookie per reindirizzare al dominio corretto
     const origin = req.cookies.get('tidal_oauth_origin')?.value || new URL(req.url).origin;
     
+    console.log('Building redirect URL:', { origin });
+    
     const callbackUrl = new URL(`${origin}/richiedi/dj/libere`);
     callbackUrl.searchParams.set('tidal_success', 'true');
     callbackUrl.searchParams.set('tidal_access_token', encryptedAccessToken);
@@ -67,11 +71,15 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
     callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
 
+    console.log('Redirecting to:', callbackUrl.toString().substring(0, 100) + '...');
+
     const response = NextResponse.redirect(callbackUrl);
     
     // Cancella i cookie di stato e origin dopo validazione riuscita
     response.cookies.delete('tidal_oauth_state');
     response.cookies.delete('tidal_oauth_origin');
+    
+    console.log('OAuth callback completed successfully');
     
     return response;
 
