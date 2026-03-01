@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from 'next/image';
 import { useRouter } from "next/navigation";
 import { apiPath } from '@/lib/apiPath';
@@ -10,6 +10,7 @@ export default function Requests() {
   const [nome, setNome] = useState<string | null>(null);
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [catalogType, setCatalogType] = useState<'deezer' | 'tidal'>('deezer');
+  const catalogTypeRef = useRef<'deezer' | 'tidal'>('deezer');
   const [validatingSession, setValidatingSession] = useState(true);
 
   useEffect(() => {
@@ -29,7 +30,9 @@ export default function Requests() {
         // Usa la prima sessione attiva
         const activeSession = j.sessions[0];
         setSessionToken(activeSession.token);
-        setCatalogType(activeSession.catalog_type || 'deezer');
+        const ct = activeSession.catalog_type || 'deezer';
+        setCatalogType(ct);
+        catalogTypeRef.current = ct;
       } catch {
         router.replace("/?retry=1");
         return;
@@ -119,25 +122,24 @@ export default function Requests() {
         if (!mounted || !j.ok || !j.sessions || j.sessions.length === 0) return;
         
         const activeSession = j.sessions[0];
-        const newCatalogType = activeSession.catalog_type || 'deezer';
+        const newCatalogType: 'deezer' | 'tidal' = activeSession.catalog_type || 'deezer';
         
-        // Se il catalogo è cambiato da Deezer a Tidal, aggiorna
-        if (newCatalogType !== catalogType) {
+        // Usa ref per evitare stale closure
+        if (newCatalogType !== catalogTypeRef.current) {
+          catalogTypeRef.current = newCatalogType;
           setCatalogType(newCatalogType);
-          // Clear results quando cambia il catalogo
           setResults([]);
+          setQuery(''); // Resetta anche la query per forzare nuova ricerca
         }
       } catch {
         // Silent error - continue polling
       }
       
-      // Poll ogni 4 secondi
       if (mounted) {
         timeoutId = setTimeout(checkCatalogChange, 4000);
       }
     }
     
-    // Start polling after a short delay
     timeoutId = setTimeout(checkCatalogChange, 1000);
     
     return () => {
