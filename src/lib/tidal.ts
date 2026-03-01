@@ -105,7 +105,8 @@ export function getTidalAuthUrl(state: string, codeChallenge: string): string {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'user.read playlists.read playlists.write',
+    // Necessario r_usr per le search API
+    scope: 'user.read playlists.read playlists.write r_usr',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
