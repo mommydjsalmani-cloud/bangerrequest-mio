@@ -17,6 +17,13 @@ export type LibereSession = {
   homepage_priority?: string;
   require_event_code?: boolean;
   current_event_code?: string;
+  // Tidal integration
+  catalog_type?: 'deezer' | 'tidal';
+  tidal_playlist_id?: string;
+  tidal_access_token?: string;
+  tidal_refresh_token?: string;
+  tidal_user_id?: string;
+  tidal_token_expires_at?: string;
 };
 
 export type LibereRequest = {
@@ -52,6 +59,12 @@ export type LibereRequest = {
   down_votes?: number;
   // Contatore richieste multiple
   request_count?: number;
+  // Tidal integration
+  tidal_added_status?: 'pending' | 'success' | 'failed' | null;
+  tidal_added_at?: string;
+  tidal_retry_count?: number;
+  tidal_last_retry_at?: string;
+  tidal_error_message?: string;
 };
 
 // Tipo per voto utente
