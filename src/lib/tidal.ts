@@ -4,7 +4,8 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 const TIDAL_API_BASE = 'https://openapi.tidal.com/v2';
-const TIDAL_AUTH_BASE = 'https://auth.tidal.com/v1/oauth2';
+const TIDAL_LOGIN_BASE = 'https://login.tidal.com';
+const TIDAL_TOKEN_BASE = 'https://auth.tidal.com/v1/oauth2';
 
 // Encryption per token (AES-256-GCM)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY_TIDAL || 'default-key-32-chars-long-12345'; // Deve essere 32 caratteri
@@ -92,11 +93,11 @@ export function getTidalAuthUrl(state: string): string {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'playlists.read playlists.write',
+    scope: 'user.read playlists.read playlists.write',
     state,
   });
 
-  return `${TIDAL_AUTH_BASE}/authorize?${params.toString()}`;
+  return `${TIDAL_LOGIN_BASE}/authorize?${params.toString()}`;
 }
 
 /**
@@ -143,7 +144,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<TidalTok
     throw new Error('Tidal credentials not configured');
   }
 
-  const response = await fetch(`${TIDAL_AUTH_BASE}/token`, {
+  const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
