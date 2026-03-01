@@ -52,10 +52,11 @@ export async function GET(req: NextRequest) {
     });
     
     // Salva lo state (senza origin) in cookie per validare CSRF nel callback
+    // Usa sameSite: 'none' + secure: true per permettere il cookie dal redirect cross-site di Tidal
     response.cookies.set('tidal_oauth_state', randomState, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Must be true with sameSite: 'none'
+      sameSite: 'none',
       maxAge: 600, // 10 minuti
       path: '/'
     });
@@ -63,8 +64,8 @@ export async function GET(req: NextRequest) {
     // Salva code_verifier per il token exchange nel callback
     response.cookies.set('tidal_oauth_code_verifier', codeVerifier, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: true, // Must be true with sameSite: 'none'
+      sameSite: 'none',
       maxAge: 600, // 10 minuti
       path: '/'
     });
