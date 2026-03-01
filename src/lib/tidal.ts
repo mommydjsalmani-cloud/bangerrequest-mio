@@ -105,7 +105,9 @@ export function getTidalAuthUrl(state: string, codeChallenge: string): string {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'user.read playlists.read playlists.write',
+    // Tidal search API richiede r_usr ma potrebbe non essere disponibile per tutti i client
+    // Se il login fallisce con errore 1002, rimuovi r_usr dal portale Tidal
+    scope: 'user.read playlists.read playlists.write r_usr',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
@@ -191,6 +193,8 @@ export async function refreshAccessToken(refreshToken: string): Promise<TidalTok
 
 /**
  * Ricerca brani su Tidal (API v1)
+ * Nota: L'API v1 richiede scope r_usr per user auth.
+ * Se non disponibile, la search potrebbe non funzionare con tutti i client_id.
  */
 export async function searchTidal(
   query: string,
@@ -201,13 +205,18 @@ export async function searchTidal(
   const clientId = process.env.TIDAL_CLIENT_ID || '';
   const url = `${TIDAL_API_BASE}/search/tracks?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&countryCode=IT`;
 
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${accessToken || ''}`,
-      'X-Tidal-Token': clientId,
-      'Content-Type': 'application/json',
-    },
-  });
+  // Headers minimi - se il token manca scope r_usr, prova senza
+  const headers: Record<string, string> = {
+    'X-Tidal-Token': clientId,
+    'Content-Type': 'application/json',
+  };
+  
+  // Aggiungi Authorization solo se abbiamo un token valido
+  if (accessToken && accessToken.length > 10) {
+    headers['Authorization'] = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(url, headers);
 
   if (!response.ok) {
     const error = await response.text();
