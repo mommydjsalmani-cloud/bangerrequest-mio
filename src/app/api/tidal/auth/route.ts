@@ -22,18 +22,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Sessione corrente (opzionale ma raccomandata) per evitare dipendenza da sessionStorage cross-domain
+    const sessionId = req.nextUrl.searchParams.get('session_id') || '';
+
     // Genera state per CSRF protection
     const randomState = randomBytes(32).toString('hex');
     
-    // Estrai l'origin della richiesta per reindirizzare correttamente nel callback
-    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'https://bangerrequest-mio.vercel.app';
+    // Origin affidabile della richiesta corrente (funziona con dominio custom e vercel.app)
+    const origin = req.nextUrl.origin;
     
     // Genera PKCE per OAuth di Tidal
     const { codeVerifier, codeChallenge } = generatePKCE();
 
-    // Codifica tutto nello state: random (CSRF), origin (redirect), codeVerifier (PKCE)
+    // Codifica tutto nello state: random (CSRF), origin (redirect), codeVerifier (PKCE), session_id
     // Questo evita cookie cross-domain: il callback decodifica tutto dallo state
-    const statePayload = JSON.stringify({ random: randomState, origin, cv: encryptToken(codeVerifier) });
+    const statePayload = JSON.stringify({
+      random: randomState,
+      origin,
+      cv: encryptToken(codeVerifier),
+      sid: sessionId,
+    });
     const state = Buffer.from(statePayload).toString('base64url');
 
     // Genera authUrl con state + code_challenge
@@ -42,6 +50,8 @@ export async function GET(req: NextRequest) {
     console.log('Generated Tidal auth URL:', {
       clientId: process.env.TIDAL_CLIENT_ID?.substring(0, 10) + '...',
       redirectUri: process.env.TIDAL_REDIRECT_URI,
+      origin,
+      sessionId: sessionId || 'N/A',
       state: state.substring(0, 30) + '...',
       authUrl: authUrl.substring(0, 150) + '...',
     });

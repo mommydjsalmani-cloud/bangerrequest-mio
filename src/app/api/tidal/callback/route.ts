@@ -34,7 +34,7 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato)
     // Non usiamo cookie perché il callback può arrivare su dominio diverso da quello di auth
-    let stateData: { random: string; origin: string; cv: string };
+    let stateData: { random: string; origin: string; cv: string; sid?: string };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
     } catch {
@@ -96,6 +96,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     callbackUrl.searchParams.set('tidal_refresh_token', encryptedRefreshToken);
     callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
     callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
+    if (stateData.sid) {
+      callbackUrl.searchParams.set('tidal_session_id', stateData.sid);
+    }
 
     console.log('Full redirect URL params:', {
       tidal_success: 'true',

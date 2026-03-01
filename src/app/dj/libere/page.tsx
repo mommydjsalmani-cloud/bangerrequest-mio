@@ -141,9 +141,10 @@ export default function LibereAdminPanel() {
     const refreshToken = params.get('tidal_refresh_token');
     const userId = params.get('tidal_user_id');
     const expiresAt = params.get('tidal_expires_at');
+    const callbackSessionId = params.get('tidal_session_id');
 
     if (tidal_success) {
-      const savedSessionId = sessionStorage.getItem('tidal_session_id');
+      const savedSessionId = callbackSessionId || sessionStorage.getItem('tidal_session_id');
       
       console.log('Tidal callback ricevuto:', {
         hasAccessToken: !!accessToken,
@@ -685,12 +686,17 @@ export default function LibereAdminPanel() {
     setLoading(true);
     
     try {
-      const response = await fetch(apiPath('/api/tidal/auth'), {
-        headers: {
-          'x-dj-user': username,
-          'x-dj-secret': password
+      const response = await fetch(
+        apiPath(`/api/tidal/auth?session_id=${encodeURIComponent(selectedSessionId)}`),
+        {
+          method: 'GET',
+          headers: {
+            'x-dj-user': username,
+            'x-dj-secret': password
+          },
+          cache: 'no-store'
         }
-      });
+      );
       
       const data = await response.json();
       
