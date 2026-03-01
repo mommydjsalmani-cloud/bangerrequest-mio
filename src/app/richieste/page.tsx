@@ -360,7 +360,7 @@ function RichiesteLibereContent() {
     return () => clearInterval(interval);
   }, [lastRequestId, token, lastRequestStatus]);
   
-  // Ricerca Deezer con debounce
+  // Ricerca con debounce - Tidal o Deezer in base a catalog_type della sessione
   useEffect(() => {
     const t = setTimeout(() => {
       if (!query.trim()) {
@@ -369,7 +369,11 @@ function RichiesteLibereContent() {
       }
       setSearching(true);
       setIsCollapsed(false); // Reset collapse quando cerchi
-      fetch(apiPath(`/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`))
+      const isTidal = session?.catalog_type === 'tidal';
+      const searchUrl = isTidal
+        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${token}`
+        : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
+      fetch(apiPath(searchUrl))
         .then((r) => r.json())
         .then((data) => {
           setResults(data.tracks || []);
@@ -378,7 +382,7 @@ function RichiesteLibereContent() {
         .finally(() => setSearching(false));
     }, 400);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, session, token]);
 
   const formatDuration = (durationMs: number) => {
     const totalSeconds = Math.floor(durationMs / 1000);
