@@ -175,6 +175,18 @@ const nextConfig: NextConfig = {
     return config;
   },
 
+  // Redirect www a non-www
+  async redirects() {
+    return [
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'www.mommydj.com' }],
+        destination: 'https://mommydj.com/:path*',
+        permanent: true, // 301 redirect permanente
+      },
+    ];
+  },
+
   // Configurazione produzione
   ...(process.env.NODE_ENV === 'production' && {
     output: 'standalone', // Per deployment ottimizzato
