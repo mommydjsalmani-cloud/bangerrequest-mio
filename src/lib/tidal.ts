@@ -113,7 +113,7 @@ export async function exchangeCodeForToken(code: string): Promise<TidalTokenResp
     throw new Error('Tidal credentials not configured');
   }
 
-  const response = await fetch(`${TIDAL_AUTH_BASE}/token`, {
+  const response = await fetch(`${TIDAL_TOKEN_BASE}/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
