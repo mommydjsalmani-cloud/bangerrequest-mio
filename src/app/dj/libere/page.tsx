@@ -253,7 +253,7 @@ export default function LibereAdminPanel() {
           expiresAt: expiresAt || ''
         }));
         console.log('Credenziali DJ perse durante callback, salvate in localStorage e attesa login');
-        setMessage('🔐 Callback Tidal ricevuto. Fai login DJ per completare il collegamento.');
+        setSuccess('🔐 Callback Tidal ricevuto. Fai login DJ per completare il collegamento.');
         // Non pulire URL, così il messaggio rimane visibile
         setTimeout(() => window.history.replaceState({}, '', window.location.pathname), 5000);
         return;
