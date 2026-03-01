@@ -8,5 +8,12 @@
       "maxDuration": 30
     }
   },
-  "regions": ["cdg1"]
+  "regions": ["cdg1"],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/richiedi",
+      "permanent": false
+    }
+  ]
 }
