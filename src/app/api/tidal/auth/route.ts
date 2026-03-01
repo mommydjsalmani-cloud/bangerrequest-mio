@@ -35,6 +35,13 @@ export async function GET(req: NextRequest) {
     // Genera authUrl con state
     const authUrl = getTidalAuthUrl(state);
     
+    console.log('Generated Tidal auth URL:', {
+      clientId: process.env.TIDAL_CLIENT_ID?.substring(0, 10) + '...',
+      redirectUri: process.env.TIDAL_REDIRECT_URI,
+      state: state.substring(0, 30) + '...',
+      authUrl: authUrl.substring(0, 150) + '...',
+    });
+    
     // Salva state in cookie firmato per validare nel callback
     const response = NextResponse.json({
       ok: true,

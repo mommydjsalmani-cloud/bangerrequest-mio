@@ -12,10 +12,11 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     console.log('Tidal callback received:', {
       code: code ? code.substring(0, 10) + '...' : null,
-      state: state ? state.substring(0, 10) + '...' : null,
+      state: state ? state.substring(0, 30) + '...' : null,
       error,
+      errorDescription: searchParams.get('error_description'),
       origin: req.headers.get('origin'),
-      url: req.nextUrl.toString(),
+      url: req.nextUrl.toString().substring(0, 150) + '...',
     });
 
     // Gestione errore OAuth
