@@ -105,6 +105,47 @@ export default function Requests() {
     if (tTitle || tArtists) setSubmittedTrack({ title: tTitle || undefined, artists: tArtists || undefined });
   }, []);
 
+  // Poll catalog_type changes (DJ might switch to Tidal while user is on page)
+  useEffect(() => {
+    if (!sessionToken) return;
+    
+    let mounted = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
+    
+    async function checkCatalogChange() {
+      try {
+        const res = await fetch(apiPath('/api/homepage-sessions'));
+        const j = await res.json();
+        if (!mounted || !j.ok || !j.sessions || j.sessions.length === 0) return;
+        
+        const activeSession = j.sessions[0];
+        const newCatalogType = activeSession.catalog_type || 'deezer';
+        
+        // Se il catalogo è cambiato da Deezer a Tidal, aggiorna
+        if (newCatalogType !== catalogType) {
+          setCatalogType(newCatalogType);
+          // Clear results quando cambia il catalogo
+          setResults([]);
+        }
+      } catch {
+        // Silent error - continue polling
+      }
+      
+      // Poll ogni 4 secondi
+      if (mounted) {
+        timeoutId = setTimeout(checkCatalogChange, 4000);
+      }
+    }
+    
+    // Start polling after a short delay
+    timeoutId = setTimeout(checkCatalogChange, 1000);
+    
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [sessionToken]);
+
   // Poll status of last request if present
   useEffect(() => {
     if (!lastRequestId) return;

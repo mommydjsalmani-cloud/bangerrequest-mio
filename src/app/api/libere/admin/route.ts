@@ -753,7 +753,7 @@ export async function PATCH(req: Request) {
     // Ottieni richiesta e sessione per verificare Tidal
     const { data: request } = await supabase
       .from('richieste_libere')
-      .select('id, session_id, track_id, title')
+      .select('id, session_id, track_id, title, artists')
       .eq('id', request_id)
       .single();
     
@@ -779,7 +779,7 @@ export async function PATCH(req: Request) {
         // In produzione questo andrebbe fatto con una queue/worker
         setImmediate(async () => {
           try {
-            const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken } = await import('@/lib/tidal');
+            const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal } = await import('@/lib/tidal');
             const accessToken = decryptToken(session.tidal_access_token!);
             
             let playlistId = session.tidal_playlist_id;
@@ -809,7 +809,34 @@ export async function PATCH(req: Request) {
             }
             
             if (playlistId) {
-              await addTrackToTidalPlaylist(playlistId, request.track_id!, accessToken);
+              let trackIdToAdd = request.track_id;
+              
+              // Tenta di aggiungere con l'ID originale
+              try {
+                await addTrackToTidalPlaylist(playlistId, trackIdToAdd!, accessToken);
+              } catch (addError) {
+                // Se fallisce, prova a cercare il brano su Tidal usando title + artists
+                // (potrebbe essere un ID Deezer se il catalogo è stato cambiato dopo la richiesta)
+                if (request.title) {
+                  try {
+                    const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
+                    const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
+                    
+                    if (searchResults.tracks && searchResults.tracks.length > 0) {
+                      // Usa il primo risultato
+                      trackIdToAdd = searchResults.tracks[0].id;
+                      await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
+                    } else {
+                      throw new Error(`Brano "${request.title}" non trovato su Tidal`);
+                    }
+                  } catch (searchError) {
+                    // Se la ricerca fallisce, rilancia l'errore originale
+                    throw addError;
+                  }
+                } else {
+                  throw addError;
+                }
+              }
               
               // Marca come success
               await supabase
