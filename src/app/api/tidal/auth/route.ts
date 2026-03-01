@@ -30,26 +30,33 @@ export async function GET(req: NextRequest) {
     
     // Origin affidabile della richiesta corrente (funziona con dominio custom e vercel.app)
     const origin = req.nextUrl.origin;
+
+    // Calcola redirect URI dinamicamente dall'origin corrente.
+    // In produzione Next.js usa basePath '/richiedi', quindi il path completo è /richiedi/api/tidal/callback.
+    // Questo risolve il problema con mommydj.com vs bangerrequest-mio.vercel.app.
+    const basePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
+    const dynamicRedirectUri = `${origin}${basePath}/api/tidal/callback`;
     
     // Genera PKCE per OAuth di Tidal
     const { codeVerifier, codeChallenge } = generatePKCE();
 
-    // Codifica tutto nello state: random (CSRF), origin (redirect), codeVerifier (PKCE), session_id
+    // Codifica tutto nello state: random (CSRF), origin (redirect), codeVerifier (PKCE), session_id, redirectUri
     // Questo evita cookie cross-domain: il callback decodifica tutto dallo state
     const statePayload = JSON.stringify({
       random: randomState,
       origin,
       cv: encryptToken(codeVerifier),
       sid: sessionId,
+      ru: dynamicRedirectUri, // redirect_uri usato nell'auth, da riusare IDENTICO nel token exchange
     });
     const state = Buffer.from(statePayload).toString('base64url');
 
-    // Genera authUrl con state + code_challenge
-    const authUrl = getTidalAuthUrl(state, codeChallenge);
+    // Genera authUrl con state + code_challenge + redirect URI dinamico
+    const authUrl = getTidalAuthUrl(state, codeChallenge, dynamicRedirectUri);
     
     console.log('Generated Tidal auth URL:', {
       clientId: process.env.TIDAL_CLIENT_ID?.substring(0, 10) + '...',
-      redirectUri: process.env.TIDAL_REDIRECT_URI,
+      redirectUri: dynamicRedirectUri,
       origin,
       sessionId: sessionId || 'N/A',
       state: state.substring(0, 30) + '...',

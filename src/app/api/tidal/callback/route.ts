@@ -32,9 +32,9 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       );
     }
 
-    // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato)
+    // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato), ru (redirectUri)
     // Non usiamo cookie perché il callback può arrivare su dominio diverso da quello di auth
-    let stateData: { random: string; origin: string; cv: string; sid?: string };
+    let stateData: { random: string; origin: string; cv: string; sid?: string; ru?: string };
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
     } catch {
@@ -63,8 +63,10 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     }
 
     // Scambia code per token con PKCE
-    console.log('Exchanging code for token...');
-    const tokenData = await exchangeCodeForToken(code, codeVerifier);
+    // IMPORTANTE: redirect_uri deve essere IDENTICO a quello usato nell'auth request
+    // stateData.ru contiene il redirect URI dinamico basato sull'origin originale (es. mommydj.com)
+    console.log('Exchanging code for token with redirectUri:', stateData.ru || process.env.TIDAL_REDIRECT_URI);
+    const tokenData = await exchangeCodeForToken(code, codeVerifier, stateData.ru);
     
     console.log('Token exchange successful:', {
       user_id: tokenData.user_id,

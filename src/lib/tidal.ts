@@ -92,19 +92,20 @@ export interface TidalTokenResponse {
 /**
  * Genera URL per OAuth authorization con PKCE
  * Uses login.tidal.com endpoint
+ * @param redirectUri - Override dinamico del redirect URI (usa l'origin della richiesta corrente)
  */
-export function getTidalAuthUrl(state: string, codeChallenge: string): string {
+export function getTidalAuthUrl(state: string, codeChallenge: string, redirectUri?: string): string {
   const clientId = process.env.TIDAL_CLIENT_ID;
-  const redirectUri = process.env.TIDAL_REDIRECT_URI;
+  const resolvedRedirectUri = redirectUri || process.env.TIDAL_REDIRECT_URI;
 
-  if (!clientId || !redirectUri) {
+  if (!clientId || !resolvedRedirectUri) {
     throw new Error('Tidal credentials not configured');
   }
 
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
-    redirect_uri: redirectUri,
+    redirect_uri: resolvedRedirectUri,
     // Scopes: user.read per profilo, playlists per playlist, search.read per ricerche
     scope: 'user.read playlists.read playlists.write search.read',
     state,
@@ -117,23 +118,25 @@ export function getTidalAuthUrl(state: string, codeChallenge: string): string {
 
 /**
  * Scambia authorization code per access token con PKCE
+ * @param redirectUri - Deve corrispondere ESATTAMENTE al redirect URI usato in getTidalAuthUrl
  */
 export async function exchangeCodeForToken(
   code: string,
-  codeVerifier: string
+  codeVerifier: string,
+  redirectUri?: string
 ): Promise<TidalTokenResponse> {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
-  const redirectUri = process.env.TIDAL_REDIRECT_URI;
+  const resolvedRedirectUri = redirectUri || process.env.TIDAL_REDIRECT_URI;
 
-  if (!clientId || !clientSecret || !redirectUri) {
+  if (!clientId || !clientSecret || !resolvedRedirectUri) {
     throw new Error('Tidal credentials not configured');
   }
 
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: redirectUri,
+    redirect_uri: resolvedRedirectUri,
     code_verifier: codeVerifier,
   });
 
