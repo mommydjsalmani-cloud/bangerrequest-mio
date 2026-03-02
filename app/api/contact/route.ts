@@ -2,7 +2,8 @@ import { Resend } from 'resend';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 // ============================================
 // RATE LIMITING IN-MEMORY
@@ -248,6 +249,14 @@ export async function POST(request: Request) {
     const safeData = escapeHtml(data);
     const safeLocation = escapeHtml(location);
     const safeMessaggio = escapeHtml(messaggio);
+
+    if (!resend) {
+      console.error('[CONTACT_CONFIG_ERROR] RESEND_API_KEY non configurata', {
+        ip,
+        timestamp: new Date().toISOString()
+      });
+      return NextResponse.json({ error: 'Servizio email non configurato' }, { status: 500 });
+    }
 
     const { data: emailData, error } = await resend.emails.send({
       from: 'Mommy DJ Richieste <onboarding@resend.dev>',
