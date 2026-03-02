@@ -266,6 +266,7 @@ export default function LibereAdminPanel() {
       setError(`Errore Tidal OAuth: ${tidal_error}`);
       window.history.replaceState({}, '', window.location.pathname);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, password]);
   
   const checkMigration = async () => {

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
     }
+    const queryString: string = query;
 
     if (!sessionToken) {
       return NextResponse.json(
@@ -67,8 +68,7 @@ export async function GET(req: NextRequest) {
 
     async function doSearch(currentAccessToken: string) {
       const tokenToUse: string = String(currentAccessToken || '');
-      // @ts-ignore - token coerced to string above
-      const results = await searchTidal(query, tokenToUse, limit, offset);
+      const results = await searchTidal(queryString, tokenToUse, limit, offset);
       const tracks = results.tracks.map(normalizeTidalTrack);
       return NextResponse.json({
         ok: true,
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
         total: results.totalNumberOfItems,
         limit,
         offset,
-        query,
+        query: queryString,
         timestamp: new Date().toISOString(),
       });
     }

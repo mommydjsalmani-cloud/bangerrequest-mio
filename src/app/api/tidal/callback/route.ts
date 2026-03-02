@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       error: body.error || '',
     });
     return handleCallback(searchParams, req);
-  } catch (error) {
+  } catch {
     // Fallback per POST con form-data
     const formData = await req.formData();
     const searchParams = new URLSearchParams({

@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 /**
  * GET /api/tidal/debug-config
  * Mostra lo stato della configurazione Tidal (per debug)
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   const clientId = process.env.TIDAL_CLIENT_ID;
   const clientSecret = process.env.TIDAL_CLIENT_SECRET;
   const redirectUri = process.env.TIDAL_REDIRECT_URI;
