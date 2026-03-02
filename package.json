@@ -1,12 +1,19 @@
 {
-  "name": "bangerrequest-mio",
+  "name": "mommydj-monorepo",
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
   "scripts": {
     "dev": "next dev --turbopack -H 0.0.0.0",
+    "dev:marketing": "npm -w apps/marketing run dev -- -p 3001",
     "build": "next build",
+    "build:marketing": "npm -w apps/marketing run build",
+    "build:all": "npm run build && npm run build:marketing",
     "start": "next start",
+    "start:marketing": "npm -w apps/marketing run start -- -p 3001",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --max-warnings=0 --fix",
     "test": "vitest run",
@@ -15,7 +22,7 @@
     "type-check": "tsc --noEmit",
     "ci": "npm run lint && npm run type-check && npm run test && npm run build",
     "health": "node scripts/check_health.js",
-    "clean": "rm -rf .next node_modules/.cache",
+    "clean": "rm -rf .next node_modules/.cache apps/marketing/.next apps/marketing/node_modules",
     "update-deps": "npm update && npm audit fix"
   },
   "dependencies": {
