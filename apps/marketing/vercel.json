@@ -2,11 +2,5 @@
   "installCommand": "npm install --legacy-peer-deps",
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs",
-  "rewrites": [
-    {
-      "source": "/richiedi/:path*",
-      "destination": "https://bangerrequest-mio.vercel.app/richiedi/:path*"
-    }
-  ]
+  "framework": "nextjs"
 }
