@@ -110,6 +110,49 @@ function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
   return recaptchaScriptPromise;
 }
 
+async function getRecaptchaToken(siteKey: string): Promise<string> {
+  await ensureRecaptchaLoaded(siteKey);
+  const executor = getRecaptchaExecutor();
+
+  if (!executor || typeof executor.execute !== "function") {
+    throw new Error("reCAPTCHA non disponibile. Riprova.");
+  }
+
+  const tokenPromise = new Promise<string>((resolve, reject) => {
+    try {
+      const ready = executor.ready || ((cb: () => void) => cb());
+      ready(() => {
+        try {
+          const result = executor.execute(siteKey, { action: "contact_form" });
+          if (result && typeof (result as Promise<string>).then === "function") {
+            (result as Promise<string>)
+              .then((token) => {
+                if (!token || typeof token !== "string") {
+                  reject(new Error("Token reCAPTCHA non valido"));
+                  return;
+                }
+                resolve(token);
+              })
+              .catch(() => reject(new Error("Verifica sicurezza fallita. Riprova.")));
+            return;
+          }
+          reject(new Error("reCAPTCHA non disponibile. Riprova."));
+        } catch {
+          reject(new Error("reCAPTCHA non disponibile. Riprova."));
+        }
+      });
+    } catch {
+      reject(new Error("reCAPTCHA non disponibile. Riprova."));
+    }
+  });
+
+  const timeoutPromise = new Promise<string>((_, reject) => {
+    window.setTimeout(() => reject(new Error("Timeout verifica sicurezza. Riprova.")), 10000);
+  });
+
+  return Promise.race([tokenPromise, timeoutPromise]);
+}
+
 export default function Contatti() {
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   
@@ -138,22 +181,7 @@ export default function Contatti() {
         throw new Error("Configurazione sicurezza mancante. Riprova tra poco.");
       }
 
-      await ensureRecaptchaLoaded(recaptchaSiteKey);
-      const executor = getRecaptchaExecutor();
-
-      if (!executor || typeof executor.execute !== "function") {
-        throw new Error("reCAPTCHA non disponibile. Riprova.");
-      }
-
-      const recaptchaToken = await new Promise<string>((resolve, reject) => {
-        const ready = executor.ready || ((cb: () => void) => cb());
-        ready(() => {
-          executor
-            .execute(recaptchaSiteKey, { action: "contact_form" })
-            .then((token: string) => resolve(token))
-            .catch(() => reject(new Error("Verifica sicurezza fallita. Riprova.")));
-        });
-      });
+      const recaptchaToken = await getRecaptchaToken(recaptchaSiteKey);
 
       const response = await fetch('/api/contact', {
         method: 'POST',
