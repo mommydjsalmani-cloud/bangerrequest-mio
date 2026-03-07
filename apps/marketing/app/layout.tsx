@@ -4,7 +4,6 @@ import "./globals.css";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import LogoIntro from "./components/LogoIntro";
-import RecaptchaProvider from "./components/RecaptchaProvider";
 import FloatingContactWidget from "./components/FloatingContactWidget";
 
 const inter = Inter({
@@ -62,18 +61,16 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${michroma.variable} antialiased`}
       >
-        <RecaptchaProvider>
-          <LogoIntro />
-          <a href="#main-content" className="skip-to-content">
-            Salta al contenuto
-          </a>
-          <Header />
-          <main id="main-content" className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
-          <FloatingContactWidget />
-        </RecaptchaProvider>
+        <LogoIntro />
+        <a href="#main-content" className="skip-to-content">
+          Salta al contenuto
+        </a>
+        <Header />
+        <main id="main-content" className="min-h-screen">
+          {children}
+        </main>
+        <Footer />
+        <FloatingContactWidget />
       </body>
     </html>
   );

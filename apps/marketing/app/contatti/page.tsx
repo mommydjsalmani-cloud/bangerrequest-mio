@@ -2,10 +2,54 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+ 
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
 
-function ContattiFormPage() {
-  const { executeRecaptcha } = useGoogleReCaptcha();
+let recaptchaScriptPromise: Promise<void> | null = null;
+
+function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.reject(new Error('Browser non disponibile'));
+  }
+
+  if (window.grecaptcha) {
+    return Promise.resolve();
+  }
+
+  if (recaptchaScriptPromise) {
+    return recaptchaScriptPromise;
+  }
+
+  recaptchaScriptPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-recaptcha="true"]') as HTMLScriptElement | null;
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Impossibile caricare reCAPTCHA')), { once: true });
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.recaptcha = 'true';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Impossibile caricare reCAPTCHA'));
+    document.head.appendChild(script);
+  });
+
+  return recaptchaScriptPromise;
+}
+
+export default function Contatti() {
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -28,12 +72,20 @@ function ContattiFormPage() {
     setError('');
 
     try {
-      // Genera token reCAPTCHA
-      if (!executeRecaptcha) {
+      await ensureRecaptchaLoaded(recaptchaSiteKey);
+
+      if (!window.grecaptcha) {
         throw new Error('reCAPTCHA non disponibile');
       }
 
-      const recaptchaToken = await executeRecaptcha('contact_form');
+      const recaptchaToken = await new Promise<string>((resolve, reject) => {
+        window.grecaptcha?.ready(() => {
+          window.grecaptcha
+            ?.execute(recaptchaSiteKey, { action: 'contact_form' })
+            .then(resolve)
+            .catch(() => reject(new Error('Errore generazione token reCAPTCHA')));
+        });
+      });
 
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -360,23 +412,5 @@ function ContattiFormPage() {
         </div>
       </section>
     </div>
-  );
-}
-
-export default function Contatti() {
-  const recaptchaSiteKey =
-    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
-
-  return (
-    <GoogleReCaptchaProvider
-      reCaptchaKey={recaptchaSiteKey}
-      scriptProps={{
-        async: true,
-        defer: true,
-        appendTo: 'head',
-      }}
-    >
-      <ContattiFormPage />
-    </GoogleReCaptchaProvider>
   );
 }
