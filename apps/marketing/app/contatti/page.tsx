@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import { GoogleReCaptchaProvider, useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 
-export default function Contatti() {
+function ContattiFormPage() {
   const { executeRecaptcha } = useGoogleReCaptcha();
   
   const [formData, setFormData] = useState({
@@ -360,5 +360,23 @@ export default function Contatti() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function Contatti() {
+  const recaptchaSiteKey =
+    process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
+
+  return (
+    <GoogleReCaptchaProvider
+      reCaptchaKey={recaptchaSiteKey}
+      scriptProps={{
+        async: true,
+        defer: true,
+        appendTo: 'head',
+      }}
+    >
+      <ContattiFormPage />
+    </GoogleReCaptchaProvider>
   );
 }
