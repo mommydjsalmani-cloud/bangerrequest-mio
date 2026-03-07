@@ -35,6 +35,10 @@ export default function LibereAdminPanel() {
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
   const [sortByPriority, setSortByPriority] = useState(false); // Toggle ordinamento per priorità
 
+  // ⚠️ CRITICAL FIX #2: Tidal Token Expiry Detection
+  // Verifica se il token Tidal è scaduto per mostrare UI di reconnect
+  // Fix: commit 8dd807a - NON modificare questa logica
+  // Test: tests/critical-fixes.regression.test.ts
   const tidalTokenExpiresAtMs = currentSession?.tidal_token_expires_at
     ? new Date(currentSession.tidal_token_expires_at).getTime()
     : null;

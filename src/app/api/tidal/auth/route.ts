@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getTidalAuthUrl, generatePKCE, encryptToken } from '@/lib/tidal';
 
+/**
+ * ⚠️ CRITICAL FIX #1: OAuth Domain Redirect
+ * 
+ * Questa funzione garantisce che in produzione venga SEMPRE usato il dominio canonico
+ * (mommydj.com) invece del dominio Vercel, evitando perdita di stato sessione.
+ * 
+ * NON MODIFICARE senza consultare FIXES_REGISTRY.md
+ * Test: tests/critical-fixes.regression.test.ts
+ */
 function getCanonicalOrigin(req: NextRequest): string {
   if (process.env.NODE_ENV !== 'production') {
     return req.nextUrl.origin;
@@ -48,7 +57,8 @@ export async function GET(req: NextRequest) {
     // Genera state per CSRF protection
     const randomState = randomBytes(32).toString('hex');
     
-    // In produzione forziamo dominio canonico per evitare rimbalzi su hostname vercel.app
+    // ⚠️ CRITICAL: Usa canonical domain (mommydj.com) - NON modificare
+    // Fix: OAuth Domain Redirect (commit 86a5028)
     const origin = getCanonicalOrigin(req);
 
     // Calcola redirect URI dinamicamente dall'origin corrente.

@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const ALLOWED_HOST_SUFFIXES = [
+/**
+ * ⚠️ CRITICAL FIX #3: Tidal Cover Images Proxy
+ * 
+ * Questo endpoint fa da proxy per le immagini Tidal, aggirando problemi di:
+ * - CSP (Content Security Policy)
+ * - Mixed content (http/https)
+ * - CORS
+ * 
+ * NON MODIFICARE la whitelist senza consultare FIXES_REGISTRY.md
+ * Fix: commit 3bdc281
+ * Test: scripts/smoke-test-production.sh
+ */const ALLOWED_HOST_SUFFIXES = [
   'resources.tidal.com',
   '.tidal.com',
   '.wimpmusic.com',

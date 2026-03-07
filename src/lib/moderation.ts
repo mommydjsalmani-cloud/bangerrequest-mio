@@ -19,7 +19,10 @@ export async function acceptRequest(requestId: string) {
         .eq('id', requestId);
       if (error) throw new Error(`Accept failed (libere): ${error.message}`);
 
-      // Integrazione TIDAL: se la sessione è in modalità tidal, aggiungi brano alla playlist
+      // ⚠️ CRITICAL FIX #4: Automatic Playlist Integration
+      // Quando il DJ accetta una richiesta, il brano viene AUTOMATICAMENTE aggiunto alla playlist Tidal
+      // Fix: commit d983272 - NON rimuovere questa logica
+      // Test: Manual E2E (verifica su app Tidal)
       try {
         const { data: request } = await supabase
           .from('richieste_libere')
