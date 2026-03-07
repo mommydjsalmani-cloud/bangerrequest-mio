@@ -5,13 +5,53 @@ import { useState } from "react";
 
 let recaptchaScriptPromise: Promise<void> | null = null;
 
+function getRecaptchaExecutor() {
+  const grecaptcha = (window as any).grecaptcha;
+  if (!grecaptcha) {
+    return null;
+  }
+
+  if (typeof grecaptcha.execute === "function") {
+    return {
+      ready: grecaptcha.ready?.bind(grecaptcha),
+      execute: grecaptcha.execute.bind(grecaptcha),
+    };
+  }
+
+  if (grecaptcha.enterprise && typeof grecaptcha.enterprise.execute === "function") {
+    return {
+      ready: grecaptcha.enterprise.ready?.bind(grecaptcha.enterprise) || grecaptcha.ready?.bind(grecaptcha),
+      execute: grecaptcha.enterprise.execute.bind(grecaptcha.enterprise),
+    };
+  }
+
+  return null;
+}
+
+function loadRecaptchaScript(siteKey: string, useRecaptchaNet = false): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    const host = useRecaptchaNet ? "www.recaptcha.net" : "www.google.com";
+    script.src = `https://${host}/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.recaptcha = "true";
+    script.dataset.recaptchaHost = host;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      script.remove();
+      reject(new Error("Impossibile caricare reCAPTCHA"));
+    };
+    document.head.appendChild(script);
+  });
+}
+
 function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Browser non disponibile"));
   }
 
-  const grecaptcha = (window as any).grecaptcha;
-  if (grecaptcha && typeof grecaptcha.ready === "function") {
+  if (getRecaptchaExecutor()) {
     return Promise.resolve();
   }
 
@@ -22,19 +62,31 @@ function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
   recaptchaScriptPromise = new Promise((resolve, reject) => {
     const existingScript = document.querySelector('script[data-recaptcha="true"]') as HTMLScriptElement | null;
     if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(), { once: true });
-      existingScript.addEventListener("error", () => reject(new Error("Impossibile caricare reCAPTCHA")), { once: true });
+      // Script gia presente: attendi che grecaptcha sia realmente disponibile.
+      let attempts = 0;
+      const timer = window.setInterval(() => {
+        attempts += 1;
+        if (getRecaptchaExecutor()) {
+          window.clearInterval(timer);
+          resolve();
+          return;
+        }
+        if (attempts >= 30) {
+          window.clearInterval(timer);
+          reject(new Error("reCAPTCHA non disponibile. Riprova."));
+        }
+      }, 100);
       return;
     }
 
-    const script = document.createElement("script");
-    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
-    script.async = true;
-    script.defer = true;
-    script.dataset.recaptcha = "true";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Impossibile caricare reCAPTCHA"));
-    document.head.appendChild(script);
+    // Prova host Google, se fallisce tenta recaptcha.net (utile con alcuni blocchi rete).
+    loadRecaptchaScript(siteKey)
+      .then(() => resolve())
+      .catch(() => {
+        loadRecaptchaScript(siteKey, true)
+          .then(() => resolve())
+          .catch(() => reject(new Error("Impossibile caricare reCAPTCHA")));
+      });
   });
 
   return recaptchaScriptPromise;
@@ -69,15 +121,16 @@ export default function Contatti() {
       }
 
       await ensureRecaptchaLoaded(recaptchaSiteKey);
-      const grecaptcha = (window as any).grecaptcha;
+      const executor = getRecaptchaExecutor();
 
-      if (!grecaptcha || typeof grecaptcha.execute !== "function") {
+      if (!executor || typeof executor.execute !== "function") {
         throw new Error("reCAPTCHA non disponibile. Riprova.");
       }
 
       const recaptchaToken = await new Promise<string>((resolve, reject) => {
-        grecaptcha.ready(() => {
-          grecaptcha
+        const ready = executor.ready || ((cb: () => void) => cb());
+        ready(() => {
+          executor
             .execute(recaptchaSiteKey, { action: "contact_form" })
             .then((token: string) => resolve(token))
             .catch(() => reject(new Error("Verifica sicurezza fallita. Riprova.")));
