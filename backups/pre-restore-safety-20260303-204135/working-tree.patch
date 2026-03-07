@@ -1,0 +1,1852 @@
+diff --git a/next.config.ts b/next.config.ts
+index fee9bcc..5f90e95 100644
+--- a/next.config.ts
++++ b/next.config.ts
+@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
+   images: {
+     remotePatterns: [
+       { protocol: 'https', hostname: 'cdn-images.dzcdn.net' },
+-      { protocol: 'https', hostname: 'api.qrserver.com' }
++      { protocol: 'https', hostname: 'api.qrserver.com' },
++      { protocol: 'https', hostname: 'resources.tidal.com' },
++      { protocol: 'https', hostname: '**.tidal.com' },
++      { protocol: 'https', hostname: '**.wimpmusic.com' }
+     ],
+     // Ottimizzazioni performance
+     formats: ['image/webp', 'image/avif'],
+@@ -32,7 +35,7 @@ const nextConfig: NextConfig = {
+       "default-src 'self'",
+       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
+       "style-src 'self' 'unsafe-inline'",
+-      "img-src 'self' data: https://cdn-images.dzcdn.net https://api.qrserver.com",
++      "img-src 'self' data: https://cdn-images.dzcdn.net https://api.qrserver.com https://resources.tidal.com https://*.tidal.com https://*.wimpmusic.com",
+       "font-src 'self'",
+       "connect-src 'self' https://*.supabase.co https://api.deezer.com https://www.google.com",
+       "frame-src 'self' https://www.google.com https://recaptcha.google.com",
+diff --git a/src/app/api/libere/admin/route.ts b/src/app/api/libere/admin/route.ts
+index 797f65c..e1740a6 100644
+--- a/src/app/api/libere/admin/route.ts
++++ b/src/app/api/libere/admin/route.ts
+@@ -643,16 +643,6 @@ export async function POST(req: Request) {
+         tidal_token_expires_at 
+       } = body;
+       
+-      console.log('save_tidal_auth received:', {
+-        session_id,
+-        has_access_token: !!tidal_access_token,
+-        has_refresh_token: !!tidal_refresh_token,
+-        access_token_length: tidal_access_token?.length,
+-        refresh_token_length: tidal_refresh_token?.length,
+-        user_id: tidal_user_id,
+-        expires_at: tidal_token_expires_at
+-      });
+-      
+       if (!tidal_access_token || !tidal_refresh_token) {
+         console.error('save_tidal_auth: missing tokens');
+         return withVersion({ ok: false, error: 'Token Tidal richiesti' }, { status: 400 });
+@@ -674,8 +664,6 @@ export async function POST(req: Request) {
+         return withVersion({ ok: false, error: error.message }, { status: 500 });
+       }
+       
+-      console.log('save_tidal_auth: success for session', session_id);
+-      
+       return withVersion({ 
+         ok: true, 
+         message: 'Tidal autenticato ✓' 
+@@ -767,7 +755,7 @@ export async function PATCH(req: Request) {
+     // Ottieni richiesta e sessione per verificare Tidal
+     const { data: request } = await supabase
+       .from('richieste_libere')
+-      .select('id, session_id, track_id, title, artists')
++      .select('id, session_id, track_id, title, artists, tidal_added_status')
+       .eq('id', request_id)
+       .single();
+     
+@@ -780,15 +768,37 @@ export async function PATCH(req: Request) {
+       
+       // Se la sessione usa Tidal e ha autenticazione, aggiungi alla playlist
+       if (session && session.catalog_type === 'tidal' && session.tidal_access_token && request.track_id) {
++        if (request.tidal_added_status === 'success' || request.tidal_added_status === 'pending') {
++          return withVersion({ ok: true, message: 'Richiesta già processata su Tidal ✓' });
++        }
++
++        await supabase
++          .from('richieste_libere')
++          .update({ tidal_added_status: 'pending', tidal_error_message: null })
++          .eq('id', request_id);
++
+         // Esegui in modo sincrono (setImmediate non funziona in serverless Vercel)
+         try {
+-          const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal } = await import('@/lib/tidal');
++          const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal, normalizeTidalTrackIdForPlaylist, getTidalCurrentUserId } = await import('@/lib/tidal');
+           const accessToken = decryptToken(session.tidal_access_token!);
++          let tidalUserId: string | null = session.tidal_user_id || null;
++
++          if (!tidalUserId) {
++            try {
++              tidalUserId = await getTidalCurrentUserId(accessToken);
++              await supabase
++                .from('sessioni_libere')
++                .update({ tidal_user_id: tidalUserId })
++                .eq('id', request.session_id);
++            } catch (userIdError) {
++              throw new Error(`Cannot resolve Tidal user id: ${userIdError instanceof Error ? userIdError.message : 'unknown error'}`);
++            }
++          }
+           
+           let playlistId = session.tidal_playlist_id;
+           
+-          if (!playlistId && session.tidal_user_id) {
+-            const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
++          if (!playlistId && tidalUserId) {
++            const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
+             playlistId = playlist.id;
+             await supabase
+               .from('sessioni_libere')
+@@ -796,8 +806,8 @@ export async function PATCH(req: Request) {
+               .eq('id', request.session_id);
+           } else if (playlistId) {
+             const existing = await getTidalPlaylist(playlistId, accessToken);
+-            if (!existing && session.tidal_user_id) {
+-              const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
++            if (!existing && tidalUserId) {
++              const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
+               playlistId = playlist.id;
+               await supabase
+                 .from('sessioni_libere')
+@@ -807,7 +817,7 @@ export async function PATCH(req: Request) {
+           }
+           
+           if (playlistId) {
+-            let trackIdToAdd = request.track_id!;
++            let trackIdToAdd = normalizeTidalTrackIdForPlaylist(request.track_id! as string) || request.track_id!;
+             try {
+               await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
+             } catch {
+@@ -816,7 +826,7 @@ export async function PATCH(req: Request) {
+                 const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
+                 const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
+                 if (searchResults.tracks?.length > 0) {
+-                  trackIdToAdd = searchResults.tracks[0].id;
++                  trackIdToAdd = normalizeTidalTrackIdForPlaylist(searchResults.tracks[0].id) || searchResults.tracks[0].id;
+                   await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
+                 }
+               }
+diff --git a/src/app/api/tidal/auth/route.ts b/src/app/api/tidal/auth/route.ts
+index 9266262..ccfc2ab 100644
+--- a/src/app/api/tidal/auth/route.ts
++++ b/src/app/api/tidal/auth/route.ts
+@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
+ import { randomBytes } from 'crypto';
+ import { getTidalAuthUrl, generatePKCE, encryptToken } from '@/lib/tidal';
+ 
++function getCanonicalOrigin(req: NextRequest): string {
++  if (process.env.NODE_ENV !== 'production') {
++    return req.nextUrl.origin;
++  }
++
++  const configured =
++    process.env.PUBLIC_APP_ORIGIN?.trim() ||
++    process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ||
++    'https://mommydj.com';
++
++  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
++  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
++
++  if (forwardedHost === 'mommydj.com' || forwardedHost === 'www.mommydj.com') {
++    return `${forwardedProto}://${forwardedHost}`;
++  }
++
++  return configured;
++}
++
+ /**
+  * GET /api/tidal/auth
+  * Genera URL OAuth Tidal e reindirizza
+@@ -28,12 +48,12 @@ export async function GET(req: NextRequest) {
+     // Genera state per CSRF protection
+     const randomState = randomBytes(32).toString('hex');
+     
+-    // Origin affidabile della richiesta corrente (funziona con dominio custom e vercel.app)
+-    const origin = req.nextUrl.origin;
++    // In produzione forziamo dominio canonico per evitare rimbalzi su hostname vercel.app
++    const origin = getCanonicalOrigin(req);
+ 
+     // Calcola redirect URI dinamicamente dall'origin corrente.
+     // In produzione Next.js usa basePath '/richiedi', quindi il path completo è /richiedi/api/tidal/callback.
+-    // Questo risolve il problema con mommydj.com vs bangerrequest-mio.vercel.app.
++    // In produzione restiamo su dominio canonico (mommydj.com)
+     const basePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
+     const dynamicRedirectUri = `${origin}${basePath}/api/tidal/callback`;
+     
+@@ -54,15 +74,6 @@ export async function GET(req: NextRequest) {
+     // Genera authUrl con state + code_challenge + redirect URI dinamico
+     const authUrl = getTidalAuthUrl(state, codeChallenge, dynamicRedirectUri);
+     
+-    console.log('Generated Tidal auth URL:', {
+-      clientId: process.env.TIDAL_CLIENT_ID?.substring(0, 10) + '...',
+-      redirectUri: dynamicRedirectUri,
+-      origin,
+-      sessionId: sessionId || 'N/A',
+-      state: state.substring(0, 30) + '...',
+-      authUrl: authUrl.substring(0, 150) + '...',
+-    });
+-    
+     // Niente cookie: tutto è nello state (codeVerifier cifrato)
+     return NextResponse.json({
+       ok: true,
+diff --git a/src/app/api/tidal/callback/route.ts b/src/app/api/tidal/callback/route.ts
+index 0d068b0..a32c2b6 100644
+--- a/src/app/api/tidal/callback/route.ts
++++ b/src/app/api/tidal/callback/route.ts
+@@ -1,5 +1,31 @@
+ import { NextRequest, NextResponse } from 'next/server';
+ import { exchangeCodeForToken, encryptToken, decryptToken } from '@/lib/tidal';
++import { getSupabase } from '@/lib/supabase';
++
++function getCanonicalOrigin(req: NextRequest): string {
++  if (process.env.NODE_ENV !== 'production') {
++    return req.nextUrl.origin;
++  }
++
++  const configured =
++    process.env.PUBLIC_APP_ORIGIN?.trim() ||
++    process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ||
++    'https://mommydj.com';
++
++  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
++  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
++
++  if (forwardedHost === 'mommydj.com' || forwardedHost === 'www.mommydj.com') {
++    return `${forwardedProto}://${forwardedHost}`;
++  }
++
++  return configured;
++}
++
++function buildDjRedirectUrl(req: NextRequest, query: string): URL {
++  const origin = getCanonicalOrigin(req).replace(/\/$/, '');
++  return new URL(`${origin}/richiedi/dj/libere${query}`);
++}
+ 
+ /**
+  * Gestisce il callback OAuth di Tidal (GET e POST)
+@@ -10,26 +36,15 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
+     const state = searchParams.get('state');
+     const error = searchParams.get('error');
+ 
+-    console.log('Tidal callback received:', {
+-      code: code ? code.substring(0, 10) + '...' : null,
+-      state: state ? state.substring(0, 30) + '...' : null,
+-      error,
+-      errorDescription: searchParams.get('error_description'),
+-    });
+-
+     // Gestione errore OAuth
+     if (error) {
+       console.error('Tidal OAuth error:', error, searchParams.get('error_description'));
+-      return NextResponse.redirect(
+-        new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(error), req.url)
+-      );
++      return NextResponse.redirect(buildDjRedirectUrl(req, `?tidal_error=${encodeURIComponent(error)}`));
+     }
+ 
+     if (!code || !state) {
+       console.error('Missing code or state');
+-      return NextResponse.redirect(
+-        new URL('/richiedi/dj/libere?tidal_error=invalid_callback', req.url)
+-      );
++      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_callback'));
+     }
+ 
+     // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato), ru (redirectUri)
+@@ -39,16 +54,12 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
+       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
+     } catch {
+       console.error('Invalid state format');
+-      return NextResponse.redirect(
+-        new URL('/richiedi/dj/libere?tidal_error=invalid_state_format', req.url)
+-      );
++      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_state_format'));
+     }
+ 
+     if (!stateData.random || !stateData.origin || !stateData.cv) {
+       console.error('Incomplete state payload:', Object.keys(stateData));
+-      return NextResponse.redirect(
+-        new URL('/richiedi/dj/libere?tidal_error=incomplete_state', req.url)
+-      );
++      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=incomplete_state'));
+     }
+ 
+     // Decripta il codeVerifier dallo state
+@@ -57,70 +68,64 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
+       codeVerifier = decryptToken(stateData.cv);
+     } catch {
+       console.error('Failed to decrypt codeVerifier from state');
+-      return NextResponse.redirect(
+-        new URL('/richiedi/dj/libere?tidal_error=invalid_code_verifier', req.url)
+-      );
++      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_code_verifier'));
+     }
+ 
+     // Scambia code per token con PKCE
+     // IMPORTANTE: redirect_uri deve essere IDENTICO a quello usato nell'auth request
+     // stateData.ru contiene il redirect URI dinamico basato sull'origin originale (es. mommydj.com)
+-    console.log('Exchanging code for token with redirectUri:', stateData.ru || process.env.TIDAL_REDIRECT_URI);
+     const tokenData = await exchangeCodeForToken(code, codeVerifier, stateData.ru);
+-    
+-    console.log('Token exchange successful:', {
+-      user_id: tokenData.user_id,
+-      expires_in: tokenData.expires_in,
+-      has_access_token: !!tokenData.access_token,
+-      has_refresh_token: !!tokenData.refresh_token,
+-      access_token_length: tokenData.access_token?.length
+-    });
+ 
+     // Cripta i token per sicurezza prima di passarli nell'URL
+     const encryptedAccessToken = encryptToken(tokenData.access_token);
+     const encryptedRefreshToken = encryptToken(tokenData.refresh_token);
+-    
+-    console.log('Tokens encrypted:', {
+-      encrypted_access_length: encryptedAccessToken.length,
+-      encrypted_refresh_length: encryptedRefreshToken.length
+-    });
+ 
+     // Calcola scadenza
+     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+ 
+-    // Reindirizza all'origin originale con i token
+-    const origin = stateData.origin;
+-    console.log('Building redirect URL:', { origin });
+-    
+-    const callbackUrl = new URL(`${origin}/richiedi/dj/libere`);
++    // Se disponibile session_id nello state, salva subito nel DB lato server
++    // così la ricerca utente funziona anche se la sessione DJ client non è più attiva
++    if (stateData.sid) {
++      const supabase = getSupabase();
++      if (supabase) {
++        const { error: saveError } = await supabase
++          .from('sessioni_libere')
++          .update({
++            tidal_access_token: encryptedAccessToken,
++            tidal_refresh_token: encryptedRefreshToken,
++            tidal_user_id: tokenData.user_id || null,
++            tidal_token_expires_at: expiresAt.toISOString(),
++            catalog_type: 'tidal',
++          })
++          .eq('id', stateData.sid)
++          .eq('archived', false);
++
++        if (saveError) {
++          console.error('Failed to persist Tidal auth from callback:', saveError);
++        }
++      } else {
++        console.error('Supabase not configured, cannot persist Tidal auth from callback');
++      }
++    }
++
++    // Reindirizza all'origin originale con payload minimo.
++    // I token sono già salvati server-side quando sid è presente.
++    const origin = getCanonicalOrigin(req);
++
++    const callbackUrl = new URL(`${origin.replace(/\/$/, '')}/richiedi/dj/libere`);
+     callbackUrl.searchParams.set('tidal_success', 'true');
+-    callbackUrl.searchParams.set('tidal_access_token', encryptedAccessToken);
+-    callbackUrl.searchParams.set('tidal_refresh_token', encryptedRefreshToken);
+-    callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
+-    callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
+     if (stateData.sid) {
+       callbackUrl.searchParams.set('tidal_session_id', stateData.sid);
+     }
+ 
+-    console.log('Full redirect URL params:', {
+-      tidal_success: 'true',
+-      user_id: tokenData.user_id,
+-      expires_at: expiresAt.toISOString(),
+-      access_token_preview: encryptedAccessToken.substring(0, 30) + '...',
+-      full_url_length: callbackUrl.toString().length
+-    });
+-    
+-    console.log('OAuth callback completed successfully - redirecting');
+-    
+     return NextResponse.redirect(callbackUrl);
+ 
+   } catch (error) {
+     console.error('Tidal callback error:', error);
+-    return NextResponse.redirect(
+-      new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(
+-        error instanceof Error ? error.message : 'callback_failed'
+-      ), req.url)
+-    );
++    return NextResponse.redirect(buildDjRedirectUrl(
++      req,
++      `?tidal_error=${encodeURIComponent(error instanceof Error ? error.message : 'callback_failed')}`
++    ));
+   }
+ }
+ 
+diff --git a/src/app/api/tidal/playlist/route.ts b/src/app/api/tidal/playlist/route.ts
+index 3c09e75..f9207fb 100644
+--- a/src/app/api/tidal/playlist/route.ts
++++ b/src/app/api/tidal/playlist/route.ts
+@@ -4,6 +4,7 @@ import {
+   addTrackToTidalPlaylist,
+   getTidalPlaylist,
+   decryptToken,
++  getTidalCurrentUserId,
+ } from '@/lib/tidal';
+ import { getSupabase } from '@/lib/supabase';
+ 
+@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
+       );
+     }
+ 
+-    if (!session.tidal_access_token || !session.tidal_user_id) {
++    if (!session.tidal_access_token) {
+       return NextResponse.json(
+         { ok: false, error: 'Tidal not authenticated' },
+         { status: 403 }
+@@ -67,13 +68,29 @@ export async function POST(req: NextRequest) {
+     }
+ 
+     const accessToken = decryptToken(session.tidal_access_token);
++    let tidalUserId: string | null = session.tidal_user_id || null;
++
++    if (!tidalUserId) {
++      try {
++        tidalUserId = await getTidalCurrentUserId(accessToken);
++        await supabase
++          .from('sessioni_libere')
++          .update({ tidal_user_id: tidalUserId })
++          .eq('id', session_id);
++      } catch (resolveErr) {
++        return NextResponse.json(
++          { ok: false, error: `Cannot resolve Tidal user id: ${resolveErr instanceof Error ? resolveErr.message : 'unknown error'}` },
++          { status: 500 }
++        );
++      }
++    }
+ 
+     // Azione: crea playlist
+     if (action === 'create_playlist') {
+       const playlist = await createTidalPlaylist(
+         session.name,
+         accessToken,
+-        session.tidal_user_id
++        tidalUserId
+       );
+ 
+       // Salva playlist ID nella sessione
+@@ -105,7 +122,7 @@ export async function POST(req: NextRequest) {
+         const playlist = await createTidalPlaylist(
+           session.name,
+           accessToken,
+-          session.tidal_user_id
++          tidalUserId
+         );
+         playlistId = playlist.id;
+ 
+@@ -121,7 +138,7 @@ export async function POST(req: NextRequest) {
+           const playlist = await createTidalPlaylist(
+             session.name,
+             accessToken,
+-            session.tidal_user_id
++            tidalUserId
+           );
+           playlistId = playlist.id;
+ 
+diff --git a/src/app/api/tidal/search/route.ts b/src/app/api/tidal/search/route.ts
+index 18fff5a..eaf4a51 100644
+--- a/src/app/api/tidal/search/route.ts
++++ b/src/app/api/tidal/search/route.ts
+@@ -1,6 +1,7 @@
+ import { NextRequest, NextResponse } from 'next/server';
+ import { searchTidal, normalizeTidalTrack, decryptToken, refreshAccessToken, encryptToken } from '@/lib/tidal';
+ import { getSupabase } from '@/lib/supabase';
++import { apiPath } from '@/lib/apiPath';
+ 
+ /**
+  * GET /api/tidal/search
+@@ -9,12 +10,13 @@ import { getSupabase } from '@/lib/supabase';
+ export async function GET(req: NextRequest) {
+   try {
+     const searchParams = req.nextUrl.searchParams;
+-    const query = searchParams.get('q');
++    const query = (searchParams.get('q') || '').trim();
+     const sessionToken = searchParams.get('s');
++    const sessionId = searchParams.get('sid');
+     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
+     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
+ 
+-    if (!query || query.length < 2) {
++    if (query.length < 2) {
+       return NextResponse.json(
+         { ok: false, error: 'Query must be at least 2 characters' },
+         { status: 400 }
+@@ -22,9 +24,19 @@ export async function GET(req: NextRequest) {
+     }
+     const queryString: string = query;
+ 
+-    if (!sessionToken) {
++    const proxyBase = `${apiPath('/api/tidal/image')}?u=`;
++
++    const withCoverProxy = (track: ReturnType<typeof normalizeTidalTrack>) => {
++      if (!track.cover_url) return track;
++      return {
++        ...track,
++        cover_url: `${proxyBase}${encodeURIComponent(track.cover_url)}`,
++      };
++    };
++
++    if (!sessionToken && !sessionId) {
+       return NextResponse.json(
+-        { ok: false, error: 'Session token required' },
++        { ok: false, error: 'Session token or id required' },
+         { status: 400 }
+       );
+     }
+@@ -38,20 +50,43 @@ export async function GET(req: NextRequest) {
+       );
+     }
+ 
+-    const { data: session, error: sessionError } = await supabase
+-      .from('sessioni_libere')
+-      .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
+-      .eq('token', sessionToken)
+-      .eq('archived', false)
+-      .single();
++    let session: {
++      id: string;
++      catalog_type: string | null;
++      tidal_access_token: string | null;
++      tidal_refresh_token: string | null;
++      tidal_token_expires_at: string | null;
++    } | null = null;
++
++    if (sessionToken) {
++      const { data } = await supabase
++        .from('sessioni_libere')
++        .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
++        .eq('token', sessionToken)
++        .eq('archived', false)
++        .maybeSingle();
++      session = data;
++    }
++
++    if (!session && sessionId) {
++      const { data } = await supabase
++        .from('sessioni_libere')
++        .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
++        .eq('id', sessionId)
++        .eq('archived', false)
++        .maybeSingle();
++      session = data;
++    }
+ 
+-    if (sessionError || !session) {
++    if (!session) {
+       return NextResponse.json(
+         { ok: false, error: 'Invalid or expired session' },
+         { status: 404 }
+       );
+     }
+ 
++    const activeSession = session;
++
+     // Verifica che sia configurato Tidal
+     if (session.catalog_type !== 'tidal' || !session.tidal_access_token) {
+       return NextResponse.json(
+@@ -67,9 +102,8 @@ export async function GET(req: NextRequest) {
+       : null;
+ 
+     async function doSearch(currentAccessToken: string) {
+-      const tokenToUse: string = String(currentAccessToken || '');
+-      const results = await searchTidal(queryString, tokenToUse, limit, offset);
+-      const tracks = results.tracks.map(normalizeTidalTrack);
++      const results = await searchTidal(queryString, currentAccessToken, limit, offset);
++      const tracks = results.tracks.map(normalizeTidalTrack).map(withCoverProxy);
+       return NextResponse.json({
+         ok: true,
+         tracks,
+@@ -86,6 +120,7 @@ export async function GET(req: NextRequest) {
+     } catch (err) {
+       const msg = err instanceof Error ? err.message : String(err);
+       const is401 = msg.includes('401');
++
+       if (!is401 || !refreshToken) {
+         throw err;
+       }
+@@ -103,7 +138,7 @@ export async function GET(req: NextRequest) {
+             tidal_refresh_token: encryptedRefresh,
+             tidal_token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+           })
+-          .eq('id', session.id);
++          .eq('id', activeSession.id);
+ 
+         accessToken = newTokens.access_token;
+         return await doSearch(accessToken);
+diff --git a/src/app/dj/libere/page.tsx b/src/app/dj/libere/page.tsx
+index 799b407..528db7e 100644
+--- a/src/app/dj/libere/page.tsx
++++ b/src/app/dj/libere/page.tsx
+@@ -228,7 +228,15 @@ export default function LibereAdminPanel() {
+       });
+       
+       if (!accessToken || !refreshToken) {
+-        setError('❌ Token Tidal mancanti dal callback');
++        if (savedSessionId) {
++          setSuccess('✅ Tidal collegato con successo');
++          if (username && password) {
++            loadSessionData(savedSessionId);
++          }
++          window.history.replaceState({}, '', window.location.pathname);
++          return;
++        }
++        setError('❌ Callback Tidal incompleto: sessione non trovata');
+         return;
+       }
+       
+@@ -1819,6 +1827,11 @@ export default function LibereAdminPanel() {
+                                   <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium flex items-center gap-1">
+                                     ❌ Errore Tidal
+                                   </span>
++                                  {request.tidal_error_message && (
++                                    <span className="text-xs text-red-700 max-w-[260px] text-right break-words">
++                                      {request.tidal_error_message}
++                                    </span>
++                                  )}
+                                   <button
+                                     onClick={() => retryTidalAdd(request.id)}
+                                     disabled={loading}
+diff --git a/src/app/richieste/page.tsx b/src/app/richieste/page.tsx
+index 763c684..0ab4322 100644
+--- a/src/app/richieste/page.tsx
++++ b/src/app/richieste/page.tsx
+@@ -17,6 +17,7 @@ type DeezerTrack = {
+   preview_url?: string | null;
+   explicit?: boolean;
+   isrc?: string | null;
++  external_urls?: Record<string, string>;
+ };
+ 
+ // Step del flusso utente
+@@ -60,6 +61,7 @@ function RichiesteLibereContent() {
+   const [searching, setSearching] = useState(false);
+   const [selected, setSelected] = useState<DeezerTrack | null>(null);
+   const [isCollapsed, setIsCollapsed] = useState(false);
++  const fallbackCover = publicPath('/cover-placeholder.svg');
+   
+   const submitted = !!lastRequestId;
+ 
+@@ -377,13 +379,17 @@ function RichiesteLibereContent() {
+     const t = setTimeout(() => {
+       if (!query.trim()) {
+         setResults([]);
++        setMessage(null);
+         return;
+       }
++      if (query.trim().length >= 2) {
++        setMessage(null);
++      }
+       setSearching(true);
+       setIsCollapsed(false); // Reset collapse quando cerchi
+       const isTidal = session?.catalog_type === 'tidal';
+       const searchUrl = isTidal
+-        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${token}`
++        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${encodeURIComponent(token || '')}&sid=${encodeURIComponent(session?.id || '')}`
+         : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
+       fetch(apiPath(searchUrl))
+         .then((r) => r.json())
+@@ -394,9 +400,13 @@ function RichiesteLibereContent() {
+               setMessage('⚠️ Il DJ non ha ancora collegato Tidal a questa sessione. Riprova tra poco.');
+             } else if (data.error.includes('Invalid or expired session')) {
+               setMessage('⚠️ Sessione Tidal scaduta. Il DJ deve riconnettersi a Tidal.');
++            } else {
++              setMessage(`⚠️ Errore ricerca catalogo: ${data.error}`);
+             }
+             return;
+           }
++
++          setMessage(null);
+           setResults(data.tracks || []);
+         })
+         .catch(() => setResults([]))
+@@ -489,7 +499,7 @@ function RichiesteLibereContent() {
+         album: selected.album || '',
+         cover_url: selected.cover_url || '',
+         duration_ms: selected.duration_ms,
+-        source: 'deezer',
++        source: session?.catalog_type === 'tidal' ? 'manual' : 'deezer',
+         note: note.trim() || undefined,
+         event_code: eventCode.trim() || undefined
+       };
+@@ -732,15 +742,19 @@ function RichiesteLibereContent() {
+                   >
+                     <div className="flex gap-3">
+                       {/* Cover */}
+-                      {request.cover_url && (
+-                        <Image
+-                          src={request.cover_url}
+-                          alt={request.title}
+-                          width={56}
+-                          height={56}
+-                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+-                        />
+-                      )}
++                      <img
++                        src={request.cover_url || fallbackCover}
++                        alt={request.title}
++                        className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
++                        loading="lazy"
++                        referrerPolicy="no-referrer"
++                        onError={(e) => {
++                          const target = e.currentTarget;
++                          if (target.src !== fallbackCover) {
++                            target.src = fallbackCover;
++                          }
++                        }}
++                      />
+                       
+                       {/* Info */}
+                       <div className="flex-1 min-w-0">
+@@ -906,6 +920,12 @@ function RichiesteLibereContent() {
+                     // Determina se questo track dovrebbe essere nascosto
+                     const shouldHide = isCollapsed && selected?.id !== track.id;
+                     
++                    const isTidalCatalog = session?.catalog_type === 'tidal';
++                    const openUrl = isTidalCatalog
++                      ? (track.external_urls?.tidal || `https://tidal.com/browse/track/${track.id}`)
++                      : (track.external_urls?.deezer || `https://www.deezer.com/track/${track.id}`);
++                    const openLabel = isTidalCatalog ? 'Apri in Tidal' : 'Apri in Deezer';
++
+                     return (
+                       <div 
+                         key={track.id} 
+@@ -926,12 +946,18 @@ function RichiesteLibereContent() {
+                       <div className="flex items-center gap-3">
+                         {/* Cover Art */}
+                         <div className="relative flex-shrink-0">
+-                          <Image 
+-                            src={track.cover_url || '/file.svg'} 
+-                            alt={track.title || 'cover'} 
+-                            width={48} 
+-                            height={48} 
+-                            className="w-12 h-12 rounded-lg object-cover shadow-lg" 
++                          <img
++                            src={track.cover_url || fallbackCover}
++                            alt={track.title || 'cover'}
++                            className="w-12 h-12 rounded-lg object-cover shadow-lg"
++                            loading="lazy"
++                            referrerPolicy="no-referrer"
++                            onError={(e) => {
++                              const target = e.currentTarget;
++                              if (target.src !== fallbackCover) {
++                                target.src = fallbackCover;
++                              }
++                            }}
+                           />
+                           {selected?.id === track.id && (
+                             <div className="absolute inset-0 bg-purple-500/30 rounded-lg flex items-center justify-center">
+@@ -968,15 +994,15 @@ function RichiesteLibereContent() {
+                             </span>
+                           )}
+                           
+-                          {/* Open in Deezer Button */}
++                          {/* Open in catalog button */}
+                           <a
+-                            href={`https://www.deezer.com/track/${track.id}`}
++                            href={openUrl}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             onClick={(e) => e.stopPropagation()}
+                             className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 shadow-lg whitespace-nowrap"
+                           >
+-                            Apri in Deezer
++                            {openLabel}
+                           </a>
+                         </div>
+                       </div>
+@@ -1016,12 +1042,18 @@ function RichiesteLibereContent() {
+                   ✨ Conferma la tua richiesta
+                 </h3>
+                 <div className="flex items-center gap-3 mb-3">
+-                  <Image 
+-                    src={selected.cover_url || '/file.svg'} 
+-                    alt={selected.title || 'cover'} 
+-                    width={48} 
+-                    height={48} 
+-                    className="w-12 h-12 rounded-lg object-cover shadow-lg" 
++                  <img
++                    src={selected.cover_url || fallbackCover}
++                    alt={selected.title || 'cover'}
++                    className="w-12 h-12 rounded-lg object-cover shadow-lg"
++                    loading="lazy"
++                    referrerPolicy="no-referrer"
++                    onError={(e) => {
++                      const target = e.currentTarget;
++                      if (target.src !== fallbackCover) {
++                        target.src = fallbackCover;
++                      }
++                    }}
+                   />
+                   <div className="min-w-0">
+                     <div className="font-semibold text-white truncate">{selected.title}</div>
+diff --git a/src/lib/moderation.ts b/src/lib/moderation.ts
+index 81d5a3d..11cf81e 100644
+--- a/src/lib/moderation.ts
++++ b/src/lib/moderation.ts
+@@ -18,6 +18,103 @@ export async function acceptRequest(requestId: string) {
+         .update({ status: 'accepted' })
+         .eq('id', requestId);
+       if (error) throw new Error(`Accept failed (libere): ${error.message}`);
++
++      // Integrazione TIDAL: se la sessione è in modalità tidal, aggiungi brano alla playlist
++      try {
++        const { data: request } = await supabase
++          .from('richieste_libere')
++          .select('id, session_id, track_id, title, artists, tidal_added_status')
++          .eq('id', requestId)
++          .single();
++
++        if (request) {
++          const { data: session } = await supabase
++            .from('sessioni_libere')
++            .select('catalog_type, tidal_access_token, tidal_playlist_id, tidal_user_id, name')
++            .eq('id', request.session_id)
++            .single();
++
++          if (session && session.catalog_type === 'tidal' && session.tidal_access_token && request.track_id) {
++            if (request.tidal_added_status === 'success' || request.tidal_added_status === 'pending') {
++              return { ok: true };
++            }
++
++            await supabase
++              .from('richieste_libere')
++              .update({ tidal_added_status: 'pending', tidal_error_message: null })
++              .eq('id', requestId);
++
++            const {
++              addTrackToTidalPlaylist,
++              createTidalPlaylist,
++              getTidalPlaylist,
++              decryptToken,
++              searchTidal,
++              normalizeTidalTrackIdForPlaylist,
++              getTidalCurrentUserId,
++            } = await import('@/lib/tidal');
++
++            const accessToken = decryptToken(session.tidal_access_token as string);
++            let tidalUserId: string | null = session.tidal_user_id || null;
++
++            if (!tidalUserId) {
++              tidalUserId = await getTidalCurrentUserId(accessToken);
++              await supabase
++                .from('sessioni_libere')
++                .update({ tidal_user_id: tidalUserId })
++                .eq('id', request.session_id);
++            }
++
++            let playlistId = session.tidal_playlist_id;
++
++            if (!playlistId && tidalUserId) {
++              const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
++              playlistId = playlist.id;
++              await supabase
++                .from('sessioni_libere')
++                .update({ tidal_playlist_id: playlistId })
++                .eq('id', request.session_id);
++            } else if (playlistId) {
++              const existing = await getTidalPlaylist(playlistId, accessToken);
++              if (!existing && tidalUserId) {
++                const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
++                playlistId = playlist.id;
++                await supabase
++                  .from('sessioni_libere')
++                  .update({ tidal_playlist_id: playlistId })
++                  .eq('id', request.session_id);
++              }
++            }
++
++            if (playlistId) {
++              let trackIdToAdd = normalizeTidalTrackIdForPlaylist(request.track_id as string) || String(request.track_id);
++              try {
++                await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
++              } catch {
++                if (request.title) {
++                  const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
++                  const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
++                  if (searchResults.tracks?.length > 0) {
++                    trackIdToAdd = normalizeTidalTrackIdForPlaylist(searchResults.tracks[0].id) || String(searchResults.tracks[0].id);
++                    await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
++                  }
++                }
++              }
++
++              await supabase
++                .from('richieste_libere')
++                .update({ tidal_added_status: 'success', tidal_added_at: new Date().toISOString(), tidal_error_message: null })
++                .eq('id', requestId);
++            }
++          }
++        }
++      } catch (tidalError) {
++        await supabase
++          .from('richieste_libere')
++          .update({ tidal_added_status: 'failed', tidal_error_message: tidalError instanceof Error ? tidalError.message : 'Unknown error' })
++          .eq('id', requestId);
++      }
++
+       return { ok: true };
+     }
+     
+diff --git a/src/lib/tidal.ts b/src/lib/tidal.ts
+index 6b5f949..7d3ee1e 100644
+--- a/src/lib/tidal.ts
++++ b/src/lib/tidal.ts
+@@ -4,6 +4,7 @@
+ import { createCipheriv, createDecipheriv, randomBytes, createHash } from 'crypto';
+ 
+ const TIDAL_API_BASE = 'https://api.tidal.com/v1';
++const TIDAL_OPENAPI_BASE = 'https://openapi.tidal.com/v2';
+ const TIDAL_LOGIN_BASE = 'https://login.tidal.com';
+ const TIDAL_TOKEN_BASE = 'https://auth.tidal.com/v1/oauth2';
+ 
+@@ -65,6 +66,7 @@ export interface TidalTrack {
+   duration: number; // in secondi
+   explicit: boolean;
+   isrc?: string;
++  popularity?: number;
+ }
+ 
+ export interface TidalSearchResponse {
+@@ -106,7 +108,7 @@ export function getTidalAuthUrl(state: string, codeChallenge: string, redirectUr
+     response_type: 'code',
+     client_id: clientId,
+     redirect_uri: resolvedRedirectUri,
+-    // Scopes: user.read per profilo, playlists per playlist, search.read per ricerche
++    // Scope compatibili con app standard TIDAL
+     scope: 'user.read playlists.read playlists.write search.read',
+     state,
+     code_challenge: codeChallenge,
+@@ -193,6 +195,66 @@ export async function refreshAccessToken(refreshToken: string): Promise<TidalTok
+   return response.json();
+ }
+ 
++/**
++ * Recupera user_id Tidal corrente dall'access token.
++ * Utile quando il token exchange non include user_id esplicitamente.
++ */
++export async function getTidalCurrentUserId(accessToken: string): Promise<string> {
++  const clientId = process.env.TIDAL_CLIENT_ID || '';
++  const endpoints = [
++    `${TIDAL_API_BASE}/users/me?countryCode=IT`,
++    `${TIDAL_API_BASE}/sessions`,
++  ];
++
++  for (const endpoint of endpoints) {
++    try {
++      const res = await fetch(endpoint, {
++        headers: {
++          Authorization: `Bearer ${accessToken}`,
++          'X-Tidal-Token': clientId,
++          Accept: 'application/json',
++        },
++      });
++
++      if (!res.ok) continue;
++
++      const payload = await res.json();
++      const id = extractUserId(payload);
++      if (id) return id;
++    } catch {
++      // prova endpoint successivo
++    }
++  }
++
++  throw new Error('Unable to resolve Tidal user id from access token');
++}
++
++function extractUserId(payload: unknown): string | null {
++  const obj = (payload || {}) as Record<string, unknown>;
++
++  const direct = obj.user_id ?? obj.userId ?? obj.id;
++  if (direct !== null && direct !== undefined && String(direct).trim()) {
++    return String(direct).trim();
++  }
++
++  const user = (obj.user || {}) as Record<string, unknown>;
++  const nested = user.userId ?? user.id;
++  if (nested !== null && nested !== undefined && String(nested).trim()) {
++    return String(nested).trim();
++  }
++
++  const data = obj.data;
++  if (data && typeof data === 'object') {
++    const d = data as Record<string, unknown>;
++    const candidate = d.id ?? d.userId;
++    if (candidate !== null && candidate !== undefined && String(candidate).trim()) {
++      return String(candidate).trim();
++    }
++  }
++
++  return null;
++}
++
+ /**
+  * Ricerca brani su Tidal (API v1)
+  * Nota: L'API v1 richiede scope r_usr per user auth.
+@@ -204,35 +266,569 @@ export async function searchTidal(
+   limit = 10,
+   offset = 0
+ ): Promise<TidalSearchResponse> {
+-  const clientId = process.env.TIDAL_CLIENT_ID || '';
+-  const url = `${TIDAL_API_BASE}/search/tracks?query=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}&countryCode=IT`;
++  const cleanQuery = query.trim();
++  if (cleanQuery.length < 2) {
++    throw new Error('Query must be at least 2 characters');
++  }
+ 
+-  // Headers minimi - se il token manca scope r_usr, prova senza
+-  const headers: Record<string, string> = {
+-    'X-Tidal-Token': clientId,
+-    'Content-Type': 'application/json',
+-  };
+-  
+-  // Aggiungi Authorization solo se abbiamo un token valido
+-  if (accessToken && accessToken.length > 10) {
+-    headers['Authorization'] = `Bearer ${accessToken}`;
++  if (!accessToken || accessToken.length < 10) {
++    throw new Error('Tidal OpenAPI search requires a valid access token');
+   }
+ 
+-  const response = await fetch(url, headers);
++  const requestedLimit = Math.max(1, Math.min(limit, 50));
++  const fetchLimit = Math.max(requestedLimit * 4, 30);
++  const url = `${TIDAL_OPENAPI_BASE}/searchResults/${encodeURIComponent(cleanQuery)}?countryCode=IT&limit=${Math.min(fetchLimit, 100)}&offset=${offset}&include=tracks,tracks.artists,tracks.albums`;
++
++  const response = await fetch(url, {
++    headers: {
++      Authorization: `Bearer ${accessToken}`,
++      Accept: 'application/vnd.api+json',
++    },
++  });
+ 
+   if (!response.ok) {
+     const error = await response.text();
+-    throw new Error(`Tidal search failed: ${response.status} ${error}`);
++    throw new Error(`Tidal OpenAPI search failed: ${response.status} ${error}`);
+   }
+ 
+   const data = await response.json();
+-  // v1 API: { limit, offset, totalNumberOfItems, items: [...] }
++  const normalizedItems = await enrichMissingCovers(mapOpenApiTracks(data), accessToken);
++  const rankedItems = rankTracksByRelevanceAndPopularity(cleanQuery, normalizedItems);
++
+   return {
+-    tracks: data.items || data.tracks || [],
+-    totalNumberOfItems: data.totalNumberOfItems || 0,
++    tracks: rankedItems.slice(0, requestedLimit),
++    totalNumberOfItems: Number(data?.meta?.total || data?.totalNumberOfItems || rankedItems.length || 0),
+   };
+ }
+ 
++function rankTracksByRelevanceAndPopularity(query: string, tracks: TidalTrack[]): TidalTrack[] {
++  const q = query.trim().toLowerCase();
++  if (!q) return tracks;
++  const terms = q.split(/\s+/).filter(Boolean);
++
++  const scored = tracks.map((track, index) => {
++    const title = String(track.title || '').toLowerCase();
++    const artistsText = Array.isArray(track.artists)
++      ? track.artists.map((a) => String(a?.name || '')).join(' ').toLowerCase()
++      : '';
++    const haystack = `${title} ${artistsText}`.trim();
++
++    let score = 0;
++    if (title.startsWith(q)) score += 140;
++    else if (title.includes(q)) score += 100;
++    if (artistsText.includes(q)) score += 60;
++
++    if (terms.length > 1) {
++      const matched = terms.filter((term) => haystack.includes(term)).length;
++      score += matched * 18;
++      if (matched === terms.length) score += 30;
++    }
++
++    const popularityRaw = Number(track.popularity || 0);
++    const popularity = Number.isFinite(popularityRaw)
++      ? (popularityRaw <= 1 ? popularityRaw * 100 : popularityRaw)
++      : 0;
++    score += popularity * 1.4;
++
++    return { track, index, score };
++  });
++
++  scored.sort((a, b) => {
++    if (b.score !== a.score) return b.score - a.score;
++    const bp = Number(b.track.popularity || 0);
++    const ap = Number(a.track.popularity || 0);
++    if (bp !== ap) return bp - ap;
++    return a.index - b.index;
++  });
++
++  return scored.map((entry) => entry.track);
++}
++
++async function fetchTrackCoverFromOpenApi(trackId: string, accessToken: string): Promise<string | null> {
++  if (!trackId) return null;
++
++  const url = `${TIDAL_OPENAPI_BASE}/tracks/${encodeURIComponent(trackId)}?countryCode=IT&include=albums,albums.coverArt,albums.suggestedCoverArts`;
++  const res = await fetch(url, {
++    headers: {
++      Authorization: `Bearer ${accessToken}`,
++      Accept: 'application/vnd.api+json',
++    },
++  });
++
++  if (!res.ok) return null;
++
++  const payload = await res.json();
++  const included = Array.isArray((payload as Record<string, unknown>)?.included)
++    ? ((payload as Record<string, unknown>).included as Array<Record<string, unknown>>)
++    : [];
++  if (included.length === 0) return null;
++
++  const preferredArtworkIds = new Set<string>();
++  for (const item of included) {
++    if (String(item.type || '') !== 'albums') continue;
++    const rel = (item.relationships || {}) as Record<string, unknown>;
++    const coverRelData = ((rel.coverArt as Record<string, unknown> | undefined)?.data || null) as Record<string, unknown> | null;
++    const coverId = String(coverRelData?.id || '').trim();
++    if (coverId) preferredArtworkIds.add(coverId);
++
++    const suggested = ((rel.suggestedCoverArts as Record<string, unknown> | undefined)?.data || null) as
++      | Array<Record<string, unknown>>
++      | Record<string, unknown>
++      | null;
++    if (Array.isArray(suggested)) {
++      for (const entry of suggested) {
++        const id = String(entry?.id || '').trim();
++        if (id) preferredArtworkIds.add(id);
++      }
++    } else if (suggested && typeof suggested === 'object') {
++      const id = String((suggested as Record<string, unknown>)?.id || '').trim();
++      if (id) preferredArtworkIds.add(id);
++    }
++  }
++
++  const artworks = included.filter((item) => String(item.type || '') === 'artworks');
++  const orderedArtworks = [
++    ...artworks.filter((a) => preferredArtworkIds.has(String(a.id || ''))),
++    ...artworks.filter((a) => !preferredArtworkIds.has(String(a.id || ''))),
++  ];
++
++  for (const artwork of orderedArtworks) {
++    const attrs = ((artwork || {}).attributes || {}) as Record<string, unknown>;
++    const files = Array.isArray(attrs.files) ? (attrs.files as Array<Record<string, unknown>>) : [];
++    if (files.length === 0) continue;
++
++    const sorted = [...files].sort((a, b) => {
++      const aw = Number((a.meta as Record<string, unknown> | undefined)?.width || 0);
++      const bw = Number((b.meta as Record<string, unknown> | undefined)?.width || 0);
++      if (aw >= 320 && bw >= 320) return aw - bw;
++      if (aw >= 320) return -1;
++      if (bw >= 320) return 1;
++      return bw - aw;
++    });
++
++    const href = String(sorted[0]?.href || '').trim();
++    const normalized = normalizeTidalCoverUrl(href);
++    if (normalized) return normalized;
++  }
++
++  return null;
++}
++
++async function enrichMissingCovers(tracks: TidalTrack[], accessToken: string): Promise<TidalTrack[]> {
++  const clientId = process.env.TIDAL_CLIENT_ID || '';
++
++  const enriched = await Promise.all(tracks.map(async (track) => {
++    if (track?.album?.cover) return track;
++
++    const albumId = String(track?.album?.id || '').trim();
++    const trackId = String(track?.id || '').trim();
++
++    try {
++      if (albumId) {
++        const openApiUrl = `${TIDAL_OPENAPI_BASE}/albums/${encodeURIComponent(albumId)}?countryCode=IT&include=coverArt,suggestedCoverArts`;
++        const openApiRes = await fetch(openApiUrl, {
++          headers: {
++            Authorization: `Bearer ${accessToken}`,
++            Accept: 'application/vnd.api+json',
++          },
++        });
++
++        if (openApiRes.ok) {
++          const openApiPayload = await openApiRes.json();
++          const openApiData = (openApiPayload?.data || {}) as Record<string, unknown>;
++          const openApiAttrs = (openApiData.attributes || {}) as Record<string, unknown>;
++
++          const openApiRelationships = (openApiData.relationships || {}) as Record<string, unknown>;
++          const coverRelData = ((openApiRelationships.coverArt as Record<string, unknown> | undefined)?.data || null) as
++            | Record<string, unknown>
++            | null;
++          const coverRelId = String(coverRelData?.id || '').trim();
++
++          const suggestedRelData = ((openApiRelationships.suggestedCoverArts as Record<string, unknown> | undefined)?.data || null) as
++            | Array<Record<string, unknown>>
++            | Record<string, unknown>
++            | null;
++          const suggestedRelIds = Array.isArray(suggestedRelData)
++            ? suggestedRelData.map((entry) => String(entry?.id || '').trim()).filter(Boolean)
++            : suggestedRelData && typeof suggestedRelData === 'object'
++              ? [String((suggestedRelData as Record<string, unknown>)?.id || '').trim()].filter(Boolean)
++              : [];
++
++          const included = Array.isArray((openApiPayload as Record<string, unknown>)?.included)
++            ? ((openApiPayload as Record<string, unknown>).included as Array<Record<string, unknown>>)
++            : [];
++          const artwork = included.find((item) => {
++            const type = String(item.type || '');
++            const id = String(item.id || '');
++            if (type !== 'artworks') return false;
++            if (coverRelId && id === coverRelId) return true;
++            if (suggestedRelIds.includes(id)) return true;
++            if (!coverRelId && suggestedRelIds.length === 0) return true;
++            return false;
++          });
++
++          const artworkAttrs = ((artwork || {}).attributes || {}) as Record<string, unknown>;
++          const files = Array.isArray(artworkAttrs.files)
++            ? (artworkAttrs.files as Array<Record<string, unknown>>)
++            : [];
++
++          let artworkHref = '';
++          if (files.length > 0) {
++            const sorted = [...files].sort((a, b) => {
++              const aw = Number((a.meta as Record<string, unknown> | undefined)?.width || 0);
++              const bw = Number((b.meta as Record<string, unknown> | undefined)?.width || 0);
++              if (aw >= 320 && bw >= 320) return aw - bw;
++              if (aw >= 320) return -1;
++              if (bw >= 320) return 1;
++              return bw - aw;
++            });
++            artworkHref = String(sorted[0]?.href || '').trim();
++          }
++
++          const openApiCover = artworkHref || pickCoverUrl(artworkAttrs) || pickCoverUrl(openApiAttrs) || String(openApiAttrs.cover || '').trim();
++          const normalizedOpenApiCover = normalizeTidalCoverUrl(openApiCover);
++          if (normalizedOpenApiCover) {
++            return {
++              ...track,
++              album: {
++                ...(track.album || {}),
++                cover: normalizedOpenApiCover,
++              },
++            };
++          }
++        }
++      }
++
++      const trackCover = await fetchTrackCoverFromOpenApi(trackId, accessToken);
++      if (trackCover) {
++        return {
++          ...track,
++          album: {
++            ...(track.album || {}),
++            cover: trackCover,
++          },
++        };
++      }
++
++      if (!albumId) return track;
++
++      const url = `${TIDAL_API_BASE}/albums/${encodeURIComponent(albumId)}?countryCode=IT`;
++      const res = await fetch(url, {
++        headers: {
++          Authorization: `Bearer ${accessToken}`,
++          'X-Tidal-Token': clientId,
++          Accept: 'application/json',
++        },
++      });
++
++      if (!res.ok) return track;
++      const payload = await res.json();
++      const albumCover = normalizeTidalCoverUrl(String(payload?.cover || payload?.image || '').trim());
++      if (!albumCover) return track;
++
++      return {
++        ...track,
++        album: {
++          ...(track.album || {}),
++          cover: albumCover,
++        },
++      };
++    } catch {
++      return track;
++    }
++  }));
++
++  return enriched;
++}
++
++function mapOpenApiTracks(payload: unknown): TidalTrack[] {
++  const root = (payload || {}) as Record<string, unknown>;
++  const data = Array.isArray(root.data)
++    ? (root.data as Array<Record<string, unknown>>)
++    : root.data && typeof root.data === 'object'
++      ? [root.data as Record<string, unknown>]
++      : [];
++  const included = Array.isArray(root.included) ? (root.included as Array<Record<string, unknown>>) : [];
++
++  const includedByKey = new Map<string, Record<string, unknown>>();
++  for (const item of included) {
++    const type = String(item.type || '');
++    const id = String(item.id || '');
++    if (type && id) {
++      includedByKey.set(`${type}:${id}`, item);
++    }
++  }
++
++  const includedTracks = included.filter((item) => String(item.type || '').toLowerCase().includes('track'));
++  const sourceTracks = includedTracks.length > 0
++    ? includedTracks
++    : data.filter((item) => String(item.type || '').toLowerCase().includes('track'));
++
++  return sourceTracks
++    .map((item) => {
++      const itemType = String(item.type || 'tracks');
++      const itemId = String(item.id || '');
++      const fullItem = includedByKey.get(`${itemType}:${itemId}`) || item;
++
++      const attrs = (fullItem.attributes || {}) as Record<string, unknown>;
++      const rel = (fullItem.relationships || {}) as Record<string, unknown>;
++
++      const artistRefContainer =
++        (rel.artists as Record<string, unknown> | undefined) ||
++        (rel.artist as Record<string, unknown> | undefined) ||
++        {};
++      const rawArtistRefs = artistRefContainer.data;
++      const artistRefs = Array.isArray(rawArtistRefs)
++        ? (rawArtistRefs as Array<Record<string, unknown>>)
++        : rawArtistRefs && typeof rawArtistRefs === 'object'
++          ? [rawArtistRefs as Record<string, unknown>]
++          : [];
++      const artists = artistRefs
++        .map((ref) => {
++          const type = String(ref.type || 'artists');
++          const id = String(ref.id || '');
++          const full = includedByKey.get(`${type}:${id}`) || {};
++          const fullAttrs = (full.attributes || {}) as Record<string, unknown>;
++          return {
++            id,
++            name: String(fullAttrs.name || fullAttrs.title || ''),
++          };
++        })
++        .filter((artist) => artist.name);
++
++      const albumRefContainer =
++        (rel.albums as Record<string, unknown> | undefined) ||
++        (rel.album as Record<string, unknown> | undefined) ||
++        {};
++      const rawAlbumRefs = albumRefContainer.data;
++      const albumRefs = Array.isArray(rawAlbumRefs)
++        ? (rawAlbumRefs as Array<Record<string, unknown>>)
++        : rawAlbumRefs && typeof rawAlbumRefs === 'object'
++          ? [rawAlbumRefs as Record<string, unknown>]
++          : [];
++      const albumRef = albumRefs[0];
++      const albumType = String(albumRef?.type || 'albums');
++      const albumId = String(albumRef?.id || '');
++      const albumFull = includedByKey.get(`${albumType}:${albumId}`) || {};
++      const albumAttrs = (albumFull.attributes || {}) as Record<string, unknown>;
++
++      const coverUrl =
++        pickCoverUrl(attrs) ||
++        pickCoverUrl(albumAttrs) ||
++        String(albumAttrs.cover || attrs.cover || '');
++
++      const mappedTrackId = pickBestTrackId(fullItem, attrs);
++
++      const durationSeconds = parseDurationSeconds(
++        attrs.durationMs,
++        attrs.duration,
++        attrs.durationSeconds,
++      );
++
++      return {
++        id: mappedTrackId,
++        title: String(attrs.title || attrs.name || ''),
++        artists,
++        album: {
++          id: String(albumFull.id || albumId || ''),
++          title: String(albumAttrs.title || ''),
++          cover: normalizeTidalCoverUrl(coverUrl) || undefined,
++        },
++        duration: Number.isFinite(durationSeconds) ? durationSeconds : 0,
++        explicit: Boolean(attrs.explicit || attrs.explicitLyrics),
++        isrc: attrs.isrc ? String(attrs.isrc) : undefined,
++        popularity: Number.isFinite(Number(attrs.popularity)) ? Number(attrs.popularity) : 0,
++      } as TidalTrack;
++    })
++    .filter((track) => track.id && track.title);
++}
++
++function parseDurationSeconds(...candidates: unknown[]): number {
++  for (const candidate of candidates) {
++    if (candidate === null || candidate === undefined) continue;
++
++    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
++      if (candidate > 36000) return Math.floor(candidate / 1000);
++      return Math.floor(candidate);
++    }
++
++    if (typeof candidate === 'string') {
++      const value = candidate.trim();
++      if (!value) continue;
++
++      const numeric = Number(value);
++      if (Number.isFinite(numeric)) {
++        if (numeric > 36000) return Math.floor(numeric / 1000);
++        return Math.floor(numeric);
++      }
++
++      const isoMatch = value.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i);
++      if (isoMatch) {
++        const hours = Number(isoMatch[1] || 0);
++        const minutes = Number(isoMatch[2] || 0);
++        const seconds = Number(isoMatch[3] || 0);
++        const total = hours * 3600 + minutes * 60 + seconds;
++        if (Number.isFinite(total) && total > 0) return total;
++      }
++    }
++  }
++
++  return 0;
++}
++
++function pickCoverUrl(attrs: Record<string, unknown>): string {
++  const imageLinks = Array.isArray(attrs.imageLinks) ? attrs.imageLinks : [];
++  for (const raw of imageLinks) {
++    if (typeof raw === 'string' && raw.trim()) {
++      return raw;
++    }
++    if (raw && typeof raw === 'object') {
++      const obj = raw as Record<string, unknown>;
++      const href = obj.href;
++      const url = obj.url;
++      if (typeof href === 'string' && href.trim()) return href;
++      if (typeof url === 'string' && url.trim()) return url;
++    }
++  }
++
++  const recursive = findImageUrlRecursive(attrs, 0);
++  if (recursive) return recursive;
++
++  const directCandidates = [
++    attrs.cover,
++    attrs.coverUrl,
++    attrs.image,
++    attrs.imageUrl,
++    attrs.imageCover,
++    attrs.albumCover,
++    attrs.albumCoverUrl,
++    attrs.artworkUrl,
++  ];
++  for (const candidate of directCandidates) {
++    if (typeof candidate === 'string' && candidate.trim()) {
++      return candidate;
++    }
++  }
++
++  return '';
++}
++
++function findImageUrlRecursive(value: unknown, depth: number): string {
++  if (depth > 3 || value === null || value === undefined) return '';
++
++  if (typeof value === 'string') {
++    const v = value.trim();
++    if (!v) return '';
++    if (v.startsWith('http://') || v.startsWith('https://') || v.startsWith('//') || v.startsWith('/')) {
++      const lower = v.toLowerCase();
++      if (lower.includes('image') || lower.includes('cover') || lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
++        return v;
++      }
++    }
++    return '';
++  }
++
++  if (Array.isArray(value)) {
++    for (const item of value) {
++      const found = findImageUrlRecursive(item, depth + 1);
++      if (found) return found;
++    }
++    return '';
++  }
++
++  if (typeof value === 'object') {
++    const obj = value as Record<string, unknown>;
++    for (const [key, val] of Object.entries(obj)) {
++      const keyLower = key.toLowerCase();
++      if (typeof val === 'string' && (keyLower.includes('image') || keyLower.includes('cover') || keyLower.includes('art'))) {
++        const direct = findImageUrlRecursive(val, depth + 1);
++        if (direct) return direct;
++      }
++      const found = findImageUrlRecursive(val, depth + 1);
++      if (found) return found;
++    }
++  }
++
++  return '';
++}
++
++function normalizeTidalCoverUrl(raw: string | null | undefined): string | null {
++  if (!raw) return null;
++
++  let value = String(raw).trim();
++  if (!value) return null;
++
++  if (value.startsWith('//')) {
++    value = `https:${value}`;
++  }
++
++  if (value.startsWith('http://')) {
++    value = `https://${value.slice('http://'.length)}`;
++  }
++
++  if (value.startsWith('/')) {
++    value = `https://resources.tidal.com${value}`;
++  }
++
++  if (!value.startsWith('http://') && !value.startsWith('https://')) {
++    if (/^(resources\.)?(tidal|wimpmusic)\./i.test(value)) {
++      value = `https://${value.replace(/^\/*/, '')}`;
++    }
++  }
++
++  value = value
++    .replace(/\{width\}/gi, '320')
++    .replace(/\{height\}/gi, '320')
++    .replace(/\{w\}/gi, '320')
++    .replace(/\{h\}/gi, '320');
++
++  if (value.startsWith('https://') || value.startsWith('http://')) {
++    return value;
++  }
++
++  if (/^[a-f0-9\-]{32,}$/i.test(value)) {
++    return `https://resources.tidal.com/images/${value.replace(/-/g, '/')}/320x320.jpg`;
++  }
++
++  return null;
++}
++
++function pickBestTrackId(item: Record<string, unknown>, attrs: Record<string, unknown>): string {
++  const candidates = [
++    item.id,
++    attrs.id,
++    attrs.trackId,
++    attrs.tidalId,
++    attrs.audioResourceId,
++    attrs.artifactId,
++    attrs.legacyId,
++  ]
++    .filter((v) => v !== null && v !== undefined)
++    .map((v) => String(v));
++
++  for (const candidate of candidates) {
++    const normalized = normalizeTidalTrackIdForPlaylist(candidate);
++    if (normalized) return normalized;
++  }
++
++  return String(item.id || attrs.id || '');
++}
++
++export function normalizeTidalTrackIdForPlaylist(trackId: string | number | null | undefined): string | null {
++  if (trackId === null || trackId === undefined) return null;
++  const raw = String(trackId).trim();
++  if (!raw) return null;
++  if (/^\d+$/.test(raw)) return raw;
++
++  const browseMatch = raw.match(/track\/(\d+)/i);
++  if (browseMatch?.[1]) return browseMatch[1];
++
++  const anyDigits = raw.match(/(\d{4,})/);
++  if (anyDigits?.[1]) return anyDigits[1];
++
++  return null;
++}
++
+ /**
+  * Crea playlist su Tidal (API v1)
+  */
+@@ -260,6 +856,9 @@ export async function createTidalPlaylist(
+ 
+   if (!response.ok) {
+     const error = await response.text();
++    // Fallback OpenAPI v2
++    const fallback = await tryCreatePlaylistOpenApi(name, accessToken, description);
++    if (fallback) return fallback;
+     throw new Error(`Tidal playlist creation failed: ${response.status} ${error}`);
+   }
+ 
+@@ -283,35 +882,47 @@ export async function addTrackToTidalPlaylist(
+   accessToken: string
+ ): Promise<void> {
+   const clientId = process.env.TIDAL_CLIENT_ID || '';
+-  // v1: prima ottieni l'etag della playlist (richiesto per modificarla)
+-  const playlistRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}`, {
+-    headers: {
+-      Authorization: `Bearer ${accessToken}`,
+-      'X-Tidal-Token': clientId,
+-    },
+-  });
+-  const etag = playlistRes.headers.get('ETag') || '';
++  const normalizedTrackId = normalizeTidalTrackIdForPlaylist(trackId);
++  if (normalizedTrackId) {
++    // v1: prima ottieni l'etag della playlist (richiesto per modificarla)
++    const playlistRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}`, {
++      headers: {
++        Authorization: `Bearer ${accessToken}`,
++        'X-Tidal-Token': clientId,
++      },
++    });
++    const etag = playlistRes.headers.get('ETag') || '';
+ 
+-  const url = `${TIDAL_API_BASE}/playlists/${playlistId}/tracks`;
+-  const response = await fetch(url, {
+-    method: 'POST',
+-    headers: {
+-      Authorization: `Bearer ${accessToken}`,
+-      'X-Tidal-Token': clientId,
+-      'Content-Type': 'application/json',
+-      ...(etag ? { 'If-None-Match': etag } : {}),
+-    },
+-    body: JSON.stringify({
+-      trackIds: [Number(trackId)],
+-      toIndex: -1,
+-      onDuplicates: 'SKIP',
+-    }),
+-  });
++    const url = `${TIDAL_API_BASE}/playlists/${playlistId}/tracks`;
++    const response = await fetch(url, {
++      method: 'POST',
++      headers: {
++        Authorization: `Bearer ${accessToken}`,
++        'X-Tidal-Token': clientId,
++        'Content-Type': 'application/json',
++        ...(etag ? { 'If-None-Match': etag } : {}),
++      },
++      body: JSON.stringify({
++        trackIds: [Number(normalizedTrackId)],
++        toIndex: -1,
++        onDuplicates: 'SKIP',
++      }),
++    });
++
++    if (response.ok) return;
+ 
+-  if (!response.ok) {
+     const error = await response.text();
++    // fallback openapi con ID raw se disponibile
++    const openApiOk = await tryAddTrackOpenApi(playlistId, trackId, accessToken);
++    if (openApiOk) return;
+     throw new Error(`Tidal add track failed: ${response.status} ${error}`);
+   }
++
++  // Se non abbiamo ID numerico v1, prova direttamente OpenAPI
++  const openApiOk = await tryAddTrackOpenApi(playlistId, trackId, accessToken);
++  if (!openApiOk) {
++    throw new Error(`Tidal add track failed: invalid/non supported track id '${trackId}'`);
++  }
+ }
+ 
+ /**
+@@ -333,11 +944,15 @@ export async function getTidalPlaylist(
+   });
+ 
+   if (response.status === 404) {
+-    return null; // Playlist non esiste (eliminata dall'utente)
++    // prova fallback OpenAPI
++    const openApi = await tryGetPlaylistOpenApi(playlistId, accessToken);
++    return openApi;
+   }
+ 
+   if (!response.ok) {
+     const error = await response.text();
++    const openApi = await tryGetPlaylistOpenApi(playlistId, accessToken);
++    if (openApi) return openApi;
+     throw new Error(`Tidal get playlist failed: ${response.status} ${error}`);
+   }
+ 
+@@ -351,30 +966,140 @@ export async function getTidalPlaylist(
+   };
+ }
+ 
++async function tryCreatePlaylistOpenApi(name: string, accessToken: string, description?: string): Promise<TidalPlaylist | null> {
++  const url = `${TIDAL_OPENAPI_BASE}/playlists`;
++  const variants = [
++    {
++      data: {
++        type: 'playlists',
++        attributes: {
++          title: name,
++          description: description || `Richieste musicali - ${name}`,
++        },
++      },
++    },
++    {
++      data: {
++        type: 'playlists',
++        attributes: {
++          name,
++          description: description || `Richieste musicali - ${name}`,
++        },
++      },
++    },
++  ];
++
++  for (const body of variants) {
++    const res = await fetch(url, {
++      method: 'POST',
++      headers: {
++        Authorization: `Bearer ${accessToken}`,
++        Accept: 'application/vnd.api+json',
++        'Content-Type': 'application/vnd.api+json',
++      },
++      body: JSON.stringify(body),
++    });
++
++    if (!res.ok) continue;
++    const payload = await res.json();
++    const data = (payload?.data || {}) as Record<string, unknown>;
++    const attrs = (data.attributes || {}) as Record<string, unknown>;
++    const id = String(data.id || '');
++    if (!id) continue;
++
++    return {
++      id,
++      name: String(attrs.title || attrs.name || name),
++      description: String(attrs.description || ''),
++      created: String(attrs.createdAt || attrs.created || new Date().toISOString()),
++      numberOfTracks: Number(attrs.numberOfTracks || attrs.trackCount || 0),
++    };
++  }
++
++  return null;
++}
++
++async function tryAddTrackOpenApi(playlistId: string, trackId: string, accessToken: string): Promise<boolean> {
++  const candidates = [
++    `${TIDAL_OPENAPI_BASE}/playlists/${playlistId}/relationships/tracks`,
++    `${TIDAL_OPENAPI_BASE}/playlists/${playlistId}/relationships/items`,
++  ];
++  const payloads = [
++    { data: [{ type: 'tracks', id: String(trackId) }] },
++    { data: [{ type: 'track', id: String(trackId) }] },
++  ];
++  const methods: Array<'POST' | 'PATCH'> = ['POST', 'PATCH'];
++
++  for (const url of candidates) {
++    for (const method of methods) {
++      for (const payload of payloads) {
++        const res = await fetch(url, {
++          method,
++          headers: {
++            Authorization: `Bearer ${accessToken}`,
++            Accept: 'application/vnd.api+json',
++            'Content-Type': 'application/vnd.api+json',
++          },
++          body: JSON.stringify(payload),
++        });
++        if (res.ok) return true;
++      }
++    }
++  }
++
++  return false;
++}
++
++async function tryGetPlaylistOpenApi(playlistId: string, accessToken: string): Promise<TidalPlaylist | null> {
++  const url = `${TIDAL_OPENAPI_BASE}/playlists/${playlistId}`;
++  const res = await fetch(url, {
++    headers: {
++      Authorization: `Bearer ${accessToken}`,
++      Accept: 'application/vnd.api+json',
++    },
++  });
++
++  if (!res.ok) return null;
++
++  const payload = await res.json();
++  const data = (payload?.data || {}) as Record<string, unknown>;
++  const attrs = (data.attributes || {}) as Record<string, unknown>;
++  const id = String(data.id || playlistId);
++
++  return {
++    id,
++    name: String(attrs.title || attrs.name || ''),
++    description: String(attrs.description || ''),
++    created: String(attrs.createdAt || attrs.created || ''),
++    numberOfTracks: Number(attrs.numberOfTracks || 0),
++  };
++}
++
+ /**
+  * Normalizza TidalTrack nel formato interno dell'app
+  */
+ export function normalizeTidalTrack(track: TidalTrack) {
+-  // v1 API: album.cover è un UUID es. "ae27bc5e-3dc7-4fa5-b5a4-b5c7ba16c6a2"
+-  // URL immagine: https://resources.tidal.com/images/{uuid-con-slash}/320x320.jpg
+-  const coverUuid = track.album.cover;
+-  const cover = coverUuid
+-    ? `https://resources.tidal.com/images/${coverUuid.replace(/-/g, '/')}/320x320.jpg`
+-    : null;
+-  const artists = track.artists.map(a => a.name).join(', ');
++  // v1 API: album.cover è spesso UUID; OpenAPI può già restituire URL assoluto
++  const safeTrack = (track || {}) as Partial<TidalTrack> & { album?: { title?: string; cover?: string } };
++  const cover = normalizeTidalCoverUrl(safeTrack.album?.cover);
++  const artists = Array.isArray(safeTrack.artists)
++    ? safeTrack.artists.map(a => a?.name).filter(Boolean).join(', ')
++    : '';
+ 
+   return {
+-    id: String(track.id),
++    id: String(safeTrack.id || ''),
+     uri: null,
+-    title: track.title,
++    title: safeTrack.title || 'Titolo sconosciuto',
+     artists,
+-    album: track.album.title,
++    album: safeTrack.album?.title || '',
+     cover_url: cover,
+-    duration_ms: track.duration * 1000,
+-    explicit: track.explicit,
++    duration_ms: Math.max(0, Number(safeTrack.duration || 0) * 1000),
++    explicit: Boolean(safeTrack.explicit),
+     preview_url: null,
+-    isrc: track.isrc || null,
+-    popularity: 0,
+-    external_urls: { tidal: `https://tidal.com/browse/track/${track.id}` },
++    isrc: safeTrack.isrc || null,
++    popularity: Number.isFinite(Number((safeTrack as { popularity?: number }).popularity))
++      ? Number((safeTrack as { popularity?: number }).popularity)
++      : 0,
++    external_urls: { tidal: `https://tidal.com/browse/track/${safeTrack.id || ''}` },
+   };
+ }
+diff --git a/tsconfig.json b/tsconfig.json
+index b575f7d..36480a3 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -36,6 +36,8 @@
+     ".next/dev/types/**/*.ts"
+   ],
+   "exclude": [
+-    "node_modules"
++    "node_modules",
++    "backups",
++    "backups/**"
+   ]
+ }

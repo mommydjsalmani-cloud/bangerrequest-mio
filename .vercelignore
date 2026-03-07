@@ -1,0 +1,7 @@
+backups/
+*.tar.gz
+.env*
+node_modules/
+.git/
+.next/
+apps/marketing/.next/

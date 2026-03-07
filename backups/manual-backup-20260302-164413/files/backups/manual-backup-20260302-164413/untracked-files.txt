@@ -1,0 +1,4 @@
+backups/manual-backup-20260302-164413/changed-files.txt
+backups/manual-backup-20260302-164413/git-status.txt
+backups/manual-backup-20260302-164413/untracked-files.txt
+backups/manual-backup-20260302-164413/working-tree.patch
