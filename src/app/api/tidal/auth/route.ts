@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getTidalAuthUrl, generatePKCE, encryptToken } from '@/lib/tidal';
 
+function getCanonicalOrigin(req: NextRequest): string {
+  if (process.env.NODE_ENV !== 'production') {
+    return req.nextUrl.origin;
+  }
+
+  const configured =
+    process.env.PUBLIC_APP_ORIGIN?.trim() ||
+    process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ||
+    'https://mommydj.com';
+
+  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+
+  if (forwardedHost === 'mommydj.com' || forwardedHost === 'www.mommydj.com') {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return configured;
+}
+
 /**
  * GET /api/tidal/auth
  * Genera URL OAuth Tidal e reindirizza
@@ -28,12 +48,12 @@ export async function GET(req: NextRequest) {
     // Genera state per CSRF protection
     const randomState = randomBytes(32).toString('hex');
     
-    // Origin affidabile della richiesta corrente (funziona con dominio custom e vercel.app)
-    const origin = req.nextUrl.origin;
+    // In produzione forziamo dominio canonico per evitare rimbalzi su hostname vercel.app
+    const origin = getCanonicalOrigin(req);
 
     // Calcola redirect URI dinamicamente dall'origin corrente.
     // In produzione Next.js usa basePath '/richiedi', quindi il path completo è /richiedi/api/tidal/callback.
-    // Questo risolve il problema con mommydj.com vs bangerrequest-mio.vercel.app.
+    // In produzione restiamo su dominio canonico (mommydj.com)
     const basePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
     const dynamicRedirectUri = `${origin}${basePath}/api/tidal/callback`;
     

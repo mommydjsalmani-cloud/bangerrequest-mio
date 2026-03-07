@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForToken, encryptToken, decryptToken } from '@/lib/tidal';
+import { getSupabase } from '@/lib/supabase';
+
+function getCanonicalOrigin(req: NextRequest): string {
+  if (process.env.NODE_ENV !== 'production') {
+    return req.nextUrl.origin;
+  }
+
+  const configured =
+    process.env.PUBLIC_APP_ORIGIN?.trim() ||
+    process.env.NEXT_PUBLIC_APP_ORIGIN?.trim() ||
+    'https://mommydj.com';
+
+  const forwardedHost = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  const forwardedProto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https';
+
+  if (forwardedHost === 'mommydj.com' || forwardedHost === 'www.mommydj.com') {
+    return `${forwardedProto}://${forwardedHost}`;
+  }
+
+  return configured;
+}
+
+function buildDjRedirectUrl(req: NextRequest, query: string): URL {
+  const origin = getCanonicalOrigin(req).replace(/\/$/, '');
+  return new URL(`${origin}/richiedi/dj/libere${query}`);
+}
 
 /**
  * Gestisce il callback OAuth di Tidal (GET e POST)
@@ -20,16 +46,12 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     // Gestione errore OAuth
     if (error) {
       console.error('Tidal OAuth error:', error, searchParams.get('error_description'));
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(error), req.url)
-      );
+      return NextResponse.redirect(buildDjRedirectUrl(req, `?tidal_error=${encodeURIComponent(error)}`));
     }
 
     if (!code || !state) {
       console.error('Missing code or state');
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=invalid_callback', req.url)
-      );
+      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_callback'));
     }
 
     // Decodifica state (base64url) che contiene: random, origin, cv (codeVerifier cifrato), ru (redirectUri)
@@ -39,16 +61,12 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       stateData = JSON.parse(Buffer.from(state, 'base64url').toString());
     } catch {
       console.error('Invalid state format');
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=invalid_state_format', req.url)
-      );
+      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_state_format'));
     }
 
     if (!stateData.random || !stateData.origin || !stateData.cv) {
       console.error('Incomplete state payload:', Object.keys(stateData));
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=incomplete_state', req.url)
-      );
+      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=incomplete_state'));
     }
 
     // Decripta il codeVerifier dallo state
@@ -57,9 +75,7 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
       codeVerifier = decryptToken(stateData.cv);
     } catch {
       console.error('Failed to decrypt codeVerifier from state');
-      return NextResponse.redirect(
-        new URL('/richiedi/dj/libere?tidal_error=invalid_code_verifier', req.url)
-      );
+      return NextResponse.redirect(buildDjRedirectUrl(req, '?tidal_error=invalid_code_verifier'));
     }
 
     // Scambia code per token con PKCE
@@ -88,16 +104,37 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
     // Calcola scadenza
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
 
-    // Reindirizza all'origin originale con i token
-    const origin = stateData.origin;
-    console.log('Building redirect URL:', { origin });
-    
-    const callbackUrl = new URL(`${origin}/richiedi/dj/libere`);
+    // Se disponibile session_id nello state, salva subito nel DB lato server
+    // cosi la ricerca utente funziona anche se la sessione DJ client non e piu attiva
+    if (stateData.sid) {
+      const supabase = getSupabase();
+      if (supabase) {
+        const { error: saveError } = await supabase
+          .from('sessioni_libere')
+          .update({
+            tidal_access_token: encryptedAccessToken,
+            tidal_refresh_token: encryptedRefreshToken,
+            tidal_user_id: tokenData.user_id || null,
+            tidal_token_expires_at: expiresAt.toISOString(),
+            catalog_type: 'tidal',
+          })
+          .eq('id', stateData.sid)
+          .eq('archived', false);
+
+        if (saveError) {
+          console.error('Failed to persist Tidal auth from callback:', saveError);
+        }
+      } else {
+        console.error('Supabase not configured, cannot persist Tidal auth from callback');
+      }
+    }
+
+    // Reindirizza sempre al dominio canonico in produzione
+    const origin = getCanonicalOrigin(req);
+    console.log('Building redirect URL:', { origin, stateOrigin: stateData.origin });
+
+    const callbackUrl = new URL(`${origin.replace(/\/$/, '')}/richiedi/dj/libere`);
     callbackUrl.searchParams.set('tidal_success', 'true');
-    callbackUrl.searchParams.set('tidal_access_token', encryptedAccessToken);
-    callbackUrl.searchParams.set('tidal_refresh_token', encryptedRefreshToken);
-    callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
-    callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
     if (stateData.sid) {
       callbackUrl.searchParams.set('tidal_session_id', stateData.sid);
     }
@@ -116,11 +153,10 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
   } catch (error) {
     console.error('Tidal callback error:', error);
-    return NextResponse.redirect(
-      new URL('/richiedi/dj/libere?tidal_error=' + encodeURIComponent(
-        error instanceof Error ? error.message : 'callback_failed'
-      ), req.url)
-    );
+    return NextResponse.redirect(buildDjRedirectUrl(
+      req,
+      `?tidal_error=${encodeURIComponent(error instanceof Error ? error.message : 'callback_failed')}`
+    ));
   }
 }
 

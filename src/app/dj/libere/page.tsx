@@ -236,7 +236,16 @@ export default function LibereAdminPanel() {
       });
       
       if (!accessToken || !refreshToken) {
-        setError('❌ Token Tidal mancanti dal callback');
+        if (savedSessionId) {
+          setSuccess('✅ Tidal collegato con successo');
+          if (username && password) {
+            setSelectedSessionId(savedSessionId);
+            loadSessionData(savedSessionId);
+          }
+          window.history.replaceState({}, '', window.location.pathname);
+          return;
+        }
+        setError('❌ Callback Tidal incompleto: sessione non trovata');
         return;
       }
       
