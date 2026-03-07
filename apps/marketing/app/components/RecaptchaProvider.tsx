@@ -25,4 +25,3 @@ export default function RecaptchaProvider({ children }: { children: ReactNode })
     </GoogleReCaptchaProvider>
   );
 }
-}
