@@ -4,6 +4,7 @@ import {
   addTrackToTidalPlaylist,
   getTidalPlaylist,
   decryptToken,
+  getTidalCurrentUserId,
 } from '@/lib/tidal';
 import { getSupabase } from '@/lib/supabase';
 
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!session.tidal_access_token || !session.tidal_user_id) {
+    if (!session.tidal_access_token) {
       return NextResponse.json(
         { ok: false, error: 'Tidal not authenticated' },
         { status: 403 }
@@ -67,13 +68,29 @@ export async function POST(req: NextRequest) {
     }
 
     const accessToken = decryptToken(session.tidal_access_token);
+    let tidalUserId: string | null = session.tidal_user_id || null;
+
+    if (!tidalUserId) {
+      try {
+        tidalUserId = await getTidalCurrentUserId(accessToken);
+        await supabase
+          .from('sessioni_libere')
+          .update({ tidal_user_id: tidalUserId })
+          .eq('id', session_id);
+      } catch (resolveErr) {
+        return NextResponse.json(
+          { ok: false, error: `Cannot resolve Tidal user id: ${resolveErr instanceof Error ? resolveErr.message : 'unknown error'}` },
+          { status: 500 }
+        );
+      }
+    }
 
     // Azione: crea playlist
     if (action === 'create_playlist') {
       const playlist = await createTidalPlaylist(
         session.name,
         accessToken,
-        session.tidal_user_id
+        tidalUserId
       );
 
       // Salva playlist ID nella sessione
@@ -105,7 +122,7 @@ export async function POST(req: NextRequest) {
         const playlist = await createTidalPlaylist(
           session.name,
           accessToken,
-          session.tidal_user_id
+          tidalUserId
         );
         playlistId = playlist.id;
 
@@ -121,7 +138,7 @@ export async function POST(req: NextRequest) {
           const playlist = await createTidalPlaylist(
             session.name,
             accessToken,
-            session.tidal_user_id
+            tidalUserId
           );
           playlistId = playlist.id;
 
