@@ -28,16 +28,38 @@ function getRecaptchaExecutor() {
   return null;
 }
 
-function loadRecaptchaScript(siteKey: string, useRecaptchaNet = false): Promise<void> {
+function waitForExecutor(maxAttempts = 120, intervalMs = 100): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      if (getRecaptchaExecutor()) {
+        window.clearInterval(timer);
+        resolve();
+        return;
+      }
+      if (attempts >= maxAttempts) {
+        window.clearInterval(timer);
+        reject(new Error("reCAPTCHA non disponibile. Riprova."));
+      }
+    }, intervalMs);
+  });
+}
+
+function loadRecaptchaScript(siteKey: string, useRecaptchaNet = false, useEnterprise = false): Promise<void> {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     const host = useRecaptchaNet ? "www.recaptcha.net" : "www.google.com";
-    script.src = `https://${host}/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    const scriptName = useEnterprise ? "enterprise.js" : "api.js";
+    script.src = `https://${host}/recaptcha/${scriptName}?render=${encodeURIComponent(siteKey)}`;
     script.async = true;
     script.defer = true;
     script.dataset.recaptcha = "true";
     script.dataset.recaptchaHost = host;
-    script.onload = () => resolve();
+    script.dataset.recaptchaType = useEnterprise ? "enterprise" : "standard";
+    script.onload = () => {
+      waitForExecutor(120, 100).then(resolve).catch(reject);
+    };
     script.onerror = () => {
       script.remove();
       reject(new Error("Impossibile caricare reCAPTCHA"));
@@ -62,30 +84,26 @@ function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
   recaptchaScriptPromise = new Promise((resolve, reject) => {
     const existingScript = document.querySelector('script[data-recaptcha="true"]') as HTMLScriptElement | null;
     if (existingScript) {
-      // Script gia presente: attendi che grecaptcha sia realmente disponibile.
-      let attempts = 0;
-      const timer = window.setInterval(() => {
-        attempts += 1;
-        if (getRecaptchaExecutor()) {
-          window.clearInterval(timer);
-          resolve();
-          return;
-        }
-        if (attempts >= 30) {
-          window.clearInterval(timer);
-          reject(new Error("reCAPTCHA non disponibile. Riprova."));
-        }
-      }, 100);
+      // Script gia presente: attendi fino a 12s che l'executor sia disponibile.
+      waitForExecutor(120, 100).then(resolve).catch(reject);
       return;
     }
 
-    // Prova host Google, se fallisce tenta recaptcha.net (utile con alcuni blocchi rete).
-    loadRecaptchaScript(siteKey)
-      .then(() => resolve())
+    // Prova in sequenza varianti standard/enterprise e host Google/recaptcha.net.
+    loadRecaptchaScript(siteKey, false, false)
+      .then(resolve)
       .catch(() => {
-        loadRecaptchaScript(siteKey, true)
-          .then(() => resolve())
-          .catch(() => reject(new Error("Impossibile caricare reCAPTCHA")));
+        loadRecaptchaScript(siteKey, false, true)
+          .then(resolve)
+          .catch(() => {
+            loadRecaptchaScript(siteKey, true, false)
+              .then(resolve)
+              .catch(() => {
+                loadRecaptchaScript(siteKey, true, true)
+                  .then(resolve)
+                  .catch(() => reject(new Error("Impossibile caricare reCAPTCHA")));
+              });
+          });
       });
   });
 
