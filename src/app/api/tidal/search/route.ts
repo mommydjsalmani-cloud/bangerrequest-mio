@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchTidal, normalizeTidalTrack, decryptToken, refreshAccessToken, encryptToken } from '@/lib/tidal';
 import { getSupabase } from '@/lib/supabase';
+import { apiPath } from '@/lib/apiPath';
 
 /**
  * GET /api/tidal/search
@@ -9,12 +10,13 @@ import { getSupabase } from '@/lib/supabase';
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
-    const query = searchParams.get('q');
+    const query = (searchParams.get('q') || '').trim();
     const sessionToken = searchParams.get('s');
+    const sessionId = searchParams.get('sid');
     const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0);
 
-    if (!query || query.length < 2) {
+    if (query.length < 2) {
       return NextResponse.json(
         { ok: false, error: 'Query must be at least 2 characters' },
         { status: 400 }
@@ -22,9 +24,19 @@ export async function GET(req: NextRequest) {
     }
     const queryString: string = query;
 
-    if (!sessionToken) {
+    const proxyBase = `${apiPath('/api/tidal/image')}?u=`;
+
+    const withCoverProxy = (track: ReturnType<typeof normalizeTidalTrack>) => {
+      if (!track.cover_url) return track;
+      return {
+        ...track,
+        cover_url: `${proxyBase}${encodeURIComponent(track.cover_url)}`,
+      };
+    };
+
+    if (!sessionToken && !sessionId) {
       return NextResponse.json(
-        { ok: false, error: 'Session token required' },
+        { ok: false, error: 'Session token or id required' },
         { status: 400 }
       );
     }
@@ -38,19 +50,42 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const { data: session, error: sessionError } = await supabase
-      .from('sessioni_libere')
-      .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
-      .eq('token', sessionToken)
-      .eq('archived', false)
-      .single();
+    let session: {
+      id: string;
+      catalog_type: string | null;
+      tidal_access_token: string | null;
+      tidal_refresh_token: string | null;
+      tidal_token_expires_at: string | null;
+    } | null = null;
 
-    if (sessionError || !session) {
+    if (sessionToken) {
+      const { data } = await supabase
+        .from('sessioni_libere')
+        .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
+        .eq('token', sessionToken)
+        .eq('archived', false)
+        .maybeSingle();
+      session = data;
+    }
+
+    if (!session && sessionId) {
+      const { data } = await supabase
+        .from('sessioni_libere')
+        .select('id, catalog_type, tidal_access_token, tidal_refresh_token, tidal_token_expires_at')
+        .eq('id', sessionId)
+        .eq('archived', false)
+        .maybeSingle();
+      session = data;
+    }
+
+    if (!session) {
       return NextResponse.json(
         { ok: false, error: 'Invalid or expired session' },
         { status: 404 }
       );
     }
+
+    const activeSession = session;
 
     // Verifica che sia configurato Tidal
     if (session.catalog_type !== 'tidal' || !session.tidal_access_token) {
@@ -67,9 +102,8 @@ export async function GET(req: NextRequest) {
       : null;
 
     async function doSearch(currentAccessToken: string) {
-      const tokenToUse: string = String(currentAccessToken || '');
-      const results = await searchTidal(queryString, tokenToUse, limit, offset);
-      const tracks = results.tracks.map(normalizeTidalTrack);
+      const results = await searchTidal(queryString, currentAccessToken, limit, offset);
+      const tracks = results.tracks.map(normalizeTidalTrack).map(withCoverProxy);
       return NextResponse.json({
         ok: true,
         tracks,
@@ -103,7 +137,7 @@ export async function GET(req: NextRequest) {
             tidal_refresh_token: encryptedRefresh,
             tidal_token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
           })
-          .eq('id', session.id);
+          .eq('id', activeSession.id);
 
         accessToken = newTokens.access_token;
         return await doSearch(accessToken);

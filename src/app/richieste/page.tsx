@@ -17,6 +17,7 @@ type DeezerTrack = {
   preview_url?: string | null;
   explicit?: boolean;
   isrc?: string | null;
+  external_urls?: Record<string, string>;
 };
 
 // Step del flusso utente
@@ -60,6 +61,7 @@ function RichiesteLibereContent() {
   const [searching, setSearching] = useState(false);
   const [selected, setSelected] = useState<DeezerTrack | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const fallbackCover = publicPath('/cover-placeholder.svg');
   
   const submitted = !!lastRequestId;
 
@@ -383,7 +385,7 @@ function RichiesteLibereContent() {
       setIsCollapsed(false); // Reset collapse quando cerchi
       const isTidal = session?.catalog_type === 'tidal';
       const searchUrl = isTidal
-        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${token}`
+        ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${encodeURIComponent(token || '')}&sid=${encodeURIComponent(session?.id || '')}`
         : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
       fetch(apiPath(searchUrl))
         .then((r) => r.json())
@@ -489,7 +491,7 @@ function RichiesteLibereContent() {
         album: selected.album || '',
         cover_url: selected.cover_url || '',
         duration_ms: selected.duration_ms,
-        source: 'deezer',
+        source: session?.catalog_type === 'tidal' ? 'manual' : 'deezer',
         note: note.trim() || undefined,
         event_code: eventCode.trim() || undefined
       };
@@ -732,15 +734,19 @@ function RichiesteLibereContent() {
                   >
                     <div className="flex gap-3">
                       {/* Cover */}
-                      {request.cover_url && (
-                        <Image
-                          src={request.cover_url}
-                          alt={request.title}
-                          width={56}
-                          height={56}
-                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
+                      <img
+                        src={request.cover_url || fallbackCover}
+                        alt={request.title}
+                        className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src !== fallbackCover) {
+                            target.src = fallbackCover;
+                          }
+                        }}
+                      />
                       
                       {/* Info */}
                       <div className="flex-1 min-w-0">
@@ -905,6 +911,11 @@ function RichiesteLibereContent() {
                   {results.map((track) => {
                     // Determina se questo track dovrebbe essere nascosto
                     const shouldHide = isCollapsed && selected?.id !== track.id;
+                    const isTidalCatalog = session?.catalog_type === 'tidal';
+                    const openUrl = isTidalCatalog
+                      ? (track.external_urls?.tidal || `https://tidal.com/browse/track/${track.id}`)
+                      : (track.external_urls?.deezer || `https://www.deezer.com/track/${track.id}`);
+                    const openLabel = isTidalCatalog ? 'Apri in Tidal' : 'Apri in Deezer';
                     
                     return (
                       <div 
@@ -926,12 +937,18 @@ function RichiesteLibereContent() {
                       <div className="flex items-center gap-3">
                         {/* Cover Art */}
                         <div className="relative flex-shrink-0">
-                          <Image 
-                            src={track.cover_url || '/file.svg'} 
-                            alt={track.title || 'cover'} 
-                            width={48} 
-                            height={48} 
-                            className="w-12 h-12 rounded-lg object-cover shadow-lg" 
+                          <img
+                            src={track.cover_url || fallbackCover}
+                            alt={track.title || 'cover'}
+                            className="w-12 h-12 rounded-lg object-cover shadow-lg"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (target.src !== fallbackCover) {
+                                target.src = fallbackCover;
+                              }
+                            }}
                           />
                           {selected?.id === track.id && (
                             <div className="absolute inset-0 bg-purple-500/30 rounded-lg flex items-center justify-center">
@@ -968,15 +985,15 @@ function RichiesteLibereContent() {
                             </span>
                           )}
                           
-                          {/* Open in Deezer Button */}
+                          {/* Open in catalog button */}
                           <a
-                            href={`https://www.deezer.com/track/${track.id}`}
+                            href={openUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-1.5 px-3 rounded-lg transition-all duration-200 shadow-lg whitespace-nowrap"
                           >
-                            Apri in Deezer
+                            {openLabel}
                           </a>
                         </div>
                       </div>
@@ -1016,12 +1033,18 @@ function RichiesteLibereContent() {
                   ✨ Conferma la tua richiesta
                 </h3>
                 <div className="flex items-center gap-3 mb-3">
-                  <Image 
-                    src={selected.cover_url || '/file.svg'} 
-                    alt={selected.title || 'cover'} 
-                    width={48} 
-                    height={48} 
-                    className="w-12 h-12 rounded-lg object-cover shadow-lg" 
+                  <img
+                    src={selected.cover_url || fallbackCover}
+                    alt={selected.title || 'cover'}
+                    className="w-12 h-12 rounded-lg object-cover shadow-lg"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src !== fallbackCover) {
+                        target.src = fallbackCover;
+                      }
+                    }}
                   />
                   <div className="min-w-0">
                     <div className="font-semibold text-white truncate">{selected.title}</div>

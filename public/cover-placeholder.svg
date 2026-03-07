@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-label="Cover non disponibile">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="100%" stop-color="#9333ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="320" height="320" rx="24" fill="url(#g)"/>
+  <circle cx="160" cy="128" r="54" fill="rgba(255,255,255,0.22)"/>
+  <rect x="148" y="92" width="24" height="86" rx="12" fill="#ffffff"/>
+  <circle cx="196" cy="176" r="18" fill="#ffffff"/>
+  <text x="160" y="258" text-anchor="middle" fill="#ffffff" font-size="20" font-family="Arial, sans-serif" opacity="0.9">Cover non disponibile</text>
+</svg>

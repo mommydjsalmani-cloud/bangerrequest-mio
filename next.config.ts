@@ -9,7 +9,10 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'cdn-images.dzcdn.net' },
-      { protocol: 'https', hostname: 'api.qrserver.com' }
+      { protocol: 'https', hostname: 'api.qrserver.com' },
+      { protocol: 'https', hostname: 'resources.tidal.com' },
+      { protocol: 'https', hostname: '**.tidal.com' },
+      { protocol: 'https', hostname: '**.wimpmusic.com' }
     ],
     // Ottimizzazioni performance
     formats: ['image/webp', 'image/avif'],
@@ -32,7 +35,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://cdn-images.dzcdn.net https://api.qrserver.com",
+      "img-src 'self' data: https://cdn-images.dzcdn.net https://api.qrserver.com https://resources.tidal.com https://*.tidal.com https://*.wimpmusic.com",
       "font-src 'self'",
       "connect-src 'self' https://*.supabase.co https://api.deezer.com https://www.google.com",
       "frame-src 'self' https://www.google.com https://recaptcha.google.com",
