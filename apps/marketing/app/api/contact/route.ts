@@ -93,7 +93,11 @@ const contactSchema = z.object({
     .optional()
     .transform(val => val || ''),
   recaptchaToken: z.string()
-    .min(1, 'Token reCAPTCHA mancante'),
+    .optional()
+    .transform(val => val || ''),
+  recaptchaBypassed: z.boolean()
+    .optional()
+    .default(false),
   website: z.string()
     .max(0, 'Honeypot field deve essere vuoto') // Deve essere vuoto (honeypot)
     .optional()
@@ -118,13 +122,17 @@ function containsSpam(text: string): boolean {
   return SPAM_KEYWORDS.some(keyword => lowerText.includes(keyword));
 }
 
-// Verifica token reCAPTCHA v3
-async function verifyRecaptcha(token: string, ip: string): Promise<{ success: boolean; score: number; error?: string }> {
+// Verifica token reCAPTCHA v3 (fallback controllato se token mancante)
+async function verifyRecaptcha(token: string, ip: string): Promise<{ success: boolean; score: number; error?: string; bypassed?: boolean }> {
   const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+
+  if (!token) {
+    return { success: true, score: -1, error: 'TOKEN_MISSING_BYPASS', bypassed: true };
+  }
 
   if (!secretKey) {
     console.error('[RECAPTCHA_ERROR] Secret key non configurata');
-    return { success: false, score: 0, error: 'CAPTCHA non configurato' };
+    return { success: true, score: -1, error: 'SECRET_MISSING_BYPASS', bypassed: true };
   }
 
   try {
@@ -140,10 +148,11 @@ async function verifyRecaptcha(token: string, ip: string): Promise<{ success: bo
       success: data.success && data.score >= 0.5,
       score: data.score || 0,
       error: data['error-codes']?.[0],
+      bypassed: false,
     };
   } catch (error) {
     console.error('[RECAPTCHA_VERIFY_ERROR]', error);
-    return { success: false, score: 0, error: 'Errore verifica CAPTCHA' };
+    return { success: false, score: 0, error: 'Errore verifica CAPTCHA', bypassed: false };
   }
 }
 
@@ -197,7 +206,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    const { nome, email, telefono, tipoEvento, data, location, messaggio, recaptchaToken, website } = validationResult.data;
+    const { nome, email, telefono, tipoEvento, data, location, messaggio, recaptchaToken, recaptchaBypassed, website } = validationResult.data;
 
     // HONEYPOT CHECK - Se il campo "website" è compilato, è un bot
     if (website && website.trim().length > 0) {
@@ -213,7 +222,7 @@ export async function POST(request: Request) {
 
     // Verifica reCAPTCHA
     const recaptchaResult = await verifyRecaptcha(recaptchaToken, ip);
-    
+
     if (!recaptchaResult.success) {
       console.warn('[CONTACT_RECAPTCHA_FAILED]', {
         ip,
@@ -221,19 +230,29 @@ export async function POST(request: Request) {
         error: recaptchaResult.error,
         timestamp: new Date().toISOString()
       });
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: 'Verifica sicurezza fallita. Riprova.',
         code: 'RECAPTCHA_FAILED'
       }, { status: 403 });
     }
 
-    // Log score per monitoraggio
-    console.log('[CONTACT_RECAPTCHA_SCORE]', {
-      ip,
-      email,
-      score: recaptchaResult.score,
-      timestamp: new Date().toISOString()
-    });
+    if (recaptchaResult.bypassed || recaptchaBypassed) {
+      console.warn('[CONTACT_RECAPTCHA_BYPASSED]', {
+        ip,
+        email,
+        reason: recaptchaResult.error,
+        clientBypassed: recaptchaBypassed,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      // Log score per monitoraggio
+      console.log('[CONTACT_RECAPTCHA_SCORE]', {
+        ip,
+        email,
+        score: recaptchaResult.score,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // Check spam keywords
     if (containsSpam(`${nome} ${messaggio}`)) {

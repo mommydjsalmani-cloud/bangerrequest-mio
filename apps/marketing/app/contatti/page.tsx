@@ -177,11 +177,19 @@ export default function Contatti() {
     setError('');
 
     try {
-      if (!recaptchaSiteKey) {
-        throw new Error("Configurazione sicurezza mancante. Riprova tra poco.");
-      }
+      let recaptchaToken = '';
+      let recaptchaBypassed = false;
 
-      const recaptchaToken = await getRecaptchaToken(recaptchaSiteKey);
+      if (recaptchaSiteKey) {
+        try {
+          recaptchaToken = await getRecaptchaToken(recaptchaSiteKey);
+        } catch (captchaError) {
+          recaptchaBypassed = true;
+          console.warn('[CONTACT_RECAPTCHA_BYPASSED]', captchaError);
+        }
+      } else {
+        recaptchaBypassed = true;
+      }
 
       const response = await fetch('/api/contact', {
         method: 'POST',
@@ -191,6 +199,7 @@ export default function Contatti() {
         body: JSON.stringify({
           ...formData,
           recaptchaToken,
+          recaptchaBypassed,
         }),
       });
 
