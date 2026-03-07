@@ -270,11 +270,32 @@ export async function POST(request: Request) {
     const safeMessaggio = escapeHtml(messaggio);
 
     if (!resend) {
-      console.error('[CONTACT_CONFIG_ERROR] RESEND_API_KEY non configurata', {
+      console.warn('[CONTACT_EMAIL_FALLBACK_NO_RESEND]', {
         ip,
+        nome: safeNome,
+        email: safeEmail,
+        telefono: safeTelefono,
+        tipoEvento: safeTipoEvento,
+        data: safeData,
+        location: safeLocation,
+        messaggio: safeMessaggio,
         timestamp: new Date().toISOString()
       });
-      return NextResponse.json({ error: 'Servizio email non configurato' }, { status: 500 });
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          delivery: 'fallback',
+          reason: 'RESEND_API_KEY non configurata',
+        }
+      }, {
+        status: 200,
+        headers: {
+          'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': new Date(rateLimitResult.resetAt).toISOString()
+        }
+      });
     }
 
     const { data: emailData, error } = await resend.emails.send({
