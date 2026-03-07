@@ -782,13 +782,30 @@ export async function PATCH(req: Request) {
       if (session && session.catalog_type === 'tidal' && session.tidal_access_token && request.track_id) {
         // Esegui in modo sincrono (setImmediate non funziona in serverless Vercel)
         try {
-          const { addTrackToTidalPlaylist, createTidalPlaylist, getTidalPlaylist, decryptToken, searchTidal } = await import('@/lib/tidal');
+          const {
+            addTrackToTidalPlaylist,
+            createTidalPlaylist,
+            getTidalPlaylist,
+            decryptToken,
+            searchTidal,
+            normalizeTidalTrackIdForPlaylist,
+            getTidalCurrentUserId,
+          } = await import('@/lib/tidal');
           const accessToken = decryptToken(session.tidal_access_token!);
-          
+          let tidalUserId: string | null = session.tidal_user_id || null;
+
+          if (!tidalUserId) {
+            tidalUserId = await getTidalCurrentUserId(accessToken);
+            await supabase
+              .from('sessioni_libere')
+              .update({ tidal_user_id: tidalUserId })
+              .eq('id', request.session_id);
+          }
+
           let playlistId = session.tidal_playlist_id;
-          
-          if (!playlistId && session.tidal_user_id) {
-            const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
+
+          if (!playlistId && tidalUserId) {
+            const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
             playlistId = playlist.id;
             await supabase
               .from('sessioni_libere')
@@ -796,8 +813,8 @@ export async function PATCH(req: Request) {
               .eq('id', request.session_id);
           } else if (playlistId) {
             const existing = await getTidalPlaylist(playlistId, accessToken);
-            if (!existing && session.tidal_user_id) {
-              const playlist = await createTidalPlaylist(session.name, accessToken, session.tidal_user_id);
+            if (!existing && tidalUserId) {
+              const playlist = await createTidalPlaylist(session.name, accessToken, tidalUserId);
               playlistId = playlist.id;
               await supabase
                 .from('sessioni_libere')
@@ -805,9 +822,9 @@ export async function PATCH(req: Request) {
                 .eq('id', request.session_id);
             }
           }
-          
+
           if (playlistId) {
-            let trackIdToAdd = request.track_id!;
+            let trackIdToAdd = normalizeTidalTrackIdForPlaylist(request.track_id!) || String(request.track_id);
             try {
               await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
             } catch {
@@ -816,7 +833,7 @@ export async function PATCH(req: Request) {
                 const searchQuery = request.artists ? `${request.title} ${request.artists}` : request.title;
                 const searchResults = await searchTidal(searchQuery, accessToken, 5, 0);
                 if (searchResults.tracks?.length > 0) {
-                  trackIdToAdd = searchResults.tracks[0].id;
+                  trackIdToAdd = normalizeTidalTrackIdForPlaylist(searchResults.tracks[0].id) || String(searchResults.tracks[0].id);
                   await addTrackToTidalPlaylist(playlistId, trackIdToAdd, accessToken);
                 }
               }

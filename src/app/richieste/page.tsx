@@ -734,6 +734,7 @@ function RichiesteLibereContent() {
                   >
                     <div className="flex gap-3">
                       {/* Cover */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={request.cover_url || fallbackCover}
                         alt={request.title}
@@ -937,6 +938,7 @@ function RichiesteLibereContent() {
                       <div className="flex items-center gap-3">
                         {/* Cover Art */}
                         <div className="relative flex-shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={track.cover_url || fallbackCover}
                             alt={track.title || 'cover'}
@@ -1033,6 +1035,7 @@ function RichiesteLibereContent() {
                   ✨ Conferma la tua richiesta
                 </h3>
                 <div className="flex items-center gap-3 mb-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={selected.cover_url || fallbackCover}
                     alt={selected.title || 'cover'}

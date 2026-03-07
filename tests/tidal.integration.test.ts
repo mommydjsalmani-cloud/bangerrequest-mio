@@ -61,9 +61,6 @@ describe('Tidal Integration - Critical Functions', () => {
       const canonicalDomain = 'mommydj.com';
       const vercelDomain = 'bangerrequest-mio.vercel.app';
       
-      // In produzione dovrebbe sempre usare il dominio canonico
-      const shouldUseCanonicaldomain = process.env.NODE_ENV === 'production';
-      
       expect(canonicalDomain).toBe('mommydj.com');
       expect(canonicalDomain).not.toBe(vercelDomain);
     });

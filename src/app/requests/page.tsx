@@ -288,6 +288,7 @@ export default function Requests() {
             <div className="grid grid-cols-1 gap-2">
               {results.map((t) => (
                 <div key={t.id} className={`p-2 rounded flex items-center gap-3 sm:gap-4 ${selected?.id === t.id ? 'ring-2 ring-green-500' : 'bg-zinc-800/40'} transition`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={t.cover_url || fallbackCover}
                 alt={t.title || 'cover'}
