@@ -59,3 +59,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large local backups (avoid GitHub 100MB push failures)
+backups/**/*.tar
+backups/**/*.tar.gz
+backups/**/*.tgz
+backups/**/*.zip
