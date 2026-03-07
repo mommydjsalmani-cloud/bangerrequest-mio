@@ -34,6 +34,14 @@ export default function LibereAdminPanel() {
   const [homepageVisible, setHomepageVisible] = useState(false); // Stato visibilità homepage
   const [currentEventCodeInput, setCurrentEventCodeInput] = useState(''); // Input codice evento corrente
   const [sortByPriority, setSortByPriority] = useState(false); // Toggle ordinamento per priorità
+
+  const tidalTokenExpiresAtMs = currentSession?.tidal_token_expires_at
+    ? new Date(currentSession.tidal_token_expires_at).getTime()
+    : null;
+  const isTidalTokenExpired = typeof tidalTokenExpiresAtMs === 'number'
+    ? Number.isFinite(tidalTokenExpiresAtMs) && tidalTokenExpiresAtMs <= Date.now()
+    : false;
+  const isTidalAuthenticated = Boolean(currentSession?.tidal_access_token) && !isTidalTokenExpired;
   
   /**
    * Calcola lo score di una richiesta.
@@ -1447,28 +1455,37 @@ export default function LibereAdminPanel() {
                     
                     {currentSession?.catalog_type === 'tidal' && (
                       <div className="border-t border-gray-300 pt-4 mt-4">
-                        {currentSession?.tidal_access_token ? (
-                          <div className="flex items-center gap-2 text-sm text-green-700">
-                            <span className="text-lg">✅</span>
-                            <span className="font-medium">Autenticato con Tidal</span>
-                            {currentSession?.tidal_user_id && (
-                              <span className="text-gray-600 ml-2">
-                                (User ID: {currentSession.tidal_user_id})
-                              </span>
-                            )}
+                        {isTidalAuthenticated ? (
+                          <div>
+                            <div className="flex items-center gap-2 text-sm text-green-700">
+                              <span className="text-lg">✅</span>
+                              <span className="font-medium">Autenticato con Tidal</span>
+                              {currentSession?.tidal_user_id && (
+                                <span className="text-gray-600 ml-2">
+                                  (User ID: {currentSession.tidal_user_id})
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={initTidalAuth}
+                              disabled={loading}
+                              className="mt-3 py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow transition-colors disabled:opacity-50"
+                            >
+                              🔄 Ricollega Tidal
+                            </button>
                           </div>
                         ) : (
                           <div>
                             <p className="text-sm text-orange-700 mb-3 flex items-center gap-2">
                               <span className="text-lg">⚠️</span>
-                              <span>Accedi a Tidal per abilitare le funzioni playlist</span>
+                              <span>{isTidalTokenExpired ? 'Sessione Tidal scaduta: riconnettiti' : 'Accedi a Tidal per abilitare le funzioni playlist'}</span>
                             </p>
                             <button
                               onClick={initTidalAuth}
                               disabled={loading}
                               className="py-2 px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium shadow transition-colors disabled:opacity-50"
                             >
-                              🔐 Accedi a Tidal
+                              {isTidalTokenExpired ? '🔄 Riconnetti Tidal' : '🔐 Accedi a Tidal'}
                             </button>
                           </div>
                         )}
