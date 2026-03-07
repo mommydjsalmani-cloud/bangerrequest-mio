@@ -62,6 +62,7 @@ function RichiesteLibereContent() {
   const [selected, setSelected] = useState<DeezerTrack | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const fallbackCover = publicPath('/cover-placeholder.svg');
+  const isWarningMessage = !!message && (message.includes('⚠️') || message.toLowerCase().includes('ricolleg'));
   
   const submitted = !!lastRequestId;
 
@@ -388,14 +389,27 @@ function RichiesteLibereContent() {
         ? `/api/tidal/search?q=${encodeURIComponent(query)}&limit=10&s=${encodeURIComponent(token || '')}&sid=${encodeURIComponent(session?.id || '')}`
         : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
       fetch(apiPath(searchUrl))
-        .then((r) => r.json())
-        .then((data) => {
-          if (!data.ok && data.error) {
+        .then(async (r) => {
+          const data = await r.json();
+          return { data, status: r.status, ok: r.ok };
+        })
+        .then(({ data, status, ok }) => {
+          if (!ok || !data?.ok) {
             setResults([]);
-            if (data.error.includes('Tidal not configured')) {
-              setMessage('⚠️ Il DJ non ha ancora collegato Tidal a questa sessione. Riprova tra poco.');
-            } else if (data.error.includes('Invalid or expired session')) {
-              setMessage('⚠️ Sessione Tidal scaduta. Il DJ deve riconnettersi a Tidal.');
+            const err = String(data?.error || '');
+            if (isTidal) {
+              if (
+                status === 401 ||
+                status === 403 ||
+                err.includes('Tidal not configured') ||
+                err.includes('Tidal not authenticated') ||
+                err.includes('Invalid or expired session') ||
+                err.includes('401')
+              ) {
+                setMessage('⚠️ Tidal non disponibile ora. Il DJ deve ricollegarsi a Tidal per continuare.');
+              } else {
+                setMessage('⚠️ Tidal temporaneamente non disponibile. Riprova tra poco o avvisa il DJ.');
+              }
             }
             return;
           }
@@ -860,7 +874,7 @@ function RichiesteLibereContent() {
         </button>
 
         {message && (
-          <div className="bg-green-500/20 border border-green-500/50 text-green-200 py-3 px-4 rounded-lg text-center backdrop-blur-lg">
+          <div className={`${isWarningMessage ? 'bg-amber-500/20 border-amber-400/50 text-amber-100' : 'bg-green-500/20 border-green-500/50 text-green-200'} border py-3 px-4 rounded-lg text-center backdrop-blur-lg`}>
             {message}
           </div>
         )}

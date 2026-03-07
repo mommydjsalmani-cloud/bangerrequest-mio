@@ -66,6 +66,7 @@ export default function Requests() {
   const [lastRequestStatus, setLastRequestStatus] = useState<"new"|"accepted"|"rejected"|"muted"|"cancelled"|null>(null);
   const [submittedTrack, setSubmittedTrack] = useState<{ title?: string; artists?: string } | null>(null);
   const submitted = !!lastRequestId;
+  const isWarningMessage = !!message && (message.includes('⚠️') || message.toLowerCase().includes('ricolleg'));
 
   // Helper function per convertire millisecondi in formato mm:ss
   const formatDuration = (durationMs: number) => {
@@ -87,8 +88,31 @@ export default function Requests() {
         : `/api/deezer/search?q=${encodeURIComponent(query)}&limit=10`;
       
       fetch(apiPath(searchEndpoint))
-        .then((r) => r.json())
-        .then((data) => {
+        .then(async (r) => {
+          const data = await r.json();
+          return { data, status: r.status, ok: r.ok };
+        })
+        .then(({ data, status, ok }) => {
+          if (!ok || !data?.ok) {
+            setResults([]);
+            if (catalogType === 'tidal') {
+              const err = String(data?.error || '');
+              if (
+                status === 401 ||
+                status === 403 ||
+                err.includes('Tidal not configured') ||
+                err.includes('Tidal not authenticated') ||
+                err.includes('Invalid or expired session') ||
+                err.includes('401')
+              ) {
+                setMessage('⚠️ Tidal non disponibile ora. Il DJ deve ricollegarsi a Tidal.');
+              } else {
+                setMessage('⚠️ Tidal temporaneamente non disponibile. Riprova tra poco o avvisa il DJ.');
+              }
+            }
+            return;
+          }
+          setMessage(null);
           setResults(data.tracks || data.results || []);
         })
         .catch(() => setResults([]))
@@ -387,7 +411,11 @@ export default function Requests() {
           </div>
         )}
 
-  {message && !submitted && <div className="text-center mt-2 text-sm p-2 rounded bg-zinc-800 text-white">{message}</div>}
+  {message && !submitted && (
+    <div className={`text-center mt-2 text-sm p-2 rounded ${isWarningMessage ? 'bg-amber-900/50 text-amber-100 border border-amber-500/40' : 'bg-zinc-800 text-white'}`}>
+      {message}
+    </div>
+  )}
 
         {!submitted && lastRequestId && (
           <div className="text-xs text-gray-300 mt-2">Ultima richiesta ID {lastRequestId} — stato: <span className="font-semibold">{lastRequestStatus ?? 'in attesa'}</span></div>
