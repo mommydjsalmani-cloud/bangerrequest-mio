@@ -2,15 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
- 
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (cb: () => void) => void;
-      execute: (siteKey: string, options: { action: string }) => Promise<string>;
-    };
-  }
-}
 
 let recaptchaScriptPromise: Promise<void> | null = null;
 
@@ -19,7 +10,7 @@ function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
     return Promise.reject(new Error('Browser non disponibile'));
   }
 
-  if (window.grecaptcha) {
+  if ((window as any).grecaptcha) {
     return Promise.resolve();
   }
 
@@ -74,13 +65,13 @@ export default function Contatti() {
     try {
       await ensureRecaptchaLoaded(recaptchaSiteKey);
 
-      if (!window.grecaptcha) {
+      if (!(window as any).grecaptcha) {
         throw new Error('reCAPTCHA non disponibile');
       }
 
       const recaptchaToken = await new Promise<string>((resolve, reject) => {
-        window.grecaptcha?.ready(() => {
-          window.grecaptcha
+        (window as any).grecaptcha?.ready(() => {
+          (window as any).grecaptcha
             ?.execute(recaptchaSiteKey, { action: 'contact_form' })
             .then(resolve)
             .catch(() => reject(new Error('Errore generazione token reCAPTCHA')));
