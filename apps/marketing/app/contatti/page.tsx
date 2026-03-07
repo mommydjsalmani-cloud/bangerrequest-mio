@@ -5,8 +5,23 @@ import { useState } from "react";
 
 let recaptchaScriptPromise: Promise<void> | null = null;
 
+type RecaptchaExecute = (siteKey: string, options: { action: string }) => Promise<string>;
+
+type RecaptchaApi = {
+  ready?: (callback: () => void) => void;
+  execute?: RecaptchaExecute;
+  enterprise?: {
+    ready?: (callback: () => void) => void;
+    execute?: RecaptchaExecute;
+  };
+};
+
+type WindowWithRecaptcha = Window & {
+  grecaptcha?: RecaptchaApi;
+};
+
 function getRecaptchaExecutor() {
-  const grecaptcha = (window as any).grecaptcha;
+  const grecaptcha = (window as WindowWithRecaptcha).grecaptcha;
   if (!grecaptcha) {
     return null;
   }
