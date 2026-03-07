@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:smoke": "bash scripts/smoke-test-production.sh",
     "type-check": "tsc --noEmit",
     "ci": "npm run lint && npm run type-check && npm run test && npm run build",
     "health": "node scripts/check_health.js",

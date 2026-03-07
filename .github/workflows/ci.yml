@@ -111,3 +111,19 @@ jobs:
   #         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
   #         vercel-args: '--prod'
   #         github-comment: true
+
+  smoke-tests:
+    name: 🔥 Production Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: ⏳ Wait for Vercel auto-deployment
+        run: sleep 90
+        
+      - name: 🔥 Run production smoke tests
+        run: bash scripts/smoke-test-production.sh
