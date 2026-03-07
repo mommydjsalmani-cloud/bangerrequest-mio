@@ -4,11 +4,12 @@ import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { ReactNode } from 'react';
 
 export default function RecaptchaProvider({ children }: { children: ReactNode }) {
-  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
+  // Ottieni la chiave - usa un valore di fallback per evitare errori di context
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI';
 
-  if (!recaptchaSiteKey) {
-    console.warn('⚠️ NEXT_PUBLIC_RECAPTCHA_SITE_KEY non configurata');
-    return <>{children}</>;
+  // Log warning solo lato client
+  if (typeof window !== 'undefined' && !process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+    console.warn('⚠️ NEXT_PUBLIC_RECAPTCHA_SITE_KEY non configurata - usando chiave di test');
   }
 
   return (
@@ -23,4 +24,5 @@ export default function RecaptchaProvider({ children }: { children: ReactNode })
       {children}
     </GoogleReCaptchaProvider>
   );
+}
 }
