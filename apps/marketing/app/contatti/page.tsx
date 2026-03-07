@@ -3,7 +3,45 @@
 import Link from "next/link";
 import { useState } from "react";
 
+let recaptchaScriptPromise: Promise<void> | null = null;
+
+function ensureRecaptchaLoaded(siteKey: string): Promise<void> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Browser non disponibile"));
+  }
+
+  const grecaptcha = (window as any).grecaptcha;
+  if (grecaptcha && typeof grecaptcha.ready === "function") {
+    return Promise.resolve();
+  }
+
+  if (recaptchaScriptPromise) {
+    return recaptchaScriptPromise;
+  }
+
+  recaptchaScriptPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector('script[data-recaptcha="true"]') as HTMLScriptElement | null;
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", () => reject(new Error("Impossibile caricare reCAPTCHA")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`;
+    script.async = true;
+    script.defer = true;
+    script.dataset.recaptcha = "true";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Impossibile caricare reCAPTCHA"));
+    document.head.appendChild(script);
+  });
+
+  return recaptchaScriptPromise;
+}
+
 export default function Contatti() {
+  const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -26,6 +64,26 @@ export default function Contatti() {
     setError('');
 
     try {
+      if (!recaptchaSiteKey) {
+        throw new Error("Configurazione sicurezza mancante. Riprova tra poco.");
+      }
+
+      await ensureRecaptchaLoaded(recaptchaSiteKey);
+      const grecaptcha = (window as any).grecaptcha;
+
+      if (!grecaptcha || typeof grecaptcha.execute !== "function") {
+        throw new Error("reCAPTCHA non disponibile. Riprova.");
+      }
+
+      const recaptchaToken = await new Promise<string>((resolve, reject) => {
+        grecaptcha.ready(() => {
+          grecaptcha
+            .execute(recaptchaSiteKey, { action: "contact_form" })
+            .then((token: string) => resolve(token))
+            .catch(() => reject(new Error("Verifica sicurezza fallita. Riprova.")));
+        });
+      });
+
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: {
@@ -33,7 +91,7 @@ export default function Contatti() {
         },
         body: JSON.stringify({
           ...formData,
-          recaptchaToken: 'test-token', // Placeholder per ora
+          recaptchaToken,
         }),
       });
 
