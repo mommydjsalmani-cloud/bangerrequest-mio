@@ -7,6 +7,7 @@ import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereSta
 import { apiPath } from '@/lib/apiPath';
 
 export default function LibereAdminPanel() {
+  const TIDAL_POST_AUTH_REFRESH_KEY = 'tidal_post_auth_refresh_done';
   const [authed, setAuthed] = useState(false);
   const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
   const [username, setUsername] = useState('');
@@ -149,7 +150,8 @@ export default function LibereAdminPanel() {
     accessToken: string,
     refreshToken: string,
     userId: string | null,
-    expiresAt: string | null
+    expiresAt: string | null,
+    forceOneShotRefresh = false
   ) => {
     setLoading(true);
     try {
@@ -174,10 +176,20 @@ export default function LibereAdminPanel() {
       console.log('Save Tidal auth response:', data);
 
       if (data.ok) {
-        setSuccess('✅ Tidal autenticato con successo!');
         sessionStorage.removeItem('tidal_session_id');
         localStorage.removeItem('tidal_session_id');
         localStorage.removeItem('tidal_oauth_pending');
+
+        // Su mobile lo stato layout può rimanere incoerente subito dopo OAuth.
+        // Eseguiamo un refresh completo una sola volta, replicando il workaround manuale utente.
+        if (forceOneShotRefresh && sessionStorage.getItem(TIDAL_POST_AUTH_REFRESH_KEY) !== '1') {
+          sessionStorage.setItem(TIDAL_POST_AUTH_REFRESH_KEY, '1');
+          window.location.replace(window.location.pathname);
+          return;
+        }
+
+        sessionStorage.removeItem(TIDAL_POST_AUTH_REFRESH_KEY);
+        setSuccess('✅ Tidal autenticato con successo!');
         setSelectedSessionId(sessionId);
         await loadSessionData(sessionId);
         window.history.replaceState({}, '', window.location.pathname);
@@ -237,7 +249,8 @@ export default function LibereAdminPanel() {
             pending.accessToken,
             pending.refreshToken,
             pending.userId || null,
-            pending.expiresAt || null
+            pending.expiresAt || null,
+            true
           );
           return;
         }
@@ -297,7 +310,7 @@ export default function LibereAdminPanel() {
       }
 
       cleanCallbackUrl();
-      saveTidalAuth(savedSessionId, accessToken, refreshToken, userId, expiresAt);
+      saveTidalAuth(savedSessionId, accessToken, refreshToken, userId, expiresAt, true);
     }
 
     if (tidal_error) {
