@@ -202,6 +202,23 @@ export default function LibereAdminPanel() {
     const userId = params.get('tidal_user_id');
     const expiresAt = params.get('tidal_expires_at');
     const callbackSessionId = params.get('tidal_session_id');
+    const hasTidalCallbackParams = Boolean(
+      tidal_success ||
+      tidal_error ||
+      accessToken ||
+      refreshToken ||
+      callbackSessionId ||
+      userId ||
+      expiresAt
+    );
+
+    // Su mobile il cambio modalità (desktop/mobile) può forzare un reload.
+    // Ripuliamo subito la query OAuth per evitare che il callback venga rieseguito/duplicato.
+    const cleanCallbackUrl = () => {
+      if (hasTidalCallbackParams) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    };
 
     // Se il callback è già passato ma la sessione DJ si è persa (caso mobile), completa il salvataggio dopo login
     const pendingRaw = localStorage.getItem('tidal_oauth_pending');
@@ -241,12 +258,12 @@ export default function LibereAdminPanel() {
       
       if (!accessToken || !refreshToken) {
         if (savedSessionId) {
+          cleanCallbackUrl();
           setSuccess('✅ Tidal collegato con successo');
           if (username && password) {
             setSelectedSessionId(savedSessionId);
             loadSessionData(savedSessionId);
           }
-          window.history.replaceState({}, '', window.location.pathname);
           return;
         }
         setError('❌ Callback Tidal incompleto: sessione non trovata');
@@ -266,6 +283,7 @@ export default function LibereAdminPanel() {
       }
       
       if (!username || !password) {
+        cleanCallbackUrl();
         localStorage.setItem('tidal_oauth_pending', JSON.stringify({
           sessionId: savedSessionId,
           accessToken,
@@ -275,17 +293,16 @@ export default function LibereAdminPanel() {
         }));
         console.log('Credenziali DJ perse durante callback, salvate in localStorage e attesa login');
         setSuccess('🔐 Callback Tidal ricevuto. Fai login DJ per completare il collegamento.');
-        // Non pulire URL, così il messaggio rimane visibile
-        setTimeout(() => window.history.replaceState({}, '', window.location.pathname), 5000);
         return;
       }
 
+      cleanCallbackUrl();
       saveTidalAuth(savedSessionId, accessToken, refreshToken, userId, expiresAt);
     }
 
     if (tidal_error) {
+      cleanCallbackUrl();
       setError(`Errore Tidal OAuth: ${tidal_error}`);
-      window.history.replaceState({}, '', window.location.pathname);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, password]);
@@ -784,7 +801,8 @@ export default function LibereAdminPanel() {
       if (data.ok && data.authUrl) {
         sessionStorage.setItem('tidal_session_id', selectedSessionId);
         localStorage.setItem('tidal_session_id', selectedSessionId);
-        window.location.href = data.authUrl;
+        // replace evita uno stato di history intermedio che su mobile può riaprire viste errate
+        window.location.replace(data.authUrl);
       } else {
         setError(data.error || 'Errore auth Tidal');
       }
