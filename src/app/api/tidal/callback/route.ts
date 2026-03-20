@@ -135,6 +135,12 @@ async function handleCallback(searchParams: URLSearchParams, req: NextRequest) {
 
     const callbackUrl = new URL(`${origin.replace(/\/$/, '')}/richiedi/dj/libere`);
     callbackUrl.searchParams.set('tidal_success', 'true');
+    // ✅ FIX: Passa i token nel URL così il pannello DJ può usarli anche su mobile
+    // Questo evita problemi di sincronizzazione quando sessionStorage è vuoto (tab separata, incognito, ecc)
+    callbackUrl.searchParams.set('tidal_access_token', encryptedAccessToken);
+    callbackUrl.searchParams.set('tidal_refresh_token', encryptedRefreshToken);
+    callbackUrl.searchParams.set('tidal_user_id', tokenData.user_id || '');
+    callbackUrl.searchParams.set('tidal_expires_at', expiresAt.toISOString());
     if (stateData.sid) {
       callbackUrl.searchParams.set('tidal_session_id', stateData.sid);
     }
