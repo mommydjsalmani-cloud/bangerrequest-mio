@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { formatDateTime, formatDuration, LibereSession, LibereRequest, LibereStats, SESSION_STATUS_LABELS, STATUS_LABELS, STATUS_COLORS, generatePublicUrl, generateQRCodeUrl } from '@/lib/libereStore';
 import { apiPath } from '@/lib/apiPath';
 
 export default function LibereAdminPanel() {
+  const router = useRouter();
   const TIDAL_POST_AUTH_REFRESH_KEY = 'tidal_post_auth_refresh_done';
   const [authed, setAuthed] = useState(false);
   const [initializing, setInitializing] = useState(true); // Nuovo stato per evitare il flash
@@ -1220,7 +1222,12 @@ export default function LibereAdminPanel() {
               </Link>
               
               <button
-                onClick={() => setAuthed(false)}
+                onClick={() => {
+                  sessionStorage.removeItem('dj_user');
+                  sessionStorage.removeItem('dj_secret');
+                  setAuthed(false);
+                  router.push('/dj/login');
+                }}
                 className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors backdrop-blur-sm border border-white/30"
               >
                 Logout
