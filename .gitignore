@@ -65,3 +65,4 @@ backups/**/*.tar
 backups/**/*.tar.gz
 backups/**/*.tgz
 backups/**/*.zip
+backups/manual-backup-complete-*/
