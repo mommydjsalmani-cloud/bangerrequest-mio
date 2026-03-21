@@ -505,7 +505,7 @@ function RichiesteLibereContent() {
         album: selected.album || '',
         cover_url: selected.cover_url || '',
         duration_ms: selected.duration_ms,
-        source: session?.catalog_type === 'tidal' ? 'manual' : 'deezer',
+        source: session?.catalog_type === 'tidal' ? 'tidal' : 'deezer',
         note: note.trim() || undefined,
         event_code: eventCode.trim() || undefined
       };

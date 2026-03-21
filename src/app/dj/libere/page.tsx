@@ -1030,7 +1030,7 @@ export default function LibereAdminPanel() {
       `"${STATUS_LABELS[request.status]}"`,
       `"${(request.requester_name || '').replace(/"/g, '""')}"`,
       `"${(request.note || '').replace(/"/g, '""')}"`,
-      `"${request.source === 'deezer' ? 'Deezer' : 'Manuale'}"`,
+      `"${request.source === 'deezer' ? 'Deezer' : request.source === 'spotify' ? 'Spotify' : request.source === 'tidal' ? 'Tidal' : 'Manuale'}"`,
       `"${request.duration_ms ? formatDuration(request.duration_ms) : ''}"`,
       `"${(request.event_code || '').replace(/"/g, '""')}"`
     ]);
@@ -1941,7 +1941,7 @@ export default function LibereAdminPanel() {
                           {request.requester_name && (
                             <div><strong>👤 Richiedente:</strong> {request.requester_name}</div>
                           )}
-                          <div><strong>🔍 Fonte:</strong> {request.source === 'deezer' ? 'Deezer' : request.source === 'spotify' ? 'Spotify' : 'Manuale'}</div>
+                          <div><strong>🔍 Fonte:</strong> {request.source === 'deezer' ? 'Deezer' : request.source === 'spotify' ? 'Spotify' : request.source === 'tidal' ? 'Tidal' : 'Manuale'}</div>
                           <div><strong>🌐 IP:</strong> {request.client_ip}</div>
                           {request.event_code && (
                             <div className="col-span-1 sm:col-span-2">
