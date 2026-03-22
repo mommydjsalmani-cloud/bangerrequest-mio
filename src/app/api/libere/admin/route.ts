@@ -862,17 +862,41 @@ export async function PATCH(req: Request) {
       .eq('id', request_id)
       .single();
 
-    if (request && request.tidal_added_status === 'success' && request.track_id) {
+    // Prova rimozione se il brano ha un track_id e la sessione è Tidal
+    // (non limitare a tidal_added_status === 'success' perché potrebbe essere NULL)
+    if (request && request.track_id) {
       const { data: session } = await supabase
         .from('sessioni_libere')
-        .select('catalog_type, tidal_access_token, tidal_playlist_id')
+        .select('catalog_type, tidal_access_token, tidal_refresh_token, tidal_playlist_id, tidal_token_expires_at')
         .eq('id', request.session_id)
         .single();
 
       if (session && session.catalog_type === 'tidal' && session.tidal_access_token && session.tidal_playlist_id) {
         try {
-          const { removeTrackFromTidalPlaylist, decryptToken } = await import('@/lib/tidal');
-          const accessToken = decryptToken(session.tidal_access_token!);
+          const { removeTrackFromTidalPlaylist, decryptToken, refreshAccessToken, encryptToken } = await import('@/lib/tidal');
+          let accessToken = decryptToken(session.tidal_access_token!);
+
+          // Se il token è scaduto, prova a refreshare
+          const isExpired = session.tidal_token_expires_at
+            ? Date.now() >= new Date(session.tidal_token_expires_at).getTime()
+            : false;
+          if (isExpired && session.tidal_refresh_token) {
+            try {
+              const refreshed = await refreshAccessToken(decryptToken(session.tidal_refresh_token));
+              accessToken = refreshed.access_token;
+              await supabase
+                .from('sessioni_libere')
+                .update({
+                  tidal_access_token: encryptToken(refreshed.access_token),
+                  tidal_refresh_token: refreshed.refresh_token ? encryptToken(refreshed.refresh_token) : session.tidal_refresh_token,
+                  tidal_token_expires_at: new Date(Date.now() + (refreshed.expires_in || 3600) * 1000).toISOString(),
+                })
+                .eq('id', request.session_id);
+            } catch (refreshErr) {
+              console.error('Tidal token refresh failed (played):', refreshErr);
+            }
+          }
+
           await removeTrackFromTidalPlaylist(session.tidal_playlist_id, request.track_id, accessToken);
           console.log(`Tidal: rimossa traccia ${request.track_id} dalla playlist (played)`);
         } catch (tidalError) {

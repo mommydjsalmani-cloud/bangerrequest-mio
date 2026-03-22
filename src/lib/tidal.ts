@@ -939,53 +939,101 @@ export async function removeTrackFromTidalPlaylist(
 ): Promise<void> {
   const clientId = process.env.TIDAL_CLIENT_ID || '';
   const normalizedTrackId = normalizeTidalTrackIdForPlaylist(trackId);
+  console.log(`[Tidal Remove] Inizio rimozione trackId=${trackId} normalizzato=${normalizedTrackId} da playlist=${playlistId}`);
 
-  // v1: ottieni ETag e lista items per trovare l'indice della traccia
+  // v1: ottieni ETag della playlist (richiesto per modifiche)
   const playlistRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       'X-Tidal-Token': clientId,
     },
   });
-  const etag = playlistRes.headers.get('ETag') || '';
+  const etag = playlistRes.headers.get('ETag') || playlistRes.headers.get('etag') || '';
+  console.log(`[Tidal Remove] Playlist GET status=${playlistRes.status} ETag=${etag}`);
 
-  // Ottieni items della playlist per trovare l'indice del brano
-  const itemsRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}/items?limit=100&offset=0`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'X-Tidal-Token': clientId,
-    },
-  });
+  // Ottieni tutti gli items della playlist (pagina per pagina se serve)
+  let offset = 0;
+  const limit = 100;
+  let found = false;
 
-  if (itemsRes.ok) {
-    const itemsData = await itemsRes.json();
-    const items = itemsData.items || [];
-    // Cerca l'indice del brano nella playlist
-    const trackIndex = items.findIndex((item: { item?: { id?: number | string }; type?: string }) => {
-      const itemId = String(item?.item?.id || '');
-      return itemId === normalizedTrackId || itemId === String(trackId);
+  while (!found) {
+    const itemsRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}/items?limit=${limit}&offset=${offset}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'X-Tidal-Token': clientId,
+      },
     });
 
-    if (trackIndex >= 0) {
-      const deleteUrl = `${TIDAL_API_BASE}/playlists/${playlistId}/items/${trackIndex}`;
-      const deleteRes = await fetch(deleteUrl, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'X-Tidal-Token': clientId,
-          ...(etag ? { 'If-None-Match': etag } : {}),
-        },
-      });
-      if (deleteRes.ok || deleteRes.status === 204) return;
+    if (!itemsRes.ok) {
+      console.warn(`[Tidal Remove] Items GET fallito: status=${itemsRes.status}`);
+      break;
     }
+
+    const itemsData = await itemsRes.json();
+    const items = itemsData.items || [];
+    const totalItems = itemsData.totalNumberOfItems || items.length;
+    console.log(`[Tidal Remove] Items offset=${offset} count=${items.length} total=${totalItems}`);
+
+    // Cerca la traccia confrontando con tutti i formati possibili
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemId = String(item?.item?.id ?? item?.id ?? '');
+      if (itemId === normalizedTrackId || itemId === String(trackId)) {
+        const absoluteIndex = offset + i;
+        console.log(`[Tidal Remove] Traccia trovata a index=${absoluteIndex} itemId=${itemId}`);
+
+        // DELETE con l'indice assoluto nella playlist
+        const deleteUrl = `${TIDAL_API_BASE}/playlists/${playlistId}/items/${absoluteIndex}`;
+        const deleteRes = await fetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-Tidal-Token': clientId,
+            ...(etag ? { 'If-None-Match': etag } : {}),
+          },
+        });
+
+        console.log(`[Tidal Remove] DELETE status=${deleteRes.status}`);
+        if (deleteRes.ok || deleteRes.status === 204) {
+          found = true;
+          break;
+        }
+
+        // Prova anche con body (alcuni endpoint Tidal lo richiedono)
+        const deleteRes2 = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}/items`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-Tidal-Token': clientId,
+            'Content-Type': 'application/json',
+            ...(etag ? { 'If-None-Match': etag } : {}),
+          },
+          body: JSON.stringify({ indices: [absoluteIndex] }),
+        });
+        console.log(`[Tidal Remove] DELETE (body) status=${deleteRes2.status}`);
+        if (deleteRes2.ok || deleteRes2.status === 204) {
+          found = true;
+          break;
+        }
+      }
+    }
+
+    // Se non ci sono più items, esci
+    if (items.length < limit || offset + items.length >= totalItems) break;
+    offset += limit;
   }
 
-  // Fallback OpenAPI
-  const openApiOk = await tryRemoveTrackOpenApi(playlistId, trackId, accessToken);
-  if (openApiOk) return;
+  if (found) return;
 
-  // Non lanciare errore se non si riesce a rimuovere - non deve bloccare il flusso "played"
-  console.warn(`Tidal remove track: traccia ${trackId} non trovata in playlist ${playlistId}`);
+  // Fallback OpenAPI
+  console.log(`[Tidal Remove] Tentativo fallback OpenAPI`);
+  const openApiOk = await tryRemoveTrackOpenApi(playlistId, trackId, accessToken);
+  if (openApiOk) {
+    console.log(`[Tidal Remove] OpenAPI fallback riuscito`);
+    return;
+  }
+
+  console.warn(`[Tidal Remove] Traccia ${trackId} non rimossa dalla playlist ${playlistId}`);
 }
 
 /**
