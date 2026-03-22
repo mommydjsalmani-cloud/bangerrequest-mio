@@ -61,14 +61,11 @@ export async function GET(req: NextRequest) {
     // Fix: OAuth Domain Redirect (commit 86a5028)
     const origin = getCanonicalOrigin(req);
 
-    // Calcola redirect URI dinamicamente, ma in produzione forza mommydj.com per compatibilità OAuth
-    let dynamicRedirectUri: string;
-    if (process.env.NODE_ENV === 'production') {
-      dynamicRedirectUri = 'https://mommydj.com/richiedi/api/tidal/callback';
-    } else {
-      const basePath = '';
-      dynamicRedirectUri = `${origin}${basePath}/api/tidal/callback`;
-    }
+    // Calcola redirect URI dinamicamente dall'origin corrente.
+    // In produzione Next.js usa basePath '/richiedi', quindi il path completo è /richiedi/api/tidal/callback.
+    // In produzione restiamo su dominio canonico (mommydj.com)
+    const basePath = process.env.NODE_ENV === 'production' ? '/richiedi' : '';
+    const dynamicRedirectUri = `${origin}${basePath}/api/tidal/callback`;
     
     // Genera PKCE per OAuth di Tidal
     const { codeVerifier, codeChallenge } = generatePKCE();
