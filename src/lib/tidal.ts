@@ -836,6 +836,7 @@ export function normalizeTidalTrackIdForPlaylist(trackId: string | number | null
 /**
  * Crea playlist su Tidal (API v1)
  */
+
 export async function createTidalPlaylist(
   name: string,
   accessToken: string,
@@ -843,8 +844,42 @@ export async function createTidalPlaylist(
   description?: string
 ): Promise<TidalPlaylist> {
   const clientId = process.env.TIDAL_CLIENT_ID || '';
-  const url = `${TIDAL_API_BASE}/users/${userId}/playlists`;
 
+  // 1. Deduplica: elimina tutte le playlist con lo stesso nome
+  try {
+    const listUrl = `${TIDAL_API_BASE}/users/${userId}/playlists?limit=100&offset=0`;
+    const listRes = await fetch(listUrl, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'X-Tidal-Token': clientId,
+        'Content-Type': 'application/json',
+      },
+    });
+    if (listRes.ok) {
+      const listData = await listRes.json();
+      const playlists = Array.isArray(listData.items) ? listData.items : [];
+      for (const pl of playlists) {
+        const plName = pl.title || pl.name || '';
+        const plId = pl.uuid || pl.id;
+        if (plName === name && plId) {
+          // DELETE playlist
+          const delUrl = `${TIDAL_API_BASE}/playlists/${plId}`;
+          await fetch(delUrl, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'X-Tidal-Token': clientId,
+            },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Tidal] Deduplica playlist fallita:', err);
+  }
+
+  // 2. Crea la nuova playlist
+  const url = `${TIDAL_API_BASE}/users/${userId}/playlists`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
