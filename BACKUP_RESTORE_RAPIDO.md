@@ -1,7 +1,7 @@
 # Ripristino Rapido — Riferimenti Sicuri
 
-**Ultimo backup: 22 marzo 2026, 00:16**
-**Stato: TUTTO FUNZIONANTE**
+**Ultimo backup: 22 marzo 2026, 01:15**
+**Stato: TUTTO FUNZIONANTE — entrambi i progetti verificati**
 
 ---
 
@@ -9,11 +9,12 @@
 
 ```bash
 # Tornare a questo stato sicuro:
-git reset --hard backup-safe-20260321-post-fix
+git reset --hard backup-completo-20260322-011229
 git push --force-with-lease origin main
 ```
 
-Commit: `4163e80` | Tag: `backup-safe-20260321-post-fix`
+Commit: `5c18710` | Tag: `backup-completo-20260322-011229`
+(Precedente: commit `4163e80` | Tag: `backup-safe-20260322`)
 
 ---
 
@@ -23,13 +24,15 @@ Se dopo un push il sito si rompe, **NON toccare il codice**. Promuovi il deploym
 
 ### mommy-marketing (mommydj.com — homepage)
 ```bash
-vercel promote mommy-marketing-cmvs0xklv-mommys-projects-f4f4fbbb.vercel.app --scope mommys-projects-f4f4fbbb
+vercel promote mommy-marketing-2dmgw475k-mommys-projects-f4f4fbbb.vercel.app --scope mommys-projects-f4f4fbbb
 ```
+ID: `dpl_5EdWWdVXqxXYSWmpZ25QCicL8vpv` | Creato: 21 mar 2026 22:55
 
 ### bangerrequest-mio (mommydj.com/richiedi — app richieste)
 ```bash
-vercel promote bangerrequest-c3eqyo4wb-mommys-projects-f4f4fbbb.vercel.app --scope mommys-projects-f4f4fbbb
+vercel promote bangerrequest-eyihanrk6-mommys-projects-f4f4fbbb.vercel.app --scope mommys-projects-f4f4fbbb
 ```
+ID: `dpl_2SiosgMwVVgy5HtLjchQsVqHcmXx` | Creato: 22 mar 2026 01:12
 
 ---
 
@@ -56,8 +59,8 @@ vercel promote bangerrequest-c3eqyo4wb-mommys-projects-f4f4fbbb.vercel.app --sco
 
 ## 5. Backup locale
 
-Cartella: `backups/manual-backup-complete-20260321-234757/`
-Archivio: `backups/manual-backup-complete-20260321-234757.tar.gz`
+Archivio completo: `/workspaces/backup-completo-20260322-011502.tar.gz` (295 MB)
+Precedente: `backups/manual-backup-complete-20260321-234757.tar.gz`
 
 ---
 
