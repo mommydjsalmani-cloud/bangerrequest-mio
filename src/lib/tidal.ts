@@ -1079,7 +1079,8 @@ export async function getTidalPlaylist(
   accessToken: string
 ): Promise<TidalPlaylist | null> {
   const clientId = process.env.TIDAL_CLIENT_ID || '';
-  const url = `${TIDAL_API_BASE}/playlists/${playlistId}`;
+  // FIX: aggiungi countryCode=IT
+  const url = `${TIDAL_API_BASE}/playlists/${playlistId}?countryCode=IT`;
 
   const response = await fetch(url, {
     headers: {
