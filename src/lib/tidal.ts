@@ -104,12 +104,13 @@ export function getTidalAuthUrl(state: string, codeChallenge: string, redirectUr
     throw new Error('Tidal credentials not configured');
   }
 
+
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     redirect_uri: resolvedRedirectUri,
-    // Scope compatibili con app standard TIDAL
-    scope: 'user.read playlists.read playlists.write search.read',
+    // Scope compatibili con app standard TIDAL (aggiunto r_usr per API v2)
+    scope: 'user.read playlists.read playlists.write search.read r_usr',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
