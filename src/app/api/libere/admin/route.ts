@@ -854,6 +854,35 @@ export async function PATCH(req: Request) {
     }
   }
   
+  // Se la richiesta è stata segnata come suonata, rimuovi da playlist Tidal
+  if (status === 'played') {
+    const { data: request } = await supabase
+      .from('richieste_libere')
+      .select('id, session_id, track_id, tidal_added_status')
+      .eq('id', request_id)
+      .single();
+
+    if (request && request.tidal_added_status === 'success' && request.track_id) {
+      const { data: session } = await supabase
+        .from('sessioni_libere')
+        .select('catalog_type, tidal_access_token, tidal_playlist_id')
+        .eq('id', request.session_id)
+        .single();
+
+      if (session && session.catalog_type === 'tidal' && session.tidal_access_token && session.tidal_playlist_id) {
+        try {
+          const { removeTrackFromTidalPlaylist, decryptToken } = await import('@/lib/tidal');
+          const accessToken = decryptToken(session.tidal_access_token!);
+          await removeTrackFromTidalPlaylist(session.tidal_playlist_id, request.track_id, accessToken);
+          console.log(`Tidal: rimossa traccia ${request.track_id} dalla playlist (played)`);
+        } catch (tidalError) {
+          console.error('Tidal remove track error (played):', tidalError);
+          // Non bloccare il flusso: la richiesta è già segnata come suonata
+        }
+      }
+    }
+  }
+
   const statusMessages: Record<string, string> = {
     'accepted': 'accettata',
     'rejected': 'rifiutata', 

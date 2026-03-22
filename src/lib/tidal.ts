@@ -930,6 +930,65 @@ export async function addTrackToTidalPlaylist(
 }
 
 /**
+ * Rimuove brano da playlist Tidal (API v1)
+ */
+export async function removeTrackFromTidalPlaylist(
+  playlistId: string,
+  trackId: string,
+  accessToken: string
+): Promise<void> {
+  const clientId = process.env.TIDAL_CLIENT_ID || '';
+  const normalizedTrackId = normalizeTidalTrackIdForPlaylist(trackId);
+
+  // v1: ottieni ETag e lista items per trovare l'indice della traccia
+  const playlistRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
+    },
+  });
+  const etag = playlistRes.headers.get('ETag') || '';
+
+  // Ottieni items della playlist per trovare l'indice del brano
+  const itemsRes = await fetch(`${TIDAL_API_BASE}/playlists/${playlistId}/items?limit=100&offset=0`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'X-Tidal-Token': clientId,
+    },
+  });
+
+  if (itemsRes.ok) {
+    const itemsData = await itemsRes.json();
+    const items = itemsData.items || [];
+    // Cerca l'indice del brano nella playlist
+    const trackIndex = items.findIndex((item: { item?: { id?: number | string }; type?: string }) => {
+      const itemId = String(item?.item?.id || '');
+      return itemId === normalizedTrackId || itemId === String(trackId);
+    });
+
+    if (trackIndex >= 0) {
+      const deleteUrl = `${TIDAL_API_BASE}/playlists/${playlistId}/items/${trackIndex}`;
+      const deleteRes = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'X-Tidal-Token': clientId,
+          ...(etag ? { 'If-None-Match': etag } : {}),
+        },
+      });
+      if (deleteRes.ok || deleteRes.status === 204) return;
+    }
+  }
+
+  // Fallback OpenAPI
+  const openApiOk = await tryRemoveTrackOpenApi(playlistId, trackId, accessToken);
+  if (openApiOk) return;
+
+  // Non lanciare errore se non si riesce a rimuovere - non deve bloccare il flusso "played"
+  console.warn(`Tidal remove track: traccia ${trackId} non trovata in playlist ${playlistId}`);
+}
+
+/**
  * Verifica se playlist esiste (API v1)
  */
 export async function getTidalPlaylist(
@@ -1048,6 +1107,34 @@ async function tryAddTrackOpenApi(playlistId: string, trackId: string, accessTok
         });
         if (res.ok) return true;
       }
+    }
+  }
+
+  return false;
+}
+
+async function tryRemoveTrackOpenApi(playlistId: string, trackId: string, accessToken: string): Promise<boolean> {
+  const candidates = [
+    `${TIDAL_OPENAPI_BASE}/playlists/${playlistId}/relationships/tracks`,
+    `${TIDAL_OPENAPI_BASE}/playlists/${playlistId}/relationships/items`,
+  ];
+  const payloads = [
+    { data: [{ type: 'tracks', id: String(trackId) }] },
+    { data: [{ type: 'track', id: String(trackId) }] },
+  ];
+
+  for (const url of candidates) {
+    for (const payload of payloads) {
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok || res.status === 204) return true;
     }
   }
 
