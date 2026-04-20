@@ -29,22 +29,22 @@
     "update-deps": "npm update && npm audit fix"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
-    "next": "^16.1.6",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "@supabase/supabase-js": "^2.103.3",
+    "next": "^16.2.4",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "^15.1.0",
-    "supertest": "^7.1.4",
+    "@eslint/eslintrc": "^3.3.5",
+    "@tailwindcss/postcss": "^4.2.2",
+    "@types/node": "^20.19.39",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.15",
+    "supertest": "^7.2.2",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^5.9.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
